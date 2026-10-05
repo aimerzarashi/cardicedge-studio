@@ -15,12 +15,12 @@ Node.js・pnpm はコンテナ内で動くため、ホストへのインスト�
 ## セットアップ
 
 ```bash
-make up      # 開発サーバー（Next.js）・envoy・Playwright のブラウザを起動
+make up      # core（../core）を起動してから、開発サーバー（Next.js）・envoy・Playwright のブラウザを起動
 make fmt     # biome でフォーマットを修正
 make lint    # biome check と型チェック
-make test    # Playwright でトップページが表示されることを確認
+make test    # 専用の core・DB と本番ビルドの cms を使い捨てで起動し、Playwright で確認
 make tunnel  # （任意）Cloudflare Quick Tunnel を起動し、外部公開用 URL を表示
-make down    # tunnel を含めて停止
+make down    # cms を停止（tunnel を含む。core は game も使うため止めない）
 ```
 
 http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバーはホストに公開していない）。
@@ -29,10 +29,18 @@ http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバー�
 ### 構成
 
 ```
-ブラウザ ─────────────┐
-cloudflared（任意）───┼─▶ cms-envoy:10000 ─▶ cms:3000（Next.js）
-Playwright のブラウザ ┘
+ブラウザ ─────────────┐                     ┌─▶ cms:3000（Next.js）
+cloudflared（任意）───┼─▶ cms-envoy:10000 ─┤
+Playwright のブラウザ ┘                     └─▶ core:3333（/cms/graphql）
 ```
+
+cms と cms-envoy は共有ネットワーク `diecardomain` に参加し、core（../core で `make up`）に接続する。
+core は game / cms で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
+
+### テスト用環境（compose.test.yaml）
+
+`make test` はプロジェクト名 `cms-test` で、専用の core・DB（../core/compose.test.yaml）と本番ビルドの cms を起動し、終了後に破棄する。
+開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
 
 ### Tunnel（任意）
 

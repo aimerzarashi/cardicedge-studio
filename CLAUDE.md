@@ -1,6 +1,7 @@
 # コマンド
 
 - `make up` / `make down` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel）
+- `make up` は先に `../core` の `make up` を実行する。`make down` は cms だけを止める（core は止めない）
 - pnpm・node はコンテナ内で実行する（例: `docker compose exec cms pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
 - lint は `make lint`（biome check と `pnpm typecheck`）でファイルを書き換えない。typecheck は `next typegen` で Next.js の型（LayoutProps 等）を生成してから tsc を実行する。フォーマットの修正は `make fmt`（biome format --write）
 - pnpm のバージョンを上げるときは package.json の `packageManager` と local/cms/Dockerfile の `PNPM_VERSION` を揃える（corepack は使わない）
@@ -20,8 +21,15 @@
 - アクセスはすべて cms-envoy:10000 を経由する（ホストは CMS_PORT、既定 3001）。cms:3000 はホストに公開しない
 - envoy を経由するホスト名からのアクセスは Next.js の `allowedDevOrigins` に追加する（`cms-envoy`、`*.trycloudflare.com`）
 
+# 統合（core）
+
+- cms・cms-envoy は共有ネットワーク `diecardomain` に参加し、`core:3333` に接続する
+- envoy は `/cms/graphql` を core に転送する（core が止まっていれば 503）
+
 # テスト
 
+- `make test` は compose.test.yaml（プロジェクト名 cms-test）で専用の core・DB・本番ビルドの cms を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない
+- テスト用の cms は `.next` をボリューム（next-test）に置き、開発用の `.next` と分ける
 - Playwright のブラウザは cms-playwright コンテナ（公式イメージ）で動く。cms コンテナから `run-server` に接続して実行する
 - baseURL は `http://cms-envoy:10000`（本番と同じく envoy 経由で確認する）
 - `@playwright/test` と compose の Playwright イメージ・`run-server` のバージョンは一致させる

@@ -15,6 +15,10 @@ services:
       # Playwright はブラウザを cms-playwright コンテナで動かし、cms-envoy 経由でアクセスする
       PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
       PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
+    # サーバー側から core:3333 に接続するため、共有ネットワークにも参加する
+    networks:
+      - default
+      - diecardomain
     # make up (--wait) はこれが healthy になるまで待つ
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -33,6 +37,10 @@ services:
       - ./local/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     depends_on:
       - cms
+    # /cms/graphql を core:3333 に転送するため、共有ネットワークにも参加する
+    networks:
+      - default
+      - diecardomain
     # イメージに curl が無いため bash の /dev/tcp で admin の /ready を確認する（HTTP/1.0 は 426 になる）
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9901 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q LIVE <&3"]
@@ -69,3 +77,8 @@ services:
 
 volumes:
   node-cache:
+
+# core / cms と共有するネットワーク（core の make up で作成される）
+networks:
+  diecardomain:
+    external: true

@@ -1,4 +1,4 @@
-# 開発環境の入口。ブラウザ・Playwright・cloudflared はここを経由して cms に届く
+# 開発環境の入口。ブラウザ・Playwright・cloudflared はここを経由して cms / core に届く
 admin:
   address:
     socket_address: { address: 0.0.0.0, port_value: 9901 }
@@ -20,6 +20,12 @@ static_resources:
                     - name: backend
                       domains: ["*"]
                       routes:
+                        # core の GraphQL（Subscription の websocket を含む）。core が起動していなければ 503 になる
+                        - match: { prefix: "/cms/graphql" }
+                          route:
+                            cluster: core
+                            upgrade_configs:
+                              - upgrade_type: websocket
                         - match: { prefix: "/" }
                           route:
                             cluster: cms
@@ -42,3 +48,13 @@ static_resources:
               - endpoint:
                   address:
                     socket_address: { address: cms, port_value: 3000 }
+    - name: core
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: core
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: core, port_value: 3333 }
