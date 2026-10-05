@@ -31,7 +31,7 @@ fmt:
 .PHONY: lint
 lint:
 	docker compose exec cms pnpm lint
-	docker compose exec cms pnpm exec tsc --noEmit
+	docker compose exec cms pnpm typecheck
 
 # テスト
 

@@ -1,0 +1,23 @@
+# MR と main への push でだけ実行する（同じ変更で二重に走らせない）
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  image: node:24.21.0-bookworm
+
+variables:
+  # local/*/Dockerfile・package.json の packageManager と揃える
+  PNPM_VERSION: "12.9.1"
+  PNPM_HOME: /root/.local/share/pnpm
+
+# make lint と同じ（biome check、型チェック）。Playwright のテストは CI では未実行
+lint:
+  before_script:
+    - curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=$PNPM_VERSION SHELL=bash sh -
+    - export PATH="$PNPM_HOME/bin:$PATH"
+    - pnpm install --frozen-lockfile
+  script:
+    - pnpm lint
+    - pnpm typecheck
