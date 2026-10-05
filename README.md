@@ -7,6 +7,9 @@
 - Docker Engine + Docker Compose v2 以降
 - make
 
+想定環境は Linux / WSL2（ホストの uid 1000）。開発用コンテナは uid 1000 のユーザーで動き、生成物をホストユーザー所有にする。
+macOS・Windows ネイティブでは、ホストのエディタの型補完・biome 拡張が動かない（node_modules に Linux 用バイナリが入るため）。実行・テスト・lint はコンテナ内で動く。
+
 Node.js・pnpm はコンテナ内で動くため、ホストへのインストールは不要。
 
 ## セットアップ
