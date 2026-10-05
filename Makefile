@@ -1,7 +1,9 @@
 # 環境管理
 
+# core（共有ネットワークの作成を含む）を起動してから cms を起動する。core が起動済みならそのまま使う
 .PHONY: up
 up:
+	$(MAKE) -C ../core up
 	docker compose up -d --build --wait
 
 # オプション: Cloudflare Quick Tunnel を起動し、外部公開用の URL を表示する
@@ -15,7 +17,7 @@ tunnel:
 	done; \
 	echo "tunnel URL not found within 30s. see: docker compose logs cms-tunnel" >&2; exit 1
 
-# tunnel を含む全サービスを停止する。pnpm のキャッシュ用ボリュームは残す（消すときは down -v）
+# tunnel を含む cms の全サービスを停止する（core は game も使うため止めない）。pnpm のキャッシュ用ボリュームは残す（消すときは down -v）
 .PHONY: down
 down:
 	docker compose --profile '*' down
@@ -35,6 +37,10 @@ lint:
 
 # テスト
 
+# 専用の core・DB と本番ビルドの cms を使い捨てで起動してテストし、終了後に破棄する（開発用の環境とは独立）
+TEST_COMPOSE := docker compose -p cms-test -f compose.test.yaml
+
 .PHONY: test
 test:
-	docker compose exec cms pnpm test
+	$(TEST_COMPOSE) up -d --build --wait && $(TEST_COMPOSE) exec cms pnpm test; \
+	status=$$?; $(TEST_COMPOSE) down -v; exit $$status
