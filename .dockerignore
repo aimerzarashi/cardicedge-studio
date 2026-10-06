@@ -1,0 +1,10 @@
+.git
+node_modules
+.next
+test-results
+playwright-report
+blob-report
+tsconfig.tsbuildinfo
+next-env.d.ts
+.vscode
+.claude

@@ -1,19 +1,44 @@
-# MR と main への push でだけ実行する（同じ変更で二重に走らせない）
+# MR・main への push・タグでだけ実行する（同じ変更で二重に走らせない）
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
 
-default:
-  image: node:24.21.0-bookworm
+stages:
+  - test
+  - build
+  - release
+  - deploy
 
 variables:
-  # local/*/Dockerfile・package.json の packageManager と揃える
+  DOCKER_VERSION: "29.8.2"
+  # local/cms/Dockerfile・.build/Dockerfile・package.json の packageManager と揃える
   PNPM_VERSION: "12.9.1"
-  PNPM_HOME: /root/.local/share/pnpm
+  # Docker Hub の配布先（タグのパイプラインで push する）
+  DOCKERHUB_IMAGE: diecardomain/cms
+
+# lint は MR と main で実行する（タグのパイプラインでは実行しない）
+.on-mr-and-main:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# イメージのビルドに使う Docker in Docker
+.docker:
+  image: docker:${DOCKER_VERSION}
+  services:
+    - docker:${DOCKER_VERSION}-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
 
 # make lint と同じ（biome check、型チェック）。Playwright のテストは CI では未実行
 lint:
+  stage: test
+  extends: .on-mr-and-main
+  image: node:24.21.0-bookworm
+  variables:
+    PNPM_HOME: /root/.local/share/pnpm
   before_script:
     - curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=$PNPM_VERSION SHELL=bash sh -
     - export PATH="$PNPM_HOME/bin:$PATH"
@@ -21,3 +46,51 @@ lint:
   script:
     - pnpm lint
     - pnpm typecheck
+
+# MR の確認用イメージ（手動）。GitLab Container Registry に mr-<MR番号> で push する
+build-mr:
+  stage: build
+  extends: .docker
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - IMAGE="$CI_REGISTRY_IMAGE:mr-$CI_MERGE_REQUEST_IID"
+    - docker build --pull --build-arg BUILD_VERSION="mr-$CI_MERGE_REQUEST_IID" -t "$IMAGE" -f .build/Dockerfile .
+    - docker push "$IMAGE"
+  after_script:
+    - docker logout "$CI_REGISTRY"
+
+# main へのマージで semantic-release を実行し、タグ（v*）と GitLab リリースを作る。
+# リリース対象のコミット（feat / fix 等）が無ければ何もしない。CHANGELOG.md は保存しない
+release:
+  stage: release
+  image: node:24.21.0-bookworm
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  variables:
+    # 前回のリリースタグからの履歴を読むため、全履歴を取得する
+    GIT_DEPTH: 0
+  script:
+    - npm install --prefix /tmp/semantic-release --no-save --no-audit --no-fund
+      semantic-release@25.0.9
+      @semantic-release/commit-analyzer@13.0.1
+      @semantic-release/release-notes-generator@14.1.1
+      @semantic-release/gitlab@13.3.3
+    - /tmp/semantic-release/node_modules/.bin/semantic-release
+
+# semantic-release が作ったタグのパイプラインで、そのタグのイメージを Docker Hub に配布する
+deploy:
+  stage: deploy
+  extends: .docker
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build --pull --build-arg BUILD_VERSION="$CI_COMMIT_TAG" -t "$DOCKERHUB_IMAGE:$CI_COMMIT_TAG" -t "$DOCKERHUB_IMAGE:latest" -f .build/Dockerfile .
+    - docker push "$DOCKERHUB_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$DOCKERHUB_IMAGE:latest"
+  after_script:
+    - docker logout

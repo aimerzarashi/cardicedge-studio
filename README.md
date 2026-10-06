@@ -18,7 +18,7 @@ Node.js・pnpm はコンテナ内で動くため、ホストへのインスト�
 make up      # core（../core）を起動してから、開発サーバー（Next.js）・envoy・Playwright のブラウザを起動
 make fmt     # biome でフォーマットを修正
 make lint    # biome check と型チェック
-make test    # 専用の core・DB と本番ビルドの cms を使い捨てで起動し、Playwright で確認
+make test    # 専用の core・DB と本番用イメージの cms を使い捨てで起動し、Playwright で確認
 make tunnel  # （任意）Cloudflare Quick Tunnel を起動し、外部公開用 URL を表示
 make down    # cms を停止（tunnel を含む。core は game も使うため止めない）
 ```
@@ -39,13 +39,25 @@ core は game / cms で1つを共有する。core が兄弟ディレクトリ（
 
 ### テスト用環境（compose.test.yaml）
 
-`make test` はプロジェクト名 `cms-test` で、専用の core・DB（../core/compose.test.yaml）と本番ビルドの cms を起動し、終了後に破棄する。
+`make test` はプロジェクト名 `cms-test` で、専用の core・DB（../core/compose.test.yaml）と本番用イメージ（`.build/Dockerfile`）の cms を起動し、終了後に破棄する。テストは開発用イメージの cms-test-runner から実行する。
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
 
 ### Tunnel（任意）
 
 `make tunnel` は `https://xxxx.trycloudflare.com` の URL を表示する。スマホ等の外部端末から確認するときに使う。
 URL は起動のたびに変わり、知っていれば誰でもアクセスできるため、使い終わったら `make down` で止める。
+
+## リリースとイメージ配布（CI）
+
+| パイプライン | ジョブ | 内容 |
+|---|---|---|
+| MR | lint | `make lint` 相当（Playwright のテストは CI では未実行） |
+| MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/cms:mr-<MR番号>` に push |
+| main | lint / release | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない |
+| タグ（`v*`） | deploy | Docker Hub の `diecardomain/cms:<タグ>` と `:latest` に push |
+
+本番用イメージは Next.js の standalone 出力を `node server.js` で動かす（`.build/Dockerfile`）。
+バージョンは Conventional Commits で決まる（`feat:` → マイナー、`fix:` / `perf:` → パッチ、`BREAKING CHANGE` → メジャー）。
 
 ## 依存パッケージ
 
