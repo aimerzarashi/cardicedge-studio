@@ -10,6 +10,14 @@ up:
 .PHONY: tunnel
 tunnel:
 	docker compose --profile tunnel up -d --build --wait
+	@$(MAKE) --no-print-directory url
+
+# 起動中の Quick Tunnel の URL を cloudflared のログから取り出して表示する（起動直後は最大30秒待つ）
+.PHONY: url
+url:
+	@if [ -z "$$(docker compose --profile tunnel ps -q --status running cms-tunnel 2>/dev/null)" ]; then \
+		echo "tunnel is not running. run 'make tunnel' first" >&2; exit 1; \
+	fi
 	@for i in $$(seq 1 30); do \
 		url=$$(docker compose logs cms-tunnel 2>/dev/null | grep -o 'https://[a-zA-Z0-9-]*\.trycloudflare\.com' | tail -n 1); \
 		if [ -n "$$url" ]; then echo "$$url"; exit 0; fi; \

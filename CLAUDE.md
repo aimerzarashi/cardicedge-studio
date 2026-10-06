@@ -1,6 +1,6 @@
 # コマンド
 
-- `make up` / `make down` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel）
+- `make up` / `make down` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
 - `make up` は先に `../core` の `make up` を実行する。`make down` は cms だけを止める（core は止めない）
 - pnpm・node はコンテナ内で実行する（例: `docker compose exec cms pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
 - lint は `make lint`（biome check と `pnpm typecheck`）でファイルを書き換えない。typecheck は `next typegen` で Next.js の型（LayoutProps 等）を生成してから tsc を実行する。フォーマットの修正は `make fmt`（biome format --write）

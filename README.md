@@ -20,6 +20,7 @@ make fmt     # biome でフォーマットを修正
 make lint    # biome check と型チェック
 make test    # 専用の core・DB と本番用イメージの cms を使い捨てで起動し、Playwright で確認
 make tunnel  # （任意）Cloudflare Quick Tunnel を起動し、外部公開用 URL を表示
+make url     # （任意）起動中の Tunnel の URL を再表示
 make down    # cms を停止（tunnel を含む。core は game も使うため止めない）
 ```
 
