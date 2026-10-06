@@ -37,10 +37,10 @@ lint:
 
 # テスト
 
-# 専用の core・DB と本番ビルドの cms を使い捨てで起動してテストし、終了後に破棄する（開発用の環境とは独立）
+# 専用の core・DB と本番用イメージの cms を使い捨てで起動してテストし、終了後に破棄する（開発用の環境とは独立）
 TEST_COMPOSE := docker compose -p cms-test -f compose.test.yaml
 
 .PHONY: test
 test:
-	$(TEST_COMPOSE) up -d --build --wait && $(TEST_COMPOSE) exec cms pnpm test; \
-	status=$$?; $(TEST_COMPOSE) down -v; exit $$status
+	$(TEST_COMPOSE) up -d --build --wait && $(TEST_COMPOSE) run --rm --build cms-test-runner; \
+	status=$$?; $(TEST_COMPOSE) --profile runner down -v; exit $$status

@@ -5,22 +5,14 @@ include:
   - ../core/compose.test.yaml
 
 services:
-  # 本番ビルドの cms。.next は開発用と分けるためボリュームに置く
+  # 本番用イメージ（.build/Dockerfile）の cms
   cms:
     build:
       context: .
-      dockerfile: local/cms/Dockerfile
-    init: true
-    volumes:
-      - ./:/home/node/app
-      - next-test:/home/node/app/.next
-    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm build && exec pnpm start --hostname 0.0.0.0"]
-    environment:
-      PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
-      PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
+      dockerfile: .build/Dockerfile
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      start_period: 300s
+      start_period: 60s
       start_interval: 1s
       interval: 10s
       timeout: 5s
@@ -55,5 +47,17 @@ services:
       timeout: 5s
       retries: 3
 
-volumes:
-  next-test:
+  # テストの実行役。開発用イメージでソース（tests/・playwright.config.ts・node_modules）を使う。
+  # make test から docker compose run で起動する
+  cms-test-runner:
+    build:
+      context: .
+      dockerfile: local/cms/Dockerfile
+    profiles: ["runner"]
+    init: true
+    volumes:
+      - ./:/home/node/app
+    environment:
+      PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
+      PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
+    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm test"]

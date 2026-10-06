@@ -31,5 +31,4 @@ COPY --from=pnpm --chown=node:node /home/node/.local/share/pnpm /home/node/.loca
 RUN pnpm --version
 
 # ボリュームは初回作成時にマウント先の所有者を引き継ぐため、node 所有で作っておく
-# （.next は make test でボリュームを重ねる。compose.test.yaml）
-RUN mkdir -p /home/node/.cache /home/node/app/.next
+RUN mkdir -p /home/node/.cache
