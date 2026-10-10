@@ -55,3 +55,19 @@ test("ログアウトするとログイン画面に戻り、トップ画面を�
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
 });
+
+test("ハイドレーション前に送信してもパスワードが URL に載らない", async ({
+  page,
+}) => {
+  // JavaScript を読み込ませず、ハイドレーションされない状態（回線が遅いときの読み込み途中）を再現する
+  await page.route("**/_next/static/**/*.js", (route) => route.abort());
+  await page.goto("/login");
+  await page.getByLabel("メールアドレス").fill(operator.email);
+  await page.getByLabel("パスワード").fill(operator.password);
+
+  await expect(page.getByRole("button", { name: "ログイン" })).toBeDisabled();
+  await page.getByLabel("パスワード").press("Enter");
+
+  await expect(page).toHaveURL(/\/login$/);
+  expect(page.url()).not.toContain(operator.password);
+});

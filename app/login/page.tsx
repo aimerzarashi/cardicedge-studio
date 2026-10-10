@@ -1,11 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useState, useSyncExternalStore } from "react";
 import { authClient } from "@/lib/auth-client";
+
+// サーバーの HTML では false、ハイドレーション後は true になる。useEffect で state を切り替えるより再描画が少ない
+function useHydrated() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -30,7 +40,9 @@ export default function LoginPage() {
   return (
     <main>
       <h1>cms ログイン</h1>
-      <form onSubmit={handleSubmit}>
+      {/* ハイドレーション前に送信されると、ブラウザ標準の GET で資格情報が URL に載るため、
+          POST にしたうえでハイドレーションまでボタンを押せないようにする */}
+      <form method="post" onSubmit={handleSubmit}>
         <label>
           メールアドレス
           <input name="email" type="email" autoComplete="username" required />
@@ -44,7 +56,7 @@ export default function LoginPage() {
             required
           />
         </label>
-        <button type="submit" disabled={pending}>
+        <button type="submit" disabled={!hydrated || pending}>
           ログイン
         </button>
       </form>
