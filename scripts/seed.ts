@@ -1,4 +1,4 @@
-// 開発・テスト用のオペレーターを作る（既にあれば何もしない）。本番では使わない
+// 開発・テスト用の管理者を作る（既にあれば何もしない）。本番では使わない（本番は make create-admin）
 import { auth } from "../lib/auth.ts";
 
 const operator = {
@@ -8,7 +8,8 @@ const operator = {
 };
 
 try {
-  await auth.api.signUpEmail({ body: operator });
+  // headers を渡さないサーバー側の呼び出しは、管理者のセッションなしで作れる（auth create-admin と同じ経路）
+  await auth.api.createUser({ body: { ...operator, role: "admin" } });
   console.log(`seeded operator: ${operator.email}`);
 } catch (error) {
   // 2回目以降は既存ユーザーとして弾かれる

@@ -42,13 +42,21 @@
 - Playwright のブラウザは cms-playwright コンテナ（公式イメージ）で動く。cms コンテナから `run-server` に接続して実行する
 - baseURL は `http://cms-envoy:10000`（本番と同じく envoy 経由で確認する）
 - `@playwright/test` と compose の Playwright イメージ・`run-server` のバージョンは一致させる
+- テストは tests/fixtures.ts の `test` / `expect` を使う。テストごとに `X-Forwarded-For` で別の IP を名乗り、本番モードのレート制限（ログインは同じ IP から 10 秒に 3 回）でほかのテストと枠を共有しないようにしている
+- `make test` のテスト用の管理者は seed（operator@example.com。パスワード付き）と、起動時に作られる最初の管理者（admin@example.com。パスワード無し）
+- メールは Mailpit が受け止め、テストは Mailpit の API で読む（tests/mail.ts）。メールのリンクのホスト名は BETTER_AUTH_URL のため、パスだけを使う（開発用の環境では localhost:3001 で、ブラウザのコンテナから届かない）
 
 # 認証（better-auth）
 
 - better-auth は標準の範囲で使う（独自の項目・独自の認証処理は作らない）。メールアドレス + パスワード、サインアップは無効
 - JWT の issuer / audience は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須）で渡し、core の設定と一致させる。core は (iss, sub) で operator を識別するため、運用を始めた環境では issuer を変えない
 - JWT の中身は `definePayload` で最小限にしている（email 等は入れない）
-- `disableSignUp` はサーバー側の `auth.api.signUpEmail` も拒否するため、seed のときだけ `AUTH_ALLOW_SIGN_UP=true` で許可する（`pnpm db:seed` が付ける）
+- サインアップは無効（`disableSignUp: true`）。オペレーターは Admin プラグインの `createUser` で作る（起動時の最初の管理者・seed とも同じ経路。headers を渡さないサーバー側の呼び出しは管理者のセッションなしで通る）。利用者の入力をそのまま Admin プラグインの API に渡すサーバーのコードを書かない
+- Admin プラグインの管理者 role から impersonate・delete・set-email を外している（理由は README）。権限を足すときは core の監査・(iss, sub) の対応づけへの影響を確かめる
+- 最初の管理者は起動時に `INITIAL_ADMIN_EMAIL` のアドレスでパスワード無しで作る（instrumentation.ts → lib/initial-admin.ts）。本番とローカルで作り方を変えない
+- lib/auth.ts とそこから読むファイル（lib/mail.ts）は、seed・better-auth の CLI が Node.js で直接読むため、パスの別名（`@/`）を使わず相対パス（`./mail.ts`）で import する（別名だと CLI が「server-only を外せ」という紛らわしいエラーを出す）
+- メールは lib/mail.ts の `sendMail` だけで送る。better-auth の送信の関数では送信を await しない（登録の有無で応答時間が変わるため。公式の注意）
+- secret（BETTER_AUTH_SECRET）はそのまま変えると jwks を復号できず 500 になる。変えるときは README の手順に従う
 - lib/auth.ts は公式チュートリアルどおり、読み込み時に betterAuth を作る。next build 中は環境変数を渡さないため、better-auth が「Base URL is not set」（警告）と「default secret」（エラーのログ）を出すが、ビルドは成功し、実行時はコンテナの環境変数が使われる
 - JWT_ISSUER / JWT_AUDIENCE が未設定だと better-auth は黙って BETTER_AUTH_URL を使うため、lib/auth.ts で実行時に必須チェックしている（next build 中は `NEXT_PHASE=phase-production-build` で判定して確かめない）
 - lib/auth.ts は `import "server-only"` でクライアントからの読み込みをビルドエラーにしている。Node.js で直接動かす seed・CLI は `--conditions=react-server` を付けて実行する（付けないと server-only がエラーを投げる）

@@ -1,17 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState, useSyncExternalStore } from "react";
+import { type FormEvent, useState } from "react";
 import { authClient } from "@/lib/auth-client";
-
-// サーバーの HTML では false、ハイドレーション後は true になる。useEffect で state を切り替えるより再描画が少ない
-function useHydrated() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-}
+import { useHydrated } from "@/lib/use-hydrated";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,7 +23,12 @@ export default function LoginPage() {
     });
     setPending(false);
     if (error) {
-      setError("メールアドレスまたはパスワードが正しくありません");
+      // 429（レート制限）までパスワードの誤りと表示すると、正しいパスワードを打ち直してさらに制限にかかる
+      setError(
+        error.status === 429
+          ? "ログインの試行回数が多すぎます。しばらく待ってからもう一度お試しください"
+          : "メールアドレスまたはパスワードが正しくありません",
+      );
       return;
     }
     router.push("/");
@@ -61,6 +59,9 @@ export default function LoginPage() {
         </button>
       </form>
       {error && <p role="alert">{error}</p>}
+      <p>
+        <Link href="/forgot-password">パスワードを忘れた・初めて設定する</Link>
+      </p>
     </main>
   );
 }

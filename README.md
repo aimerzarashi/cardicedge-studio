@@ -28,6 +28,7 @@ make down    # cms を停止（tunnel を含む。core は game も使うため�
 ```
 
 http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバーはホストに公開していない）。
+送ったメール（パスワードの設定等）は http://localhost:8025 の Mailpit で読む（外には送らない。ポートは CMS_MAILPIT_PORT で変更可）。
 ポートが他と衝突する場合は `CMS_PORT=13001 make up` のように変更できる。
 
 ### 構成
@@ -71,11 +72,76 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 | 項目 | 内容 |
 |---|---|
 | データ | cms-db（PostgreSQL）。テーブルは migrations の SQL を Atlas で適用して作る（下の「DB マイグレーション」）。ホストからは `localhost:5433`（user: cms_user / password: cms_password / db: cms。ポートは CMS_DB_PORT で変更可） |
-| 開発・テスト用のオペレーター | `pnpm db:seed` で作る（operator@example.com / operator-password）。本番では使わない |
+| 最初の管理者 | 起動時に `INITIAL_ADMIN_EMAIL` のアドレスでパスワード無しで作り、本人がメールで設定する（下の「最初の管理者とパスワードの設定」） |
+| 開発・テスト用の管理者 | `pnpm db:seed` で作る（operator@example.com / operator-password、role: admin）。本番では使わない |
+| 管理者と権限 | better-auth の Admin プラグイン。管理者 role から、なりすまし・削除・メールアドレスの変更を外している（下の「管理者の権限」） |
 | JWT | `/api/auth/token` で取得。`iss` / `aud` は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須。開発・テストは `diecardomain-cms` / `diecardomain-core`）。`sub` は better-auth のユーザー ID。中身は `sub`・`iss`・`aud`・`iat`・`exp` だけ（有効期限 15 分）。**`JWT_ISSUER` は core がオペレーターを識別するキーの一部のため、運用を始めた環境では変えない** |
 | JWKS | `/api/auth/jwks`（EdDSA / Ed25519）。core が JWT の検証に使う |
 
 `make up` では、cms-migrate がマイグレーションを適用してから、開発サーバーの起動前に `db:seed`（冪等）を実行する。
+
+### 最初の管理者とパスワードの設定
+
+サインアップは無効で、オペレーターは管理者が作る。最初の管理者は、**ローカルと本番で同じ方法**で作る。
+
+1. 環境変数 `INITIAL_ADMIN_EMAIL`（と `INITIAL_ADMIN_NAME`）にアドレスを入れて cms を起動する
+2. cms は起動時に、そのアドレスのユーザーがいなければ、**パスワード無しの管理者**として作る（lib/initial-admin.ts。パスワードの登録が無いので、何を入力してもログインできない）
+3. 本人がログイン画面の「パスワードを忘れた・初めて設定する」からメールを送り、届いたリンク（1 時間有効）でパスワードを設定する
+
+- デプロイする人ごとにアドレスを変えられ、リポジトリには残らない。パスワードは誰も入力せず、受け渡さない
+- そのアドレスのユーザーがすでにいれば何もしない（複数台で同時に起動しても 1 人だけ作られる）。別のアドレスに変えて起動すると、そのアドレスで新しい管理者が作られる（管理者が全員ログインできなくなったときの立て直しにも使える。誤ったアドレスで作られた管理者は利用停止にする）
+- 開発用の環境は `admin@example.com`（compose.yaml）。開発・テスト用には、パスワード付きの管理者 operator@example.com も seed で作る
+- パスワードを設定し直すと、その人のセッションはすべて無効になる。登録されていないアドレスでも同じ表示になり、メールは送られない
+
+### メール
+
+メールは SMTP で送る（lib/mail.ts。nodemailer）。送り方をローカルと本番で同じにするため、配信サービスの SDK は使わない。
+
+| 環境変数 | 内容 |
+|---|---|
+| `SMTP_URL` | SMTP の接続先（例: 開発・テストは `smtp://cms-mailpit:1025`、本番は `smtps://<ユーザー>:<パスワード>@<ホスト>:465`） |
+| `MAIL_FROM` | 差出人（例: `diecardomain cms <no-reply@diecardomain.example>`） |
+
+- 本番のメール配信サービスは、本番を用意するときに選ぶ
+- nodemailer には、細工した入力の解析による勧告が多い。そのため宛先は DB にあるアドレスだけを渡し、本文はテキストのみにする（HTML・添付・DKIM は使わない）。依存の更新はすぐ取り込む
+- 将来、game にもパスワードの設定が入るときに、メール送信を core（Go の標準ライブラリ）に移すかを決める
+
+### 管理者の権限
+
+Admin プラグインの既定の管理者から、次の権限を外している（lib/auth.ts）。
+
+| 外した権限 | 理由 |
+|---|---|
+| なりすまし（impersonate） | JWT は (iss, sub) だけのため、core からなりすましを見分けられず、操作が本人のものとして記録される |
+| 削除（delete） | core 側の (iss, sub) → operator.ID の対応が宙に浮く。使えなくするときは利用停止（ban）にする |
+| メールアドレスの変更（set-email） | メールによるパスワードリセット（#8）と組み合わせると、ほかのオペレーターを乗っ取れる |
+
+### レート制限
+
+better-auth のレート制限は本番モード（`NODE_ENV=production`）でだけ有効で、ログインは同じ IP から 10 秒に 3 回まで。
+今は利用者の IP を正しく取れていない（利用者が送った `X-Forwarded-For` を信じ、送らなければ全員が envoy の IP になる）。#10 で直すまで、Tunnel 等で公開するときに本物のパスワードを使わない。
+
+### secret（`BETTER_AUTH_SECRET`）の変更
+
+secret は Cookie の署名と、JWT の署名鍵（cms-db の `jwks`）の暗号化に使われる。パスワードのハッシュには使われない。
+**そのまま変えると `jwks` を復号できず、ログイン後のセッションの取得・JWT の発行がすべて 500 になる**（2026-10-10 に確認）。
+
+定期的な変更（漏洩していないとき）:
+
+1. 新しい secret を作る（`openssl rand -hex 32`）
+2. `BETTER_AUTH_SECRET` の代わりに `BETTER_AUTH_SECRETS=2:<新>,1:<旧>`（先頭が今の secret）を渡して再起動する。`jwks` の秘密鍵は旧い secret でも復号できるため、cms は動き続ける
+3. ログイン中のオペレーターは一度ログアウトされる（Cookie は今の secret でしか確かめない）
+
+漏洩したとき（旧い secret を残さない）:
+
+1. 漏洩の経路を塞ぐ
+2. 新しい secret を作り、`BETTER_AUTH_SECRET` を差し替える（`BETTER_AUTH_SECRETS` で旧い値を残さない。残すと漏れた secret で暗号化された秘密鍵が使われ続ける）
+3. cms-db の `jwks` と `session` を空にする（`delete from jwks; delete from session;`）。署名鍵は次の署名のときに自動で作り直される
+4. cms を再起動する
+5. core が JWKS を取り直し、古い kid の JWT を信用しないようにする（JWT の有効期限は最大 15 分）
+6. cms-db も漏れた疑いがあれば、全オペレーターのパスワードを無効にし、「パスワードを忘れた」から設定し直してもらう（無効にする操作は #9。未実装）
+
+secret だけが漏れた場合、Cookie の署名は作れるが、セッションの token（DB にあるランダムな値）を知らないとログイン状態は偽造できない。secret と cms-db の両方が漏れると、`jwks` の秘密鍵を復号して JWT を偽造できる（core に対して任意のオペレーターになりすませる）。
 
 ## DB マイグレーション
 
