@@ -10,13 +10,14 @@
     "lint": "biome check",
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "NODE_OPTIONS=--conditions=react-server auth generate --yes --output",
-    "db:seed": "AUTH_ALLOW_SIGN_UP=true node --conditions=react-server scripts/seed.ts",
+    "db:seed": "node --conditions=react-server scripts/seed.ts",
     "format": "biome format --write",
     "test": "playwright test"
   },
   "dependencies": {
     "better-auth": "1.7.7",
     "next": "16.3.8",
+    "nodemailer": "10.0.16",
     "pg": "8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -26,6 +27,7 @@
     "@biomejs/biome": "2.5.15",
     "@playwright/test": "1.63.0",
     "@types/node": "^24",
+    "@types/nodemailer": "8.0.2",
     "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

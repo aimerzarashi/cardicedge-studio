@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // scripts/seed.ts が作る開発・テスト用のオペレーター
 const operator = {
@@ -70,4 +70,32 @@ test("ハイドレーション前に送信してもパスワードが URL に載
 
   await expect(page).toHaveURL(/\/login$/);
   expect(page.url()).not.toContain(operator.password);
+});
+
+test("ログインの試行回数が多すぎるときは、パスワードの誤りではなく待つように表示する", async ({
+  page,
+}) => {
+  // better-auth のレート制限は本番モードでだけ有効なため、429 の応答を作って画面の表示を確かめる
+  await page.route("**/api/auth/sign-in/email", (route) =>
+    route.fulfill({
+      status: 429,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message: "Too many requests. Please try again later.",
+      }),
+    }),
+  );
+  await page.goto("/login");
+  await page.getByLabel("メールアドレス").fill(operator.email);
+  await page.getByLabel("パスワード").fill(operator.password);
+  await page.getByRole("button", { name: "ログイン" }).click();
+
+  await expect(
+    page.getByText(
+      "ログインの試行回数が多すぎます。しばらく待ってからもう一度お試しください",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("メールアドレスまたはパスワードが正しくありません"),
+  ).toHaveCount(0);
 });

@@ -2,7 +2,12 @@ import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 
 // 未ログインでもアクセスできるパス（前方一致）
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth",
+];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
