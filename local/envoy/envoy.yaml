@@ -1,4 +1,5 @@
-# 開発環境の入口。ブラウザ・Playwright・cloudflared はここを経由して cms / core に届く
+# 開発環境・テスト用の環境の入口。ブラウザ・Playwright・cloudflared はここを経由して cms / core に届く。
+# cms には必ずここを経由して届くようにする（cms は x-client-ip を信じるため、直接届くと IP を偽装できる）
 admin:
   address:
     socket_address: { address: 0.0.0.0, port_value: 9901 }
@@ -14,8 +15,15 @@ static_resources:
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 stat_prefix: ingress_http
+                # 利用者の IP は接続元から判定し、利用者が送った X-Forwarded-For は信じない（偽装させない。cms#10）。
+                # 判定した IP を x-client-ip に上書きで入れ、better-auth はこれだけを見る（レート制限・セッションの記録）
+                use_remote_address: true
+                xff_num_trusted_hops: 0
                 route_config:
                   name: local_route
+                  request_headers_to_add:
+                    - header: { key: x-client-ip, value: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%" }
+                      append_action: OVERWRITE_IF_EXISTS_OR_ADD
                   virtual_hosts:
                     - name: backend
                       domains: ["*"]

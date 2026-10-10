@@ -73,6 +73,17 @@ export const auth = betterAuth({
       );
     },
   },
+  advanced: {
+    ipAddress: {
+      // 既定の X-Forwarded-For は利用者が付けられ、そのまま信じると偽装でレート制限をすり抜けられる（cms#10）。
+      // envoy が接続元から判定して上書きで入れる x-client-ip だけを見る（better-auth 公式の推奨: プロキシが設定する信頼できるヘッダー 1 つ）
+      ipAddressHeaders: ["x-client-ip"],
+    },
+  },
+  rateLimit: {
+    // 既定は各台のメモリで数えるため、複数台にすると台ごとに数えて上限が実質台数倍になる
+    storage: "database",
+  },
   plugins: [
     admin({ ac, roles }),
     jwt({
