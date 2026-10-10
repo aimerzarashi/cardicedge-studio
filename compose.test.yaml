@@ -15,6 +15,8 @@ services:
       BETTER_AUTH_SECRET: test-only-better-auth-secret-0123456789abcdef
       # Playwright のブラウザから見た cms の URL（cms-envoy 経由）
       BETTER_AUTH_URL: http://cms-envoy:10000
+      # Playwright は中継役用の入口（10001）から入るため、そのオリジンも受け付ける
+      BETTER_AUTH_TRUSTED_ORIGINS: http://cms-envoy:10001
       JWT_ISSUER: diecardomain-cms
       JWT_AUDIENCE: diecardomain-core
       INITIAL_ADMIN_EMAIL: admin@example.com
@@ -64,10 +66,13 @@ services:
       timeout: 5s
       retries: 30
 
+  # 開発用と同じ入口（10000）に、テスト用の環境だけの中継役用の入口（10001。relay-listener.yaml）を重ねる
   cms-envoy:
     image: envoyproxy/envoy:v1.39.2
+    command: ["sh", "-c", "exec envoy -c /etc/envoy/envoy.yaml --config-yaml \"$$(cat /etc/envoy/relay-listener.yaml)\""]
     volumes:
       - ./local/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./local/envoy/relay-listener.yaml:/etc/envoy/relay-listener.yaml:ro
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9901 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q LIVE <&3"]
       start_period: 30s
@@ -103,7 +108,10 @@ services:
     environment:
       <<: *cms-auth-env
       PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
-      PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
+      # テストごとに X-Forwarded-For で IP を名乗るため、中継役用の入口を通す（tests/fixtures.ts）
+      PLAYWRIGHT_BASE_URL: http://cms-envoy:10001
+      # 公開の入口（偽装できないことを確かめるテストが使う）
+      PLAYWRIGHT_PUBLIC_URL: http://cms-envoy:10000
       PLAYWRIGHT_MAILPIT_URL: http://cms-mailpit:8025
     # テスト用の管理者を seed で作ってからテストする（テーブルは cms-migrate が作る）
     command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && pnpm test"]
