@@ -17,6 +17,9 @@ variables:
   PNPM_VERSION: "12.9.1"
   # Docker Hub の配布先（タグのパイプラインで push する）
   DOCKERHUB_IMAGE: diecardomain/cms
+  DOCKERHUB_MIGRATE_IMAGE: diecardomain/cms-migrate
+  # local/migrate/Dockerfile の FROM と揃える
+  ATLAS_VERSION: "1.3.3"
 
 # lint は MR と main で実行する（タグのパイプラインでは実行しない）
 .on-mr-and-main:
@@ -32,10 +35,8 @@ variables:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
 
-# make lint と同じ（biome check、型チェック）。Playwright のテストは CI では未実行
-lint:
-  stage: test
-  extends: .on-mr-and-main
+# pnpm と依存パッケージのインストール（lint / test 共通）
+.pnpm:
   image: node:24.21.0-bookworm
   variables:
     PNPM_HOME: /root/.local/share/pnpm
@@ -43,11 +44,49 @@ lint:
     - curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=$PNPM_VERSION SHELL=bash sh -
     - export PATH="$PNPM_HOME/bin:$PATH"
     - pnpm install --frozen-lockfile
+
+# make lint と同じ（biome check、型チェック、migrations の検査）
+lint:
+  stage: test
+  extends: [.on-mr-and-main, .pnpm]
+  variables:
+    # 分岐点のコミットとの差分をとるため、全履歴を取得する（浅い clone だと分岐点が無いことがある）
+    GIT_DEPTH: 0
   script:
     - pnpm lint
     - pnpm typecheck
+    # 適用済みのマイグレーションの変更・削除・改名も検査する。比較元は MR では対象ブランチとの分岐点、
+    # main では push 前の先頭（Maintainer が MR を経ずに直接 push した場合も検出するため）
+    - |
+      base=${CI_MERGE_REQUEST_DIFF_BASE_SHA:-$CI_COMMIT_BEFORE_SHA}
+      if [ "$base" = "0000000000000000000000000000000000000000" ]; then base=""; fi
+      scripts/check-migrations.sh $base
 
-# MR の確認用イメージ（手動）。GitLab Container Registry に mr-<MR番号> で push する
+# migrations を空の DB に Atlas で適用し、better-auth の設定（lib/auth.ts）とスキーマに差分が無いことを確かめる。
+# Playwright のテストは CI では未実行（make test でローカルで確かめる）
+test:
+  stage: test
+  extends: [.on-mr-and-main, .pnpm]
+  services:
+    - name: postgres:18.6
+      alias: cms-db
+  variables:
+    POSTGRES_USER: cms_user
+    POSTGRES_PASSWORD: cms_password
+    POSTGRES_DB: cms
+    DATABASE_URL: postgres://cms_user:cms_password@cms-db:5432/cms
+    # lib/auth.ts は読み込み時に必須の環境変数を確かめるため、CI 用の値を渡す（DB の差分をとるだけで使わない）
+    BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
+    BETTER_AUTH_URL: http://localhost:3000
+    JWT_ISSUER: diecardomain-cms
+    JWT_AUDIENCE: diecardomain-core
+  script:
+    - curl -sSfL -o /usr/local/bin/atlas "https://release.ariga.io/atlas/atlas-community-linux-amd64-v${ATLAS_VERSION}"
+    - chmod +x /usr/local/bin/atlas
+    - atlas migrate apply --dir file://migrations --url "$DATABASE_URL?sslmode=disable"
+    - scripts/check-auth-schema.sh
+
+# MR の確認用イメージ（手動）。アプリとマイグレーション用イメージを GitLab Container Registry に mr-<MR番号> で push する
 build-mr:
   stage: build
   extends: .docker
@@ -55,11 +94,17 @@ build-mr:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
       allow_failure: true
+  # lint・test（migrations の検査を含む）が通らないうちは、確認用イメージも作らせない
+  needs: [lint, test]
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - IMAGE="$CI_REGISTRY_IMAGE:mr-$CI_MERGE_REQUEST_IID"
     - docker build --pull --build-arg BUILD_VERSION="mr-$CI_MERGE_REQUEST_IID" -t "$IMAGE" -f .build/Dockerfile .
     - docker push "$IMAGE"
+    # マイグレーション用イメージ
+    - MIGRATE_IMAGE="$CI_REGISTRY_IMAGE/migrate:mr-$CI_MERGE_REQUEST_IID"
+    - docker build --pull -t "$MIGRATE_IMAGE" -f local/migrate/Dockerfile .
+    - docker push "$MIGRATE_IMAGE"
   after_script:
     - docker logout "$CI_REGISTRY"
 
@@ -81,7 +126,7 @@ release:
       @semantic-release/gitlab@13.3.3
     - /tmp/semantic-release/node_modules/.bin/semantic-release
 
-# semantic-release が作ったタグのパイプラインで、そのタグのイメージを Docker Hub に配布する
+# semantic-release が作ったタグのパイプラインで、そのタグのアプリとマイグレーション用イメージを Docker Hub に配布する
 deploy:
   stage: deploy
   extends: .docker
@@ -92,5 +137,9 @@ deploy:
     - docker build --pull --build-arg BUILD_VERSION="$CI_COMMIT_TAG" -t "$DOCKERHUB_IMAGE:$CI_COMMIT_TAG" -t "$DOCKERHUB_IMAGE:latest" -f .build/Dockerfile .
     - docker push "$DOCKERHUB_IMAGE:$CI_COMMIT_TAG"
     - docker push "$DOCKERHUB_IMAGE:latest"
+    # マイグレーション用イメージ（アプリと同じタグ。本番ではアプリより先にジョブとして実行する）
+    - docker build --pull -t "$DOCKERHUB_MIGRATE_IMAGE:$CI_COMMIT_TAG" -t "$DOCKERHUB_MIGRATE_IMAGE:latest" -f local/migrate/Dockerfile .
+    - docker push "$DOCKERHUB_MIGRATE_IMAGE:$CI_COMMIT_TAG"
+    - docker push "$DOCKERHUB_MIGRATE_IMAGE:latest"
   after_script:
     - docker logout

@@ -30,6 +30,30 @@ url:
 down:
 	docker compose --profile '*' down
 
+# マイグレーション
+
+# 未適用のマイグレーションだけを Atlas で適用する（DB を作り直さずに、追加した migrations を反映する）
+.PHONY: migrate
+migrate:
+	docker compose run --rm cms-migrate
+
+# migrations/ のファイルを足したら実行し、atlas.sum を作り直す（SQL と一緒にコミットする）
+.PHONY: migrate-hash
+migrate-hash:
+	docker compose run --rm --no-deps --user $$(id -u):$$(id -g) cms-migrate migrate hash --dir file:///migrations
+
+# better-auth の設定（lib/auth.ts）と開発用 DB の差分 SQL を次の番号で生成する（例: make migrate-generate NAME=add_admin_plugin）。
+# 先に migrate で DB を最新にしてから差分をとる。差分が無ければファイルは作られない
+.PHONY: migrate-generate
+migrate-generate:
+	@[ -n "$(NAME)" ] || { echo "NAME=<name> を指定する（例: make migrate-generate NAME=add_admin_plugin）" >&2; exit 1; }
+	$(MAKE) migrate
+	@last=$$(ls migrations | grep -E '^[0-9]{4}_' | cut -d_ -f1 | sort | tail -n1); \
+	next=$$(printf '%04d' $$(($$(expr "$${last:-0}" + 0) + 1))) && \
+	file=migrations/$${next}_$(NAME).sql && \
+	docker compose exec cms pnpm db:generate $$file && \
+	if [ -f $$file ]; then $(MAKE) migrate-hash; else echo "差分が無いためファイルは作っていない"; fi
+
 # 開発ツール
 
 # フォーマットを自動修正する（lint はファイルを書き換えないため、修正はこちらで行う）
@@ -37,11 +61,14 @@ down:
 fmt:
 	docker compose exec cms pnpm format
 
-# biome check（lint + フォーマット違反の検出。ファイルは書き換えない）と型チェック
+# biome check（lint + フォーマット違反の検出。ファイルは書き換えない）、型チェック、migrations の検査（origin/main との分岐点からの変更も見る）、
+# better-auth の設定と開発用 DB の差分の検査（新しい migrations は先に make migrate で適用しておく）
 .PHONY: lint
 lint:
 	docker compose exec cms pnpm lint
 	docker compose exec cms pnpm typecheck
+	scripts/check-migrations.sh $$(git merge-base origin/main HEAD)
+	docker compose exec cms scripts/check-auth-schema.sh
 
 # テスト
 

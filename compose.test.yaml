@@ -10,6 +10,13 @@ services:
     build:
       context: .
       dockerfile: .build/Dockerfile
+    environment: &cms-auth-env
+      DATABASE_URL: postgres://cms_user:cms_password@cms-db:5432/cms
+      BETTER_AUTH_SECRET: test-only-better-auth-secret-0123456789abcdef
+      # Playwright のブラウザから見た cms の URL（cms-envoy 経由）
+      BETTER_AUTH_URL: http://cms-envoy:10000
+      JWT_ISSUER: diecardomain-cms
+      JWT_AUDIENCE: diecardomain-core
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       start_period: 60s
@@ -20,6 +27,34 @@ services:
     depends_on:
       core:
         condition: service_healthy
+      cms-migrate:
+        condition: service_completed_successfully
+
+  # マイグレーション用イメージで migrations を適用する
+  cms-migrate:
+    build:
+      context: .
+      dockerfile: local/migrate/Dockerfile
+    environment:
+      DATABASE_URL: "postgres://cms_user:cms_password@cms-db:5432/cms?sslmode=disable"
+    depends_on:
+      cms-db:
+        condition: service_healthy
+
+  # better-auth のデータ。データは一時領域に置き、終了とともに破棄する
+  cms-db:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: cms_user
+      POSTGRES_PASSWORD: cms_password
+      POSTGRES_DB: cms
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_user -d cms"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
   cms-envoy:
     image: envoyproxy/envoy:v1.39.2
@@ -58,6 +93,8 @@ services:
     volumes:
       - ./:/home/node/app
     environment:
+      <<: *cms-auth-env
       PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
       PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
-    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm test"]
+    # テスト用オペレーターの seed を済ませてからテストする（テーブルは cms-migrate が作る）
+    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && pnpm test"]

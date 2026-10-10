@@ -10,8 +10,19 @@ services:
       # pnpm のキャッシュ（メタデータ・パッケージ）。down しても残す
       - node-cache:/home/node/.cache
     # ホストには公開せず、cms-envoy 経由でアクセスする
-    command: ["sh", "-c", "pnpm install --frozen-lockfile && exec pnpm dev --hostname 0.0.0.0"]
+    # 開発用オペレーターの seed（冪等）を済ませてから開発サーバーを起動する。テーブルは cms-migrate が先に作る
+    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && exec pnpm dev --hostname 0.0.0.0"]
     environment:
+      DATABASE_URL: postgres://cms_user:cms_password@cms-db:5432/cms
+      # 開発用の固定値（本番では環境ごとに安全な値を渡す）
+      BETTER_AUTH_SECRET: dev-only-better-auth-secret-change-me-0123456789
+      # ブラウザから見た cms の URL（cms-envoy 経由）
+      BETTER_AUTH_URL: http://localhost:${CMS_PORT:-3001}
+      # JWT の iss / aud。core の設定と一致させる。iss は core がオペレーターを識別するキーの一部のため、運用開始後は変えない
+      JWT_ISSUER: diecardomain-cms
+      JWT_AUDIENCE: diecardomain-core
+      # Playwright のブラウザ（別コンテナ）は cms-envoy 経由、make tunnel は Quick Tunnel 経由でアクセスする
+      BETTER_AUTH_TRUSTED_ORIGINS: http://cms-envoy:10000,https://*.trycloudflare.com
       # Playwright はブラウザを cms-playwright コンテナで動かし、cms-envoy 経由でアクセスする
       PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
       PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
@@ -19,6 +30,9 @@ services:
     networks:
       - default
       - diecardomain
+    depends_on:
+      cms-migrate:
+        condition: service_completed_successfully
     # make up (--wait) はこれが healthy になるまで待つ
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -27,6 +41,36 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+
+  # 未適用のマイグレーションを Atlas で適用して終了する（cms の起動前に1回実行する。make migrate でも実行できる）
+  cms-migrate:
+    build:
+      context: .
+      dockerfile: local/migrate/Dockerfile
+    # 開発中はリポジトリの migrations をそのまま使う（make migrate-hash で atlas.sum も書き換えるため読み書き可）
+    volumes:
+      - ./migrations:/migrations
+    environment:
+      DATABASE_URL: "postgres://cms_user:cms_password@cms-db:5432/cms?sslmode=disable"
+    depends_on:
+      cms-db:
+        condition: service_healthy
+
+  # better-auth のデータ（オペレーター・セッション等）。ゲームのデータは core-db に置く
+  cms-db:
+    image: postgres:18.6
+    # ホストの SQLTools 等から接続するため公開する（5432 は core-db が使う）。衝突する場合は CMS_DB_PORT で変更する
+    ports:
+      - ${CMS_DB_PORT:-5433}:5432
+    environment:
+      POSTGRES_USER: cms_user
+      POSTGRES_PASSWORD: cms_password
+      POSTGRES_DB: cms
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cms_user -d cms"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
   # 開発環境の入口。他プロジェクトと衝突する場合は CMS_PORT で変更する
   cms-envoy:
