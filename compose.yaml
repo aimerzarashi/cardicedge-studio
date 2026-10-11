@@ -36,10 +36,8 @@ services:
       PLAYWRIGHT_PUBLIC_URL: http://cms-envoy:10000
       # Playwright のテストが、届いたメールを Mailpit の API で読む
       PLAYWRIGHT_MAILPIT_URL: http://cms-mailpit:8025
-    # サーバー側から core:3333 に接続するため、共有ネットワークにも参加する
-    networks:
-      - default
-      - diecardomain
+    # 共有ネットワーク（diecardomain）には参加しない。参加すると core・game から envoy を通らずに直接届き、
+    # x-client-ip を自由に付けてレート制限をすり抜けられる（cms#11）。core を呼ぶときは cms-envoy の /cms/graphql を通す
     depends_on:
       cms-migrate:
         condition: service_completed_successfully
@@ -97,7 +95,7 @@ services:
       - ./local/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     depends_on:
       - cms
-    # /cms/graphql を core:3333 に転送するため、共有ネットワークにも参加する
+    # /cms/graphql を core:3333 に転送し、core から cms（JWKS 等）にもここを通って届くよう、共有ネットワークにも参加する
     networks:
       - default
       - diecardomain
@@ -138,7 +136,7 @@ services:
 volumes:
   node-cache:
 
-# core / cms と共有するネットワーク（core の make up で作成される）
+# core / game と共有するネットワーク（core の make up で作成される）。cms 側は cms-envoy だけが参加する
 networks:
   diecardomain:
     external: true

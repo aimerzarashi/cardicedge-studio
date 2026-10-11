@@ -112,6 +112,8 @@ services:
       PLAYWRIGHT_BASE_URL: http://cms-envoy:10001
       # 公開の入口（偽装できないことを確かめるテストが使う）
       PLAYWRIGHT_PUBLIC_URL: http://cms-envoy:10000
+      # 中継役用の入口（名乗った IP が記録されることを確かめるテストが使う）
+      PLAYWRIGHT_RELAY_URL: http://cms-envoy:10001
       PLAYWRIGHT_MAILPIT_URL: http://cms-mailpit:8025
     # テスト用の管理者を seed で作ってからテストする（テーブルは cms-migrate が作る）
     command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && pnpm test"]

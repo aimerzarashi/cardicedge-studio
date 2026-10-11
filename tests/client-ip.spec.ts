@@ -6,8 +6,9 @@ const seedAdmin = {
   email: "operator@example.com",
   password: "operator-password",
 };
-// 公開の入口（envoy の 10000）。テスト用の環境の Playwright は、中継役用の入口（10001）を通る
+// 公開の入口（envoy の 10000）と、テスト用の環境だけにある中継役用の入口（10001）
 const publicURL = process.env.PLAYWRIGHT_PUBLIC_URL;
+const relayURL = process.env.PLAYWRIGHT_RELAY_URL;
 
 // ログインしてセッションに記録された IP を返す。better-auth は Cookie での POST に Origin を求める
 async function loginAndGetSessionIp(
@@ -42,15 +43,17 @@ test("公開の入口で X-Forwarded-For・x-client-ip を偽装しても、記�
 });
 
 test("中継役用の入口では、X-Forwarded-For で名乗った IP が記録される", async ({
-  page,
-  baseURL,
+  playwright,
   extraHTTPHeaders,
 }) => {
-  test.skip(
-    baseURL === publicURL,
-    "中継役用の入口はテスト用の環境（make test）にだけある",
-  );
+  // テストの URL（PLAYWRIGHT_BASE_URL）は Tunnel 等に向けることがあるため、中継役用の入口の有無は別の変数で判定する
+  test.skip(!relayURL, "中継役用の入口はテスト用の環境（make test）にだけある");
+  const request = await playwright.request.newContext({
+    baseURL: relayURL,
+    extraHTTPHeaders,
+  });
 
-  const ip = await loginAndGetSessionIp(page.request, baseURL ?? "");
+  const ip = await loginAndGetSessionIp(request, relayURL ?? "");
   expect(ip).toBe(extraHTTPHeaders?.["X-Forwarded-For"]);
+  await request.dispose();
 });

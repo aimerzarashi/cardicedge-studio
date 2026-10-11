@@ -32,7 +32,7 @@
 
 # 統合（core）
 
-- cms・cms-envoy は共有ネットワーク `diecardomain` に参加し、`core:3333` に接続する
+- 共有ネットワーク `diecardomain` に参加するのは cms-envoy だけ。cms は参加させない（core・game から直接届くと x-client-ip を偽装できる。cms#11）。cms から core へは cms-envoy の `/cms/graphql`、core から cms へは cms-envoy を通す
 - envoy は `/cms/graphql` を core に転送する（core が止まっていれば 503）
 
 # テスト

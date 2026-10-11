@@ -39,7 +39,11 @@ cloudflared（任意）───┼─▶ cms-envoy:10000 ─┤
 Playwright のブラウザ ┘                     └─▶ core:3333（/cms/graphql）
 ```
 
-cms と cms-envoy は共有ネットワーク `diecardomain` に参加し、core（../core で `make up`）に接続する。
+共有ネットワーク `diecardomain` に参加するのは **cms-envoy だけ**で、cms 自身は参加しない（core（../core で `make up`）とは cms-envoy を通してつながる）。
+core・game から cms に envoy を通らずに直接届くと、`x-client-ip` を自由に付けてレート制限をすり抜けられるため（cms#11）。
+
+- cms のサーバーから core を呼ぶときは、cms-envoy の `/cms/graphql`（`http://cms-envoy:10000/cms/graphql`）を通す
+- core から cms（JWKS 等）を呼ぶときも、cms-envoy（`http://cms-envoy:10000/api/auth/jwks`）を通す
 core は game / cms で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
 
 ### テスト用環境（compose.test.yaml）
