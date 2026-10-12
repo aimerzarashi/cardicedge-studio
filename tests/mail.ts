@@ -20,12 +20,13 @@ function pathOf(url: URL) {
   return `${url.pathname}${url.search}`;
 }
 
-// since より後に届いた、その宛先の最新のメールのリンクを開いた先（パスワードの設定画面。?token=... 付き）のパスを返す。
-// リンクは better-auth の /api/auth/reset-password/:token で、トークンを確かめてから設定画面へ転送する
-export async function resetPasswordPath(
+// since より後に届いた、その宛先の最新のメールから、パスに pathPart を含むリンク（better-auth の /api/auth/...）を開き、
+// 転送された先のパスを返す
+async function followMailLink(
   request: APIRequestContext,
   to: string,
   since: Date,
+  pathPart: string,
 ) {
   let id: string | undefined;
   await expect
@@ -39,8 +40,10 @@ export async function resetPasswordPath(
     .toBeTruthy();
   const response = await request.get(`${mailpit}/api/v1/message/${id}`);
   const text: string = (await response.json()).Text;
-  const link = text.match(/https?:\/\/\S+\/reset-password\/\S+/)?.[0];
-  if (!link) throw new Error(`パスワードの設定のリンクがありません: ${text}`);
+  const link = text
+    .match(/https?:\/\/\S+/g)
+    ?.find((url) => new URL(url).pathname.includes(pathPart));
+  if (!link) throw new Error(`${pathPart} のリンクがありません: ${text}`);
 
   const redirect = await request.get(pathOf(new URL(link)), {
     maxRedirects: 0,
@@ -48,6 +51,25 @@ export async function resetPasswordPath(
   const location = redirect.headers().location;
   if (!location) throw new Error(`転送されませんでした: ${redirect.status()}`);
   return pathOf(new URL(location, link));
+}
+
+// パスワードの設定のメールのリンクを開いた先（パスワードの設定画面。?token=... 付き）のパス。
+// リンクは better-auth の /api/auth/reset-password/:token で、トークンを確かめてから設定画面へ転送する
+export function resetPasswordPath(
+  request: APIRequestContext,
+  to: string,
+  since: Date,
+) {
+  return followMailLink(request, to, since, "/reset-password/");
+}
+
+// 確認のメールのリンク（better-auth の /api/auth/verify-email）を開いて確認を済ませ、転送された先のパスを返す
+export function verifyEmail(
+  request: APIRequestContext,
+  to: string,
+  since: Date,
+) {
+  return followMailLink(request, to, since, "/verify-email");
 }
 
 export async function countMails(request: APIRequestContext, to: string) {

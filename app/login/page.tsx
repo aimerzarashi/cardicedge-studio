@@ -27,7 +27,10 @@ export default function LoginPage() {
       setError(
         error.status === 429
           ? "ログインの試行回数が多すぎます。しばらく待ってからもう一度お試しください"
-          : "メールアドレスまたはパスワードが正しくありません",
+          : // パスワードが正しいときだけ返る（better-auth は確認メールを送り直す。sendOnSignIn）
+            error.code === "EMAIL_NOT_VERIFIED"
+            ? "メールアドレスの確認が済んでいません。確認のメールを送ったので、リンクを開いてからログインしてください"
+            : "メールアドレスまたはパスワードが正しくありません",
       );
       return;
     }
@@ -60,7 +63,10 @@ export default function LoginPage() {
       </form>
       {error && <p role="alert">{error}</p>}
       <p>
-        <Link href="/forgot-password">パスワードを忘れた・初めて設定する</Link>
+        <Link href="/forgot-password">パスワードを忘れた</Link>
+      </p>
+      <p>
+        <Link href="/signup">アカウントを作る</Link>
       </p>
     </main>
   );
