@@ -11,7 +11,7 @@
 
 | パス | 責務 |
 |---|---|
-| app | App Router のページ・レイアウト（`/login`、`/api/auth/[...all]` は better-auth） |
+| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth） |
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
 | proxy.ts | 未ログインのときにログイン画面へ移す（Next.js 16 の proxy。Cookie の有無だけを見る） |
@@ -19,7 +19,7 @@
 | local/migrate | マイグレーション用イメージ（Atlas Community + migrations。core と同じ構成） |
 | scripts/check-migrations.sh | Atlas が検出しない migrations の違反の検査（core と同じものを置く。変えるときは core / game と揃える） |
 | scripts/check-auth-schema.sh | better-auth の設定と DB（DATABASE_URL）のスキーマに差分が無いことの検査（マイグレーションの作り忘れを防ぐ） |
-| scripts/seed.ts | 開発・テスト用のオペレーターを作る（`pnpm db:seed`） |
+| scripts/seed.ts | 開発・テスト用の、メールアドレスを確認済みのオペレーターを作る（`pnpm db:seed`） |
 | tests | Playwright のテスト |
 | local/cms | 開発用 Dockerfile |
 | .build | 本番用 Dockerfile（standalone 出力を node で動かす。テスト用環境・CI でも使う） |
@@ -43,17 +43,16 @@
 - baseURL は `http://cms-envoy:10000`（本番と同じく envoy 経由で確認する）
 - `@playwright/test` と compose の Playwright イメージ・`run-server` のバージョンは一致させる
 - テストは tests/fixtures.ts の `test` / `expect` を使う。テストごとに `X-Forwarded-For` で別の IP を名乗り、本番モードのレート制限（ログインは同じ IP から 10 秒に 3 回）でほかのテストと枠を共有しないようにしている。名乗った IP が効くのは、テスト用の環境だけにある中継役用の入口（envoy の 10001。`PLAYWRIGHT_BASE_URL`）を通るとき。公開の入口は `PLAYWRIGHT_PUBLIC_URL`
-- `make test` のテスト用の管理者は seed（operator@example.com。パスワード付き）と、起動時に作られる最初の管理者（admin@example.com。パスワード無し）
+- `make test` のテスト用のオペレーターは seed（operator@example.com。パスワード付き・確認済み）。ほかのアカウントはテストの中でサインアップし、Mailpit の確認のメールで確認する（tests/account.ts）
 - メールは Mailpit が受け止め、テストは Mailpit の API で読む（tests/mail.ts）。メールのリンクのホスト名は BETTER_AUTH_URL のため、パスだけを使う（開発用の環境では localhost:3001 で、ブラウザのコンテナから届かない）
 
 # 認証（better-auth）
 
-- better-auth は標準の範囲で使う（独自の項目・独自の認証処理は作らない）。メールアドレス + パスワード、サインアップは無効
+- better-auth は標準の範囲で使う（独自の項目・独自の認証処理は作らない）。メールアドレス + パスワード。サインアップはメールアドレスの確認つき（`requireEmailVerification`）
 - JWT の issuer / audience は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須）で渡し、core の設定と一致させる。core は (iss, sub) で operator を識別するため、運用を始めた環境では issuer を変えない
-- JWT の中身は `definePayload` で最小限にしている（email 等は入れない）
-- サインアップは無効（`disableSignUp: true`）。オペレーターは Admin プラグインの `createUser` で作る（起動時の最初の管理者・seed とも同じ経路。headers を渡さないサーバー側の呼び出しは管理者のセッションなしで通る）。利用者の入力をそのまま Admin プラグインの API に渡すサーバーのコードを書かない
-- Admin プラグインの管理者 role から impersonate・delete・set-email を外している（理由は README）。権限を足すときは core の監査・(iss, sub) の対応づけへの影響を確かめる
-- 最初の管理者は起動時に `INITIAL_ADMIN_EMAIL` のアドレスでパスワード無しで作る（instrumentation.ts → lib/initial-admin.ts）。本番とローカルで作り方を変えない
+- 誰をオペレーターにするか・権限は core が決める。better-auth に任せるのは、確認つきのサインアップ・ログイン・パスワードの再設定だけ。Admin プラグイン・role は使わない（cms#12）
+- JWT には `definePayload` で `email`・`email_verified` だけを足す（core が初めてのログインでオペレーターに紐づけるのに使う）。メールアドレスの変更（changeEmail）は有効にしない（紐づけの前提が崩れる）
+- better-auth の `name` は空文字にし、表示・メールに使わない
 - lib/auth.ts とそこから読むファイル（lib/mail.ts）は、seed・better-auth の CLI が Node.js で直接読むため、パスの別名（`@/`）を使わず相対パス（`./mail.ts`）で import する（別名だと CLI が「server-only を外せ」という紛らわしいエラーを出す）
 - メールは lib/mail.ts の `sendMail` だけで送る。better-auth の送信の関数では送信を await しない（登録の有無で応答時間が変わるため。公式の注意）
 - 利用者の IP は envoy が上書きで入れる `x-client-ip` だけを見る（`advanced.ipAddress.ipAddressHeaders`）。cms の 3000 番を公開しない（直接届くと偽装できる）。中継役用の入口（local/envoy/relay-listener.yaml）は compose.test.yaml でだけ重ね、開発用・リリース版の環境に置かない

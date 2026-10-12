@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // 未ログインでもアクセスできるパス（前方一致）
 const PUBLIC_PATHS = [
   "/login",
+  "/signup",
   "/forgot-password",
   "/reset-password",
   "/api/auth",

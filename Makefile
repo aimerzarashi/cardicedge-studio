@@ -42,11 +42,11 @@ migrate:
 migrate-hash:
 	docker compose run --rm --no-deps --user $$(id -u):$$(id -g) cms-migrate migrate hash --dir file:///migrations
 
-# better-auth の設定（lib/auth.ts）と開発用 DB の差分 SQL を次の番号で生成する（例: make migrate-generate NAME=add_admin_plugin）。
+# better-auth の設定（lib/auth.ts）と開発用 DB の差分 SQL を次の番号で生成する（例: make migrate-generate NAME=add_two_factor）。
 # 先に migrate で DB を最新にしてから差分をとる。差分が無ければファイルは作られない
 .PHONY: migrate-generate
 migrate-generate:
-	@[ -n "$(NAME)" ] || { echo "NAME=<name> を指定する（例: make migrate-generate NAME=add_admin_plugin）" >&2; exit 1; }
+	@[ -n "$(NAME)" ] || { echo "NAME=<name> を指定する（例: make migrate-generate NAME=add_two_factor）" >&2; exit 1; }
 	$(MAKE) migrate
 	@last=$$(ls migrations | grep -E '^[0-9]{4}_' | cut -d_ -f1 | sort | tail -n1); \
 	next=$$(printf '%04d' $$(($$(expr "$${last:-0}" + 0) + 1))) && \

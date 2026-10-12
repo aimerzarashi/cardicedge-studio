@@ -21,9 +21,6 @@ services:
       # JWT の iss / aud。core の設定と一致させる。iss は core がオペレーターを識別するキーの一部のため、運用開始後は変えない
       JWT_ISSUER: diecardomain-cms
       JWT_AUDIENCE: diecardomain-core
-      # 最初の管理者（パスワード無し。「パスワードを忘れた」で設定する）。管理者が 1 人もいないときだけ作る
-      INITIAL_ADMIN_EMAIL: admin@example.com
-      INITIAL_ADMIN_NAME: 管理者
       # メールは Mailpit が受け止める（http://localhost:8025 で読める）
       SMTP_URL: smtp://cms-mailpit:1025
       MAIL_FROM: diecardomain cms <no-reply@diecardomain.example>

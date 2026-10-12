@@ -1,8 +1,8 @@
 import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "./fixtures";
 
-// scripts/seed.ts が作る管理者
-const seedAdmin = {
+// scripts/seed.ts が作る開発・テスト用のオペレーター（メールアドレスは確認済み）
+const seedOperator = {
   email: "operator@example.com",
   password: "operator-password",
 };
@@ -16,7 +16,7 @@ async function loginAndGetSessionIp(
   origin: string,
 ) {
   const login = await request.post("/api/auth/sign-in/email", {
-    data: seedAdmin,
+    data: seedOperator,
     headers: { Origin: origin },
   });
   expect(login.status()).toBe(200);

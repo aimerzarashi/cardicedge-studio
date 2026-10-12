@@ -19,8 +19,6 @@ services:
       BETTER_AUTH_TRUSTED_ORIGINS: http://cms-envoy:10001
       JWT_ISSUER: diecardomain-cms
       JWT_AUDIENCE: diecardomain-core
-      INITIAL_ADMIN_EMAIL: admin@example.com
-      INITIAL_ADMIN_NAME: 管理者
       SMTP_URL: smtp://cms-mailpit:1025
       MAIL_FROM: diecardomain cms <no-reply@diecardomain.example>
     healthcheck:
