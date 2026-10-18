@@ -11,7 +11,7 @@
 
 | パス | 責務 |
 |---|---|
-| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く |
+| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く |
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
 | lib/core.ts | core の GraphQL を、ログイン中のオペレーターとして呼ぶ（`callCore`。サーバーだけ）。JWT は `auth.api.getToken({ headers })` でセッションの Cookie からもらう。core に届かない（502・503・504・つながらない・10 秒の時間切れ）ときは投げずに `{ ok: false, reason: "unavailable" }` を返し、401 はログイン画面へ移す |
