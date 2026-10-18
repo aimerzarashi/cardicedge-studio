@@ -24,6 +24,12 @@ async function registerItem(page: Page, name: string) {
   await page.getByRole("button", { name: "登録する" }).click();
 }
 
+async function registerSpell(page: Page, name: string) {
+  await page.goto("/spells/new");
+  await page.getByLabel("カード名").fill(name);
+  await page.getByRole("button", { name: "登録する" }).click();
+}
+
 function cardRows(page: Page) {
   return page.locator("tbody tr");
 }
@@ -108,6 +114,58 @@ test("クリーチャーと同じカード名でアイテムを登録すると�
     page.getByText("このカード名はすでに使われています"),
   ).toBeVisible();
 });
+
+test("登録したスペルがカードの一覧にスペルとして出る", async ({ page }) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ファイアボール");
+
+  await registerSpell(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await expect(page.getByLabel("カード名")).toHaveValue("");
+
+  await expect(async () => {
+    await page.goto(`/cards?name=${encodeURIComponent(name)}`);
+    await expect(cardRows(page)).toHaveCount(1);
+  }).toPass();
+  await expect(cardRows(page).first()).toContainText(name);
+  await expect(cardRows(page).first()).toContainText("スペル");
+});
+
+test("使われているカード名でスペルを登録すると名前の重複が表示され、入力した値が残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("メテオ");
+  await registerSpell(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+
+  await registerSpell(page, name);
+
+  await expect(
+    page.getByText("このカード名はすでに使われています"),
+  ).toBeVisible();
+  await expect(page.getByLabel("カード名")).toHaveValue(name);
+});
+
+for (const { other, register } of [
+  { other: "クリーチャー", register: registerCreature },
+  { other: "アイテム", register: registerItem },
+]) {
+  test(`${other}と同じカード名でスペルを登録すると名前の重複が表示される`, async ({
+    page,
+  }) => {
+    await loginAsOperator(page);
+    const name = uniqueName("ドラゴン");
+    await register(page, name);
+    await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+
+    await registerSpell(page, name);
+
+    await expect(
+      page.getByText("このカード名はすでに使われています"),
+    ).toBeVisible();
+  });
+}
 
 for (const { condition, value, message } of [
   {

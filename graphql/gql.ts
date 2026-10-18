@@ -18,11 +18,13 @@ type Documents = {
     "\n  query Cards($filter: CardFilter, $after: String) {\n    cards(filter: $filter, after: $after) {\n      __typename\n      ... on CardConnection {\n        edges {\n          node {\n            __typename\n            id\n            name\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n": typeof types.CardsDocument,
     "\n  mutation RegisterCreature($input: RegisterCreatureInput!) {\n    registerCreature(input: $input) {\n      __typename\n      ... on RegisterCreatureSuccess {\n        creature {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": typeof types.RegisterCreatureDocument,
     "\n  mutation RegisterItem($input: RegisterItemInput!) {\n    registerItem(input: $input) {\n      __typename\n      ... on RegisterItemSuccess {\n        item {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": typeof types.RegisterItemDocument,
+    "\n  mutation RegisterSpell($input: RegisterSpellInput!) {\n    registerSpell(input: $input) {\n      __typename\n      ... on RegisterSpellSuccess {\n        spell {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": typeof types.RegisterSpellDocument,
 };
 const documents: Documents = {
     "\n  query Cards($filter: CardFilter, $after: String) {\n    cards(filter: $filter, after: $after) {\n      __typename\n      ... on CardConnection {\n        edges {\n          node {\n            __typename\n            id\n            name\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n": types.CardsDocument,
     "\n  mutation RegisterCreature($input: RegisterCreatureInput!) {\n    registerCreature(input: $input) {\n      __typename\n      ... on RegisterCreatureSuccess {\n        creature {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": types.RegisterCreatureDocument,
     "\n  mutation RegisterItem($input: RegisterItemInput!) {\n    registerItem(input: $input) {\n      __typename\n      ... on RegisterItemSuccess {\n        item {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": types.RegisterItemDocument,
+    "\n  mutation RegisterSpell($input: RegisterSpellInput!) {\n    registerSpell(input: $input) {\n      __typename\n      ... on RegisterSpellSuccess {\n        spell {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": types.RegisterSpellDocument,
 };
 
 /**
@@ -37,6 +39,10 @@ export function graphql(source: "\n  mutation RegisterCreature($input: RegisterC
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RegisterItem($input: RegisterItemInput!) {\n    registerItem(input: $input) {\n      __typename\n      ... on RegisterItemSuccess {\n        item {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n"): typeof import('./graphql').RegisterItemDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RegisterSpell($input: RegisterSpellInput!) {\n    registerSpell(input: $input) {\n      __typename\n      ... on RegisterSpellSuccess {\n        spell {\n          name\n        }\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n"): typeof import('./graphql').RegisterSpellDocument;
 
 
 export function graphql(source: string) {
