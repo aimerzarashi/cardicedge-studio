@@ -37,7 +37,17 @@ const CARD_TYPES: { value: CardType; label: string }[] = [
   { value: "SPELL", label: "スペル" },
 ];
 
-const TYPE_LABELS: Record<string, string> = { Creature: "クリーチャー" };
+type CardNode = Extract<
+  CardsQuery["cards"],
+  { __typename: "CardConnection" }
+>["edges"][number]["node"];
+
+// Record<string, string> にしないのは、種類（Spell 等）が一覧の node に加わったときに足し忘れると、
+// 型検査に引っかからず種類の欄が黙って空になるため
+const TYPE_LABELS: Record<CardNode["__typename"], string> = {
+  Creature: "クリーチャー",
+  Item: "アイテム",
+};
 
 const dateTimeFormat = new Intl.DateTimeFormat("ja-JP", {
   dateStyle: "medium",
@@ -99,6 +109,9 @@ export default async function CardsPage({ searchParams }: PageProps<"/cards">) {
       <h1>カードの一覧</h1>
       <p>
         <Link href="/creatures/new">Creature を登録</Link>
+      </p>
+      <p>
+        <Link href="/items/new">Item を登録</Link>
       </p>
       <Form action="/cards">
         <label>

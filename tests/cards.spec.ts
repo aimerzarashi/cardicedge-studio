@@ -18,6 +18,12 @@ async function registerCreature(page: Page, name: string) {
   await page.getByRole("button", { name: "登録する" }).click();
 }
 
+async function registerItem(page: Page, name: string) {
+  await page.goto("/items/new");
+  await page.getByLabel("カード名").fill(name);
+  await page.getByRole("button", { name: "登録する" }).click();
+}
+
 function cardRows(page: Page) {
   return page.locator("tbody tr");
 }
@@ -54,6 +60,53 @@ test("使われているカード名で登録すると名前の重複が表示�
     page.getByText("このカード名はすでに使われています"),
   ).toBeVisible();
   await expect(page.getByLabel("カード名")).toHaveValue(name);
+});
+
+test("登録したアイテムがカードの一覧にアイテムとして出る", async ({ page }) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ポーション");
+
+  await registerItem(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await expect(page.getByLabel("カード名")).toHaveValue("");
+
+  await expect(async () => {
+    await page.goto(`/cards?name=${encodeURIComponent(name)}`);
+    await expect(cardRows(page)).toHaveCount(1);
+  }).toPass();
+  await expect(cardRows(page).first()).toContainText(name);
+  await expect(cardRows(page).first()).toContainText("アイテム");
+});
+
+test("使われているカード名でアイテムを登録すると名前の重複が表示され、入力した値が残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("エーテル");
+  await registerItem(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+
+  await registerItem(page, name);
+
+  await expect(
+    page.getByText("このカード名はすでに使われています"),
+  ).toBeVisible();
+  await expect(page.getByLabel("カード名")).toHaveValue(name);
+});
+
+test("クリーチャーと同じカード名でアイテムを登録すると名前の重複が表示される", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ドラゴン");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+
+  await registerItem(page, name);
+
+  await expect(
+    page.getByText("このカード名はすでに使われています"),
+  ).toBeVisible();
 });
 
 for (const { condition, value, message } of [

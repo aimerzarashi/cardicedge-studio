@@ -24,6 +24,12 @@ export type RegisterCreatureInput = {
   name: string;
 };
 
+/** アイテムを登録する入力 */
+export type RegisterItemInput = {
+  /** カード名（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
+};
+
 export type CardsQueryVariables = Exact<{
   filter?: CardFilter | null | undefined;
   after?: string | null | undefined;
@@ -31,7 +37,10 @@ export type CardsQueryVariables = Exact<{
 
 
 export type CardsQuery = { cards:
-    | { __typename: 'CardConnection', edges: Array<{ node: { __typename: 'Creature', id: string, name: string, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'CardConnection', edges: Array<{ node:
+          | { __typename: 'Creature', id: string, name: string, registeredAt: string, updatedAt: string }
+          | { __typename: 'Item', id: string, name: string, registeredAt: string, updatedAt: string }
+         }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
    };
@@ -45,6 +54,23 @@ export type RegisterCreatureMutation = { registerCreature:
     | { __typename: 'CardNameAlreadyInUseError' }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RegisterCreatureSuccess', creature: { name: string } }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+      > }
+   };
+
+export type RegisterItemMutationVariables = Exact<{
+  input: RegisterItemInput;
+}>;
+
+
+export type RegisterItemMutation = { registerItem:
+    | { __typename: 'CardNameAlreadyInUseError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RegisterItemSuccess', item: { name: string } }
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldOutOfRange' }
@@ -114,3 +140,23 @@ export const RegisterCreatureDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RegisterCreatureMutation, RegisterCreatureMutationVariables>;
+export const RegisterItemDocument = new TypedDocumentString(`
+    mutation RegisterItem($input: RegisterItemInput!) {
+  registerItem(input: $input) {
+    __typename
+    ... on RegisterItemSuccess {
+      item {
+        name
+      }
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterItemMutation, RegisterItemMutationVariables>;

@@ -24,6 +24,9 @@ export default async function Home() {
         <li>
           <Link href="/creatures/new">Creature を登録</Link>
         </li>
+        <li>
+          <Link href="/items/new">Item を登録</Link>
+        </li>
       </ul>
       <LogoutButton />
     </main>
