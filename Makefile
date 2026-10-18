@@ -1,3 +1,7 @@
+# cms が前提にする core の版。make gen-api（スキーマの取り出し）と make test（テスト用の core）で使う。
+# 上げるときは make gen-api をやり直し、graphql/ の差分と一緒にコミットする（cms#14）
+CORE_VERSION := v0.7.0
+
 # 環境管理
 
 # core（共有ネットワークの作成を含む）を起動してから cms を起動する。core が起動済みならそのまま使う
@@ -56,6 +60,14 @@ migrate-generate:
 
 # 開発ツール
 
+# 前提にする版の core のイメージから cms 用 GraphQL のスキーマを取り出し（core#22）、それを読んで型を生成する。
+# 生成物（graphql/）はコミットする（CI に core が無くても、ビルドと型の検査が通るように）
+.PHONY: gen-api
+gen-api:
+	mkdir -p graphql
+	docker run --rm diecardomain/core:$(CORE_VERSION) schema cms > graphql/schema.graphql.tmp && mv graphql/schema.graphql.tmp graphql/schema.graphql
+	docker compose exec cms pnpm codegen
+
 # フォーマットを自動修正する（lint はファイルを書き換えないため、修正はこちらで行う）
 .PHONY: fmt
 fmt:
@@ -73,7 +85,7 @@ lint:
 # テスト
 
 # 専用の core・DB と本番用イメージの cms を使い捨てで起動してテストし、終了後に破棄する（開発用の環境とは独立）
-TEST_COMPOSE := docker compose -p cms-test -f compose.test.yaml
+TEST_COMPOSE := CORE_VERSION=$(CORE_VERSION) docker compose -p cms-test -f compose.test.yaml
 
 .PHONY: test
 test:

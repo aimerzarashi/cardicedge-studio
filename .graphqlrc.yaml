@@ -1,0 +1,5 @@
+# VSCode の GraphQL の拡張が読む設定（graphql() の中の補完・スキーマとのずれの指摘・定義への移動）。codegen.ts と同じ場所を指す
+schema: graphql/schema.graphql
+documents:
+  - "app/**/*.{ts,tsx}"
+  - "lib/**/*.ts"

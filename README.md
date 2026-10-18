@@ -46,9 +46,11 @@ core・game から cms に envoy を通らずに直接届くと、`x-client-ip` 
 - core から cms（JWKS 等）を呼ぶときも、cms-envoy（`http://cms-envoy:10000/api/auth/jwks`）を通す
 core は game / cms で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
 
+cms が前提にする core の版は Makefile の `CORE_VERSION` に書く。`make gen-api` はその版のイメージから cms 用 GraphQL のスキーマを取り出し（`docker run --rm diecardomain/core:<版> schema cms`）、graphql-codegen で型を作る（生成物 graphql/ はコミットする）。
+
 ### テスト用環境（compose.test.yaml）
 
-`make test` はプロジェクト名 `cms-test` で、専用の core・DB（../core/compose.test.yaml）と本番用イメージ（`.build/Dockerfile`）の cms を起動し、終了後に破棄する。テストは開発用イメージの cms-test-runner から実行する。
+`make test` はプロジェクト名 `cms-test` で、専用の core・DB（`CORE_VERSION` のリリース済みのイメージ）と本番用イメージ（`.build/Dockerfile`）の cms を起動し、終了後に破棄する。テストは開発用イメージの cms-test-runner から実行する。
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
 
 ### Tunnel（任意）

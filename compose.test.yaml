@@ -1,10 +1,51 @@
 # make test 用の使い捨て環境。プロジェクト名 cms-test で起動し、終了後に破棄する。
 # 開発用の環境（compose.yaml）とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため同時に動かせる
-include:
-  # 使い捨ての core と DB（core の本番用イメージ）
-  - ../core/compose.test.yaml
-
 services:
+  # 使い捨ての core と DB。cms が前提にする版（Makefile の CORE_VERSION）のリリース済みのイメージを使う（cms#14）。
+  # ../core のソースからビルドしないのは、手元の ../core のブランチしだいで、前提と違う core でテストしうるため
+  core:
+    image: diecardomain/core:${CORE_VERSION:?make test から CORE_VERSION を渡す}
+    environment:
+      DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core sslmode=disable"
+      # JWKS は cms-envoy を通して取る（cms#11: cms には envoy を通してしか届かない）。iss・aud は cms の JWT_ISSUER・JWT_AUDIENCE と一致させる
+      CMS_JWKS_URL: http://cms-envoy:10000/api/auth/jwks
+      CMS_JWT_ISSUER: diecardomain-cms
+      CMS_JWT_AUDIENCE: diecardomain-core
+      # seed のオペレーター（scripts/seed.ts）と同じアドレス。ログインして core を呼ぶと紐づく
+      CMS_INITIAL_OPERATOR_EMAIL: operator@example.com
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      start_period: 30s
+      start_interval: 1s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      core-migrate:
+        condition: service_completed_successfully
+
+  core-migrate:
+    image: diecardomain/core-migrate:${CORE_VERSION:?make test から CORE_VERSION を渡す}
+    environment:
+      DATABASE_URL: "postgres://core_user:core_password@core-db:5432/core?sslmode=disable"
+    depends_on:
+      core-db:
+        condition: service_healthy
+
+  core-db:
+    image: postgres:18.6
+    environment:
+      POSTGRES_USER: core_user
+      POSTGRES_PASSWORD: core_password
+      POSTGRES_DB: core
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U core_user -d core"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
   # 本番用イメージ（.build/Dockerfile）の cms
   cms:
     build:
@@ -19,6 +60,7 @@ services:
       BETTER_AUTH_TRUSTED_ORIGINS: http://cms-envoy:10001
       JWT_ISSUER: diecardomain-cms
       JWT_AUDIENCE: diecardomain-core
+      CORE_GRAPHQL_URL: http://cms-envoy:10000/cms/graphql
       SMTP_URL: smtp://cms-mailpit:1025
       MAIL_FROM: diecardomain cms <no-reply@diecardomain.example>
     healthcheck:
