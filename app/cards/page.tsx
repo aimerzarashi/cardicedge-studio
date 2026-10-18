@@ -47,6 +47,7 @@ type CardNode = Extract<
 const TYPE_LABELS: Record<CardNode["__typename"], string> = {
   Creature: "クリーチャー",
   Item: "アイテム",
+  Spell: "スペル",
 };
 
 const dateTimeFormat = new Intl.DateTimeFormat("ja-JP", {
@@ -112,6 +113,9 @@ export default async function CardsPage({ searchParams }: PageProps<"/cards">) {
       </p>
       <p>
         <Link href="/items/new">Item を登録</Link>
+      </p>
+      <p>
+        <Link href="/spells/new">Spell を登録</Link>
       </p>
       <Form action="/cards">
         <label>

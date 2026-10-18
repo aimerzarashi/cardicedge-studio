@@ -30,6 +30,12 @@ export type RegisterItemInput = {
   name: string;
 };
 
+/** スペルを登録する入力 */
+export type RegisterSpellInput = {
+  /** カード名（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
+};
+
 export type CardsQueryVariables = Exact<{
   filter?: CardFilter | null | undefined;
   after?: string | null | undefined;
@@ -40,6 +46,7 @@ export type CardsQuery = { cards:
     | { __typename: 'CardConnection', edges: Array<{ node:
           | { __typename: 'Creature', id: string, name: string, registeredAt: string, updatedAt: string }
           | { __typename: 'Item', id: string, name: string, registeredAt: string, updatedAt: string }
+          | { __typename: 'Spell', id: string, name: string, registeredAt: string, updatedAt: string }
          }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
@@ -71,6 +78,23 @@ export type RegisterItemMutation = { registerItem:
     | { __typename: 'CardNameAlreadyInUseError' }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RegisterItemSuccess', item: { name: string } }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+      > }
+   };
+
+export type RegisterSpellMutationVariables = Exact<{
+  input: RegisterSpellInput;
+}>;
+
+
+export type RegisterSpellMutation = { registerSpell:
+    | { __typename: 'CardNameAlreadyInUseError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RegisterSpellSuccess', spell: { name: string } }
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldOutOfRange' }
@@ -160,3 +184,23 @@ export const RegisterItemDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RegisterItemMutation, RegisterItemMutationVariables>;
+export const RegisterSpellDocument = new TypedDocumentString(`
+    mutation RegisterSpell($input: RegisterSpellInput!) {
+  registerSpell(input: $input) {
+    __typename
+    ... on RegisterSpellSuccess {
+      spell {
+        name
+      }
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterSpellMutation, RegisterSpellMutationVariables>;

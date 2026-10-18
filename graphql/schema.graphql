@@ -210,6 +210,15 @@ type Mutation {
 		"""
 		input: RegisterItemInput!
 	): RegisterItemResult!
+	"""
+	スペルを登録する（紐づいたオペレーターだけ）
+	"""
+	registerSpell(
+		"""
+		登録するスペル
+		"""
+		input: RegisterSpellInput!
+	): RegisterSpellResult!
 }
 """
 ページの情報
@@ -300,6 +309,49 @@ type RegisterItemSuccess {
 	登録したアイテム
 	"""
 	item: Item!
+}
+"""
+スペルを登録する入力
+"""
+input RegisterSpellInput {
+	"""
+	カード名（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+スペルの登録の結果
+"""
+union RegisterSpellResult = RegisterSpellSuccess | ValidationErrors | CardNameAlreadyInUseError | ForbiddenError
+"""
+スペルを登録した
+"""
+type RegisterSpellSuccess {
+	"""
+	登録したスペル
+	"""
+	spell: Spell!
+}
+"""
+スペル（カードの種類の 1 つ）
+"""
+type Spell implements Card {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	カード名（登録したときの表記。前後の空白は除く）
+	"""
+	name: String!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
 }
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
