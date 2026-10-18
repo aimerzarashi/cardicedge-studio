@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// ブラウザは cms-playwright コンテナで動くため、URL はコンテナ間ネットワークの名前で指定する
+// ブラウザは studio-playwright コンテナで動くため、URL はコンテナ間ネットワークの名前で指定する
 const wsEndpoint = process.env.PLAYWRIGHT_WS_ENDPOINT;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL;
 if (!wsEndpoint || !baseURL) {

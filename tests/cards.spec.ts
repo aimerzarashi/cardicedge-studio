@@ -65,7 +65,7 @@ for (const { condition, value, message } of [
   {
     condition: "51 文字",
     value: "あ".repeat(51),
-    // 上限は cms に書き写さず、core が返した値を表示する
+    // 上限は studio に書き写さず、core が返した値を表示する
     message: "カード名は 50 文字以内で入力してください",
   },
 ]) {

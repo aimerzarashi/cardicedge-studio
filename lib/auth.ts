@@ -37,7 +37,7 @@ export const auth = betterAuth({
       // 送信を待つと、登録されているアドレスかどうかで応答時間が変わる（タイミング攻撃）ため待たない
       void sendMail({
         to: user.email,
-        subject: "【diecardomain cms】パスワードの設定",
+        subject: "【diecardomain studio】パスワードの設定",
         text: [
           "パスワードの設定を受け付けました。次のリンクから 1 時間以内に設定してください。",
           url,
@@ -58,7 +58,7 @@ export const auth = betterAuth({
       // 送信を待つと、登録されているアドレスかどうかで応答時間が変わる（タイミング攻撃）ため待たない
       void sendMail({
         to: user.email,
-        subject: "【diecardomain cms】メールアドレスの確認",
+        subject: "【diecardomain studio】メールアドレスの確認",
         text: [
           "メールアドレスの確認のため、次のリンクを開いてください。開くとログインできるようになります。",
           url,
@@ -72,7 +72,7 @@ export const auth = betterAuth({
   },
   advanced: {
     ipAddress: {
-      // 既定の X-Forwarded-For は利用者が付けられ、そのまま信じると偽装でレート制限をすり抜けられる（cms#10）。
+      // 既定の X-Forwarded-For は利用者が付けられ、そのまま信じると偽装でレート制限をすり抜けられる（studio#10）。
       // envoy が接続元から判定して上書きで入れる x-client-ip だけを見る（better-auth 公式の推奨: プロキシが設定する信頼できるヘッダー 1 つ）
       ipAddressHeaders: ["x-client-ip"],
     },

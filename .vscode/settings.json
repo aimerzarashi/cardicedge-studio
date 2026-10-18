@@ -28,10 +28,10 @@
       "server": "localhost",
       "port": 5433,
       "driver": "PostgreSQL",
-      "name": "cms-db",
-      "database": "cms",
-      "username": "cms_user",
-      "password": "cms_password"
+      "name": "studio-db",
+      "database": "studio",
+      "username": "studio_user",
+      "password": "studio_password"
     }
   ]
 }

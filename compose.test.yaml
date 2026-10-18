@@ -1,18 +1,18 @@
-# make test 用の使い捨て環境。プロジェクト名 cms-test で起動し、終了後に破棄する。
+# make test 用の使い捨て環境。プロジェクト名 studio-test で起動し、終了後に破棄する。
 # 開発用の環境（compose.yaml）とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため同時に動かせる
 services:
-  # 使い捨ての core と DB。cms が前提にする版（Makefile の CORE_VERSION）のリリース済みのイメージを使う（cms#14）。
+  # 使い捨ての core と DB。studio が前提にする版（Makefile の CORE_VERSION）のリリース済みのイメージを使う（studio#14）。
   # ../core のソースからビルドしないのは、手元の ../core のブランチしだいで、前提と違う core でテストしうるため
   core:
     image: diecardomain/core:${CORE_VERSION:?make test から CORE_VERSION を渡す}
     environment:
       DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core sslmode=disable"
-      # JWKS は cms-envoy を通して取る（cms#11: cms には envoy を通してしか届かない）。iss・aud は cms の JWT_ISSUER・JWT_AUDIENCE と一致させる
-      CMS_JWKS_URL: http://cms-envoy:10000/api/auth/jwks
-      CMS_JWT_ISSUER: diecardomain-cms
-      CMS_JWT_AUDIENCE: diecardomain-core
+      # JWKS は studio-envoy を通して取る（studio#11: studio には envoy を通してしか届かない）。iss・aud は studio の JWT_ISSUER・JWT_AUDIENCE と一致させる
+      STUDIO_JWKS_URL: http://studio-envoy:10000/api/auth/jwks
+      STUDIO_JWT_ISSUER: diecardomain-studio
+      STUDIO_JWT_AUDIENCE: diecardomain-core
       # seed のオペレーター（scripts/seed.ts）と同じアドレス。ログインして core を呼ぶと紐づく
-      CMS_INITIAL_OPERATOR_EMAIL: operator@example.com
+      STUDIO_INITIAL_OPERATOR_EMAIL: operator@example.com
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       start_period: 30s
@@ -46,23 +46,23 @@ services:
       timeout: 5s
       retries: 30
 
-  # 本番用イメージ（.build/Dockerfile）の cms
-  cms:
+  # 本番用イメージ（.build/Dockerfile）の studio
+  studio:
     build:
       context: .
       dockerfile: .build/Dockerfile
-    environment: &cms-auth-env
-      DATABASE_URL: postgres://cms_user:cms_password@cms-db:5432/cms
+    environment: &studio-auth-env
+      DATABASE_URL: postgres://studio_user:studio_password@studio-db:5432/studio
       BETTER_AUTH_SECRET: test-only-better-auth-secret-0123456789abcdef
-      # Playwright のブラウザから見た cms の URL（cms-envoy 経由）
-      BETTER_AUTH_URL: http://cms-envoy:10000
+      # Playwright のブラウザから見た studio の URL（studio-envoy 経由）
+      BETTER_AUTH_URL: http://studio-envoy:10000
       # Playwright は中継役用の入口（10001）から入るため、そのオリジンも受け付ける
-      BETTER_AUTH_TRUSTED_ORIGINS: http://cms-envoy:10001
-      JWT_ISSUER: diecardomain-cms
+      BETTER_AUTH_TRUSTED_ORIGINS: http://studio-envoy:10001
+      JWT_ISSUER: diecardomain-studio
       JWT_AUDIENCE: diecardomain-core
-      CORE_GRAPHQL_URL: http://cms-envoy:10000/cms/graphql
-      SMTP_URL: smtp://cms-mailpit:1025
-      MAIL_FROM: diecardomain cms <no-reply@diecardomain.example>
+      CORE_GRAPHQL_URL: http://studio-envoy:10000/studio/graphql
+      SMTP_URL: smtp://studio-mailpit:1025
+      MAIL_FROM: diecardomain studio <no-reply@diecardomain.example>
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       start_period: 60s
@@ -73,41 +73,41 @@ services:
     depends_on:
       core:
         condition: service_healthy
-      cms-migrate:
+      studio-migrate:
         condition: service_completed_successfully
 
   # マイグレーション用イメージで migrations を適用する
-  cms-migrate:
+  studio-migrate:
     build:
       context: .
       dockerfile: local/migrate/Dockerfile
     environment:
-      DATABASE_URL: "postgres://cms_user:cms_password@cms-db:5432/cms?sslmode=disable"
+      DATABASE_URL: "postgres://studio_user:studio_password@studio-db:5432/studio?sslmode=disable"
     depends_on:
-      cms-db:
+      studio-db:
         condition: service_healthy
 
   # 送ったメールを受け止める（Playwright のテストが API で読む）
-  cms-mailpit:
+  studio-mailpit:
     image: axllent/mailpit:v1.31.4
 
   # better-auth のデータ。データは一時領域に置き、終了とともに破棄する
-  cms-db:
+  studio-db:
     image: postgres:18.6
     environment:
-      POSTGRES_USER: cms_user
-      POSTGRES_PASSWORD: cms_password
-      POSTGRES_DB: cms
+      POSTGRES_USER: studio_user
+      POSTGRES_PASSWORD: studio_password
+      POSTGRES_DB: studio
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cms_user -d cms"]
+      test: ["CMD-SHELL", "pg_isready -U studio_user -d studio"]
       interval: 2s
       timeout: 5s
       retries: 30
 
   # 開発用と同じ入口（10000）に、テスト用の環境だけの中継役用の入口（10001。relay-listener.yaml）を重ねる
-  cms-envoy:
+  studio-envoy:
     image: envoyproxy/envoy:v1.39.2
     command: ["sh", "-c", "exec envoy -c /etc/envoy/envoy.yaml --config-yaml \"$$(cat /etc/envoy/relay-listener.yaml)\""]
     volumes:
@@ -121,7 +121,7 @@ services:
       timeout: 5s
       retries: 3
 
-  cms-playwright:
+  studio-playwright:
     image: mcr.microsoft.com/playwright:v1.63.0-noble
     init: true
     user: pwuser
@@ -137,23 +137,23 @@ services:
 
   # テストの実行役。開発用イメージでソース（tests/・playwright.config.ts・node_modules）を使う。
   # make test から docker compose run で起動する
-  cms-test-runner:
+  studio-test-runner:
     build:
       context: .
-      dockerfile: local/cms/Dockerfile
+      dockerfile: local/studio/Dockerfile
     profiles: ["runner"]
     init: true
     volumes:
       - ./:/home/node/app
     environment:
-      <<: *cms-auth-env
-      PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
+      <<: *studio-auth-env
+      PLAYWRIGHT_WS_ENDPOINT: ws://studio-playwright:3000/
       # テストごとに X-Forwarded-For で IP を名乗るため、中継役用の入口を通す（tests/fixtures.ts）
-      PLAYWRIGHT_BASE_URL: http://cms-envoy:10001
+      PLAYWRIGHT_BASE_URL: http://studio-envoy:10001
       # 公開の入口（偽装できないことを確かめるテストが使う）
-      PLAYWRIGHT_PUBLIC_URL: http://cms-envoy:10000
+      PLAYWRIGHT_PUBLIC_URL: http://studio-envoy:10000
       # 中継役用の入口（名乗った IP が記録されることを確かめるテストが使う）
-      PLAYWRIGHT_RELAY_URL: http://cms-envoy:10001
-      PLAYWRIGHT_MAILPIT_URL: http://cms-mailpit:8025
-    # テスト用の管理者を seed で作ってからテストする（テーブルは cms-migrate が作る）
+      PLAYWRIGHT_RELAY_URL: http://studio-envoy:10001
+      PLAYWRIGHT_MAILPIT_URL: http://studio-mailpit:8025
+    # テスト用の管理者を seed で作ってからテストする（テーブルは studio-migrate が作る）
     command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && pnpm test"]

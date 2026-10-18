@@ -1,5 +1,5 @@
-# 開発環境・テスト用の環境の入口。ブラウザ・Playwright・cloudflared はここを経由して cms / core に届く。
-# cms には必ずここを経由して届くようにする（cms は x-client-ip を信じるため、直接届くと IP を偽装できる）
+# 開発環境・テスト用の環境の入口。ブラウザ・Playwright・cloudflared はここを経由して studio / core に届く。
+# studio には必ずここを経由して届くようにする（studio は x-client-ip を信じるため、直接届くと IP を偽装できる）
 admin:
   address:
     socket_address: { address: 0.0.0.0, port_value: 9901 }
@@ -15,7 +15,7 @@ static_resources:
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 stat_prefix: ingress_http
-                # 利用者の IP は接続元から判定し、利用者が送った X-Forwarded-For は信じない（偽装させない。cms#10）。
+                # 利用者の IP は接続元から判定し、利用者が送った X-Forwarded-For は信じない（偽装させない。studio#10）。
                 # 判定した IP を x-client-ip に上書きで入れ、better-auth はこれだけを見る（レート制限・セッションの記録）
                 use_remote_address: true
                 xff_num_trusted_hops: 0
@@ -29,14 +29,14 @@ static_resources:
                       domains: ["*"]
                       routes:
                         # core の GraphQL（Subscription の websocket を含む）。core が起動していなければ 503 になる
-                        - match: { prefix: "/cms/graphql" }
+                        - match: { prefix: "/studio/graphql" }
                           route:
                             cluster: core
                             upgrade_configs:
                               - upgrade_type: websocket
                         - match: { prefix: "/" }
                           route:
-                            cluster: cms
+                            cluster: studio
                             # Next.js の HMR（websocket）を通す
                             upgrade_configs:
                               - upgrade_type: websocket
@@ -46,16 +46,16 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
-    - name: cms
+    - name: studio
       type: STRICT_DNS
       lb_policy: ROUND_ROBIN
       load_assignment:
-        cluster_name: cms
+        cluster_name: studio
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
-                    socket_address: { address: cms, port_value: 3000 }
+                    socket_address: { address: studio, port_value: 3000 }
     - name: core
       type: STRICT_DNS
       lb_policy: ROUND_ROBIN

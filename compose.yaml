@@ -1,44 +1,44 @@
 services:
-  cms:
+  studio:
     build:
       context: .
-      dockerfile: local/cms/Dockerfile
+      dockerfile: local/studio/Dockerfile
     init: true
     volumes:
       # node_modules もホストと共有し、ホストの VSCode（型補完・biome）から使えるようにする
       - ./:/home/node/app
       # pnpm のキャッシュ（メタデータ・パッケージ）。down しても残す
       - node-cache:/home/node/.cache
-    # ホストには公開せず、cms-envoy 経由でアクセスする
-    # 開発用オペレーターの seed（冪等）を済ませてから開発サーバーを起動する。テーブルは cms-migrate が先に作る
+    # ホストには公開せず、studio-envoy 経由でアクセスする
+    # 開発用オペレーターの seed（冪等）を済ませてから開発サーバーを起動する。テーブルは studio-migrate が先に作る
     command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && exec pnpm dev --hostname 0.0.0.0"]
     environment:
-      DATABASE_URL: postgres://cms_user:cms_password@cms-db:5432/cms
+      DATABASE_URL: postgres://studio_user:studio_password@studio-db:5432/studio
       # 開発用の固定値（本番では環境ごとに安全な値を渡す）
       BETTER_AUTH_SECRET: dev-only-better-auth-secret-change-me-0123456789
-      # ブラウザから見た cms の URL（cms-envoy 経由）
-      BETTER_AUTH_URL: http://localhost:${CMS_PORT:-3001}
+      # ブラウザから見た studio の URL（studio-envoy 経由）
+      BETTER_AUTH_URL: http://localhost:${STUDIO_PORT:-3001}
       # JWT の iss / aud。core の設定と一致させる。iss は core がオペレーターを識別するキーの一部のため、運用開始後は変えない
-      JWT_ISSUER: diecardomain-cms
+      JWT_ISSUER: diecardomain-studio
       JWT_AUDIENCE: diecardomain-core
-      # core の GraphQL。cms は共有ネットワークに参加しないため、cms-envoy を通す（cms#11）
-      CORE_GRAPHQL_URL: http://cms-envoy:10000/cms/graphql
+      # core の GraphQL。studio は共有ネットワークに参加しないため、studio-envoy を通す（studio#11）
+      CORE_GRAPHQL_URL: http://studio-envoy:10000/studio/graphql
       # メールは Mailpit が受け止める（http://localhost:8025 で読める）
-      SMTP_URL: smtp://cms-mailpit:1025
-      MAIL_FROM: diecardomain cms <no-reply@diecardomain.example>
-      # Playwright のブラウザ（別コンテナ）は cms-envoy 経由、make tunnel は Quick Tunnel 経由でアクセスする
-      BETTER_AUTH_TRUSTED_ORIGINS: http://cms-envoy:10000,https://*.trycloudflare.com
-      # Playwright はブラウザを cms-playwright コンテナで動かし、cms-envoy 経由でアクセスする
-      PLAYWRIGHT_WS_ENDPOINT: ws://cms-playwright:3000/
-      PLAYWRIGHT_BASE_URL: http://cms-envoy:10000
+      SMTP_URL: smtp://studio-mailpit:1025
+      MAIL_FROM: diecardomain studio <no-reply@diecardomain.example>
+      # Playwright のブラウザ（別コンテナ）は studio-envoy 経由、make tunnel は Quick Tunnel 経由でアクセスする
+      BETTER_AUTH_TRUSTED_ORIGINS: http://studio-envoy:10000,https://*.trycloudflare.com
+      # Playwright はブラウザを studio-playwright コンテナで動かし、studio-envoy 経由でアクセスする
+      PLAYWRIGHT_WS_ENDPOINT: ws://studio-playwright:3000/
+      PLAYWRIGHT_BASE_URL: http://studio-envoy:10000
       # 開発用の環境には中継役用の入口が無いため、公開の入口と同じ（レート制限も開発モードでは無効）
-      PLAYWRIGHT_PUBLIC_URL: http://cms-envoy:10000
+      PLAYWRIGHT_PUBLIC_URL: http://studio-envoy:10000
       # Playwright のテストが、届いたメールを Mailpit の API で読む
-      PLAYWRIGHT_MAILPIT_URL: http://cms-mailpit:8025
+      PLAYWRIGHT_MAILPIT_URL: http://studio-mailpit:8025
     # 共有ネットワーク（diecardomain）には参加しない。参加すると core・game から envoy を通らずに直接届き、
-    # x-client-ip を自由に付けてレート制限をすり抜けられる（cms#11）。core を呼ぶときは cms-envoy の /cms/graphql を通す
+    # x-client-ip を自由に付けてレート制限をすり抜けられる（studio#11）。core を呼ぶときは studio-envoy の /studio/graphql を通す
     depends_on:
-      cms-migrate:
+      studio-migrate:
         condition: service_completed_successfully
     # make up (--wait) はこれが healthy になるまで待つ
     healthcheck:
@@ -49,8 +49,8 @@ services:
       timeout: 5s
       retries: 3
 
-  # 未適用のマイグレーションを Atlas で適用して終了する（cms の起動前に1回実行する。make migrate でも実行できる）
-  cms-migrate:
+  # 未適用のマイグレーションを Atlas で適用して終了する（studio の起動前に1回実行する。make migrate でも実行できる）
+  studio-migrate:
     build:
       context: .
       dockerfile: local/migrate/Dockerfile
@@ -58,43 +58,43 @@ services:
     volumes:
       - ./migrations:/migrations
     environment:
-      DATABASE_URL: "postgres://cms_user:cms_password@cms-db:5432/cms?sslmode=disable"
+      DATABASE_URL: "postgres://studio_user:studio_password@studio-db:5432/studio?sslmode=disable"
     depends_on:
-      cms-db:
+      studio-db:
         condition: service_healthy
 
-  # 送ったメールを受け止める（外には送らない）。ホストから http://localhost:8025 で読む。衝突する場合は CMS_MAILPIT_PORT で変更する
-  cms-mailpit:
+  # 送ったメールを受け止める（外には送らない）。ホストから http://localhost:8025 で読む。衝突する場合は STUDIO_MAILPIT_PORT で変更する
+  studio-mailpit:
     image: axllent/mailpit:v1.31.4
     ports:
-      - ${CMS_MAILPIT_PORT:-8025}:8025
+      - ${STUDIO_MAILPIT_PORT:-8025}:8025
 
   # better-auth のデータ（オペレーター・セッション等）。ゲームのデータは core-db に置く
-  cms-db:
+  studio-db:
     image: postgres:18.6
-    # ホストの SQLTools 等から接続するため公開する（5432 は core-db が使う）。衝突する場合は CMS_DB_PORT で変更する
+    # ホストの SQLTools 等から接続するため公開する（5432 は core-db が使う）。衝突する場合は STUDIO_DB_PORT で変更する
     ports:
-      - ${CMS_DB_PORT:-5433}:5432
+      - ${STUDIO_DB_PORT:-5433}:5432
     environment:
-      POSTGRES_USER: cms_user
-      POSTGRES_PASSWORD: cms_password
-      POSTGRES_DB: cms
+      POSTGRES_USER: studio_user
+      POSTGRES_PASSWORD: studio_password
+      POSTGRES_DB: studio
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cms_user -d cms"]
+      test: ["CMD-SHELL", "pg_isready -U studio_user -d studio"]
       interval: 2s
       timeout: 5s
       retries: 30
 
-  # 開発環境の入口。他プロジェクトと衝突する場合は CMS_PORT で変更する
-  cms-envoy:
+  # 開発環境の入口。他プロジェクトと衝突する場合は STUDIO_PORT で変更する
+  studio-envoy:
     image: envoyproxy/envoy:v1.39.2
     ports:
-      - ${CMS_PORT:-3001}:10000
+      - ${STUDIO_PORT:-3001}:10000
     volumes:
       - ./local/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     depends_on:
-      - cms
-    # /cms/graphql を core:3333 に転送し、core から cms（JWKS 等）にもここを通って届くよう、共有ネットワークにも参加する
+      - studio
+    # /studio/graphql を core:3333 に転送し、core から studio（JWKS 等）にもここを通って届くよう、共有ネットワークにも参加する
     networks:
       - default
       - diecardomain
@@ -108,16 +108,16 @@ services:
       retries: 3
 
   # オプション: Cloudflare Quick Tunnel で外部（スマホ等）からアクセスする。make tunnel で起動
-  cms-tunnel:
+  studio-tunnel:
     image: cloudflare/cloudflared:2026.9.3
     profiles: ["tunnel"]
-    command: ["tunnel", "--no-autoupdate", "--url", "http://cms-envoy:10000"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://studio-envoy:10000"]
     depends_on:
-      cms-envoy:
+      studio-envoy:
         condition: service_healthy
 
   # ブラウザ入りの公式イメージ。@playwright/test とバージョンを一致させる
-  cms-playwright:
+  studio-playwright:
     image: mcr.microsoft.com/playwright:v1.63.0-noble
     init: true
     user: pwuser
@@ -135,7 +135,7 @@ services:
 volumes:
   node-cache:
 
-# core / game と共有するネットワーク（core の make up で作成される）。cms 側は cms-envoy だけが参加する
+# core / game と共有するネットワーク（core の make up で作成される）。studio 側は studio-envoy だけが参加する
 networks:
   diecardomain:
     external: true

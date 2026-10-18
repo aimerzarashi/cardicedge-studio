@@ -27,7 +27,7 @@ function coreGraphQLURL(): string {
 }
 
 // 画面のリクエストに付いてきたセッションの Cookie から、better-auth に JWT をもらう。
-// /api/auth/token と同じ入口を、HTTP を通さずに関数として呼ぶ（cms#14）
+// /api/auth/token と同じ入口を、HTTP を通さずに関数として呼ぶ（studio#14）
 async function sessionToken(): Promise<string> {
   try {
     const { token } = await auth.api.getToken({ headers: await headers() });

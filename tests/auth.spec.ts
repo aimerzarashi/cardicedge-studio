@@ -11,7 +11,7 @@ test("未ログインでトップ画面を開くとログイン画面に移る",
 
   await expect(page).toHaveURL(/\/login$/);
   await expect(
-    page.getByRole("heading", { name: "cms ログイン" }),
+    page.getByRole("heading", { name: "studio ログイン" }),
   ).toBeVisible();
 });
 

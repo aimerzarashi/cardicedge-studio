@@ -22,7 +22,7 @@ function pathOf(url: URL) {
 
 // since より後に届いた、その宛先のメールのうち、パスに pathPart を含むリンク（better-auth の /api/auth/...）があるものから
 // リンクを開き、転送された先のパスを返す。
-// 最新のメールだけを見ないのは、better-auth は送信を待たない（cms の lib/auth.ts）ため、先に頼んだ別のメール（確認のメール等）が
+// 最新のメールだけを見ないのは、better-auth は送信を待たない（studio の lib/auth.ts）ため、先に頼んだ別のメール（確認のメール等）が
 // 後から届くことがあるから
 async function followMailLink(
   request: APIRequestContext,

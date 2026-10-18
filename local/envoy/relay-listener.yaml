@@ -1,7 +1,7 @@
 # テスト用の環境（compose.test.yaml）にだけ足す、中継役用の入口（envoy の --config-yaml で envoy.yaml に重ねる）。
 # X-Forwarded-For の最後の 1 段を利用者の IP として信じるので、Playwright がテストごとに別の IP を名乗れる
 # （本番モードのレート制限はログインを同じ IP から 10 秒に 3 回までにするため）。
-# 届いた X-Forwarded-For をそのまま信じる入口なので、開発用・リリース版の環境には置かず、ポートも公開しない（cms#10）
+# 届いた X-Forwarded-For をそのまま信じる入口なので、開発用・リリース版の環境には置かず、ポートも公開しない（studio#10）
 static_resources:
   listeners:
     - name: listener_relay
@@ -23,10 +23,10 @@ static_resources:
                   virtual_hosts:
                     - name: backend
                       domains: ["*"]
-                      # テストは cms だけを使うため、core（/cms/graphql）への経路は置かない
+                      # テストは studio だけを使うため、core（/studio/graphql）への経路は置かない
                       routes:
                         - match: { prefix: "/" }
-                          route: { cluster: cms }
+                          route: { cluster: studio }
                 http_filters:
                   - name: envoy.filters.http.router
                     typed_config:
