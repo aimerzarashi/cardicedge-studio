@@ -1,0 +1,264 @@
+"""
+カード（Creature・Item・Spell）。種類は __typename で見分け、種類ごとの項目は断片（... on Creature 等）で取る
+"""
+interface Card {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	カード名
+	"""
+	name: String!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+カードの一覧の 1 ページ（種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
+"""
+type CardConnection {
+	"""
+	このページのカード
+	"""
+	edges: [CardEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+カードの一覧の 1 件と、その位置
+"""
+type CardEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	カード
+	"""
+	node: Card!
+}
+"""
+カードの一覧の絞り込み
+"""
+input CardFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	種類（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	types: [CardType!]
+}
+"""
+カード名が、ほかのカード（Creature・Item・Spell のどれか）ですでに使われている。前後の空白を除き、全角・半角の英数字などを同じ文字とみなして比べる
+"""
+type CardNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+カードの種類（一覧の絞り込みに使う）
+"""
+enum CardType {
+	CREATURE
+	ITEM
+	SPELL
+}
+"""
+カードの一覧の結果
+"""
+union CardsResult = CardConnection | ValidationErrors | ForbiddenError
+"""
+クリーチャー（カードの種類の 1 つ）
+"""
+type Creature implements Card {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	カード名（登録したときの表記。前後の空白は除く）
+	"""
+	name: String!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+日時（RFC 3339 の文字列。例: 2026-10-17T09:00:00Z）
+"""
+scalar DateTime
+"""
+入力の項目ごとの誤り。理由は __typename で見分ける
+"""
+interface FieldError {
+	"""
+	誤りのある入力の項目（GraphQL の引数・入力の項目名と同じ。入れ子の入力は filter.nameContains のように . でつなぐ）
+	"""
+	field: String!
+}
+"""
+入力の形が正しくない（メールアドレスとして読めない、ページの位置（カーソル）が読めない等）
+"""
+type FieldInvalidFormat implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+}
+"""
+入力が範囲の外
+"""
+type FieldOutOfRange implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	範囲の下限（この値を含む）
+	"""
+	min: Int!
+	"""
+	範囲の上限（この値を含む）
+	"""
+	max: Int!
+}
+"""
+入力が空（前後の空白だけの場合を含む）
+"""
+type FieldRequired implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+}
+"""
+入力が長すぎる
+"""
+type FieldTooLong implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	上限の文字数
+	"""
+	max: Int!
+}
+"""
+操作する権限が無い（JWT は正しいが、core のオペレーターとして登録されていない等）
+"""
+type ForbiddenError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+type Mutation {
+	"""
+	クリーチャーを登録する（紐づいたオペレーターだけ）
+	"""
+	registerCreature(
+		"""
+		登録するクリーチャー
+		"""
+		input: RegisterCreatureInput!
+	): RegisterCreatureResult!
+}
+"""
+ページの情報
+"""
+type PageInfo {
+	"""
+	次のページがあるか
+	"""
+	hasNextPage: Boolean!
+	"""
+	前のページがあるか（after を指定したら true）
+	"""
+	hasPreviousPage: Boolean!
+	"""
+	このページの最初の 1 件の位置
+	"""
+	startCursor: String
+	"""
+	このページの最後の 1 件の位置（次のページは after にこれを渡す）
+	"""
+	endCursor: String
+}
+type Query {
+	"""
+	core の版（リリースのタグ。開発中は none）
+	"""
+	version: String!
+	"""
+	カードの一覧（紐づいたオペレーターだけ）
+	"""
+	cards(
+		"""
+		絞り込み
+		"""
+		filter: CardFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): CardsResult!
+}
+"""
+クリーチャーを登録する入力
+"""
+input RegisterCreatureInput {
+	"""
+	カード名（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+クリーチャーの登録の結果
+"""
+union RegisterCreatureResult = RegisterCreatureSuccess | ValidationErrors | CardNameAlreadyInUseError | ForbiddenError
+"""
+クリーチャーを登録した
+"""
+type RegisterCreatureSuccess {
+	"""
+	登録したクリーチャー
+	"""
+	creature: Creature!
+}
+"""
+公開用の ID（UUID の文字列）。core の内部の ID は返さない
+"""
+scalar UUID
+"""
+入力の誤り（操作は行われていない）
+"""
+type ValidationErrors {
+	"""
+	項目ごとの誤り（1 件以上）
+	"""
+	errors: [FieldError!]!
+}

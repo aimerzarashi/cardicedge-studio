@@ -20,30 +20,34 @@ function pathOf(url: URL) {
   return `${url.pathname}${url.search}`;
 }
 
-// since より後に届いた、その宛先の最新のメールから、パスに pathPart を含むリンク（better-auth の /api/auth/...）を開き、
-// 転送された先のパスを返す
+// since より後に届いた、その宛先のメールのうち、パスに pathPart を含むリンク（better-auth の /api/auth/...）があるものから
+// リンクを開き、転送された先のパスを返す。
+// 最新のメールだけを見ないのは、better-auth は送信を待たない（cms の lib/auth.ts）ため、先に頼んだ別のメール（確認のメール等）が
+// 後から届くことがあるから
 async function followMailLink(
   request: APIRequestContext,
   to: string,
   since: Date,
   pathPart: string,
 ) {
-  let id: string | undefined;
+  let link: string | undefined;
   await expect
     .poll(async () => {
-      const latest = (await searchMails(request, to)).find(
-        (message) => new Date(message.Created) > since,
-      );
-      id = latest?.ID;
-      return id;
-    })
+      for (const message of await searchMails(request, to)) {
+        if (new Date(message.Created) <= since) continue;
+        const response = await request.get(
+          `${mailpit}/api/v1/message/${message.ID}`,
+        );
+        const text: string = (await response.json()).Text;
+        link = text
+          .match(/https?:\/\/\S+/g)
+          ?.find((url) => new URL(url).pathname.includes(pathPart));
+        if (link) return link;
+      }
+      return undefined;
+    }, `${to} 宛ての ${pathPart} のリンクを含むメール`)
     .toBeTruthy();
-  const response = await request.get(`${mailpit}/api/v1/message/${id}`);
-  const text: string = (await response.json()).Text;
-  const link = text
-    .match(/https?:\/\/\S+/g)
-    ?.find((url) => new URL(url).pathname.includes(pathPart));
-  if (!link) throw new Error(`${pathPart} のリンクがありません: ${text}`);
+  if (!link) throw new Error(`${pathPart} のリンクがありません`);
 
   const redirect = await request.get(pathOf(new URL(link)), {
     maxRedirects: 0,

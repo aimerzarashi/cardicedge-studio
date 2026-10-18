@@ -21,6 +21,8 @@ services:
       # JWT の iss / aud。core の設定と一致させる。iss は core がオペレーターを識別するキーの一部のため、運用開始後は変えない
       JWT_ISSUER: diecardomain-cms
       JWT_AUDIENCE: diecardomain-core
+      # core の GraphQL。cms は共有ネットワークに参加しないため、cms-envoy を通す（cms#11）
+      CORE_GRAPHQL_URL: http://cms-envoy:10000/cms/graphql
       # メールは Mailpit が受け止める（http://localhost:8025 で読める）
       SMTP_URL: smtp://cms-mailpit:1025
       MAIL_FROM: diecardomain cms <no-reply@diecardomain.example>
