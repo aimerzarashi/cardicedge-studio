@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <main>
-      <h1>cms ログイン</h1>
+      <h1>studio ログイン</h1>
       {/* ハイドレーション前に送信されると、ブラウザ標準の GET で資格情報が URL に載るため、
           POST にしたうえでハイドレーションまでボタンを押せないようにする */}
       <form method="post" onSubmit={handleSubmit}>

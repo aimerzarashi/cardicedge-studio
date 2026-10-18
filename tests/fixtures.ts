@@ -1,10 +1,10 @@
 import { test as base } from "@playwright/test";
 
 // better-auth のレート制限（本番モードで有効。ログインは同じ IP から 10 秒に 3 回まで）は IP ごとに数える。
-// ブラウザはすべて cms-playwright コンテナから送るため、テストごとに X-Forwarded-For で別の IP を名乗り、
+// ブラウザはすべて studio-playwright コンテナから送るため、テストごとに X-Forwarded-For で別の IP を名乗り、
 // ほかのテストのログインと同じ枠で数えられないようにする（198.18.0.0/15 は検証用のアドレス範囲）。
 // 名乗った IP が使われるのは、テスト用の環境だけにある中継役用の入口（local/envoy/relay-listener.yaml）を通るとき。
-// 公開の入口では X-Forwarded-For は信じない（cms#10）
+// 公開の入口では X-Forwarded-For は信じない（studio#10）
 function ipFor(testId: string, retry: number) {
   let hash = retry;
   for (const char of testId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;

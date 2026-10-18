@@ -12,7 +12,7 @@ export default async function Home() {
 
   return (
     <main>
-      <h1>cms</h1>
+      <h1>studio</h1>
       <p>
         ログイン中:{" "}
         <span data-testid="operator-email">{session.user.email}</span>

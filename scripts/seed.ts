@@ -1,5 +1,5 @@
 // 開発・テスト用の、メールアドレスを確認済みのオペレーターを作る（既にあれば何もしない）。本番では使わない。
-// アドレスは core の初期オペレーター（CMS_INITIAL_OPERATOR_EMAIL）と同じにし、ログインすると core で紐づくようにする
+// アドレスは core の初期オペレーター（STUDIO_INITIAL_OPERATOR_EMAIL）と同じにし、ログインすると core で紐づくようにする
 import { auth } from "../lib/auth.ts";
 
 const operator = {

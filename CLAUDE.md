@@ -1,10 +1,10 @@
 # コマンド
 
 - `make up` / `make down` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
-- `make up` は先に `../core` の `make up` を実行する。`make down` は cms だけを止める（core は止めない）
-- pnpm・node はコンテナ内で実行する（例: `docker compose exec cms pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
+- `make up` は先に `../core` の `make up` を実行する。`make down` は studio だけを止める（core は止めない）
+- pnpm・node はコンテナ内で実行する（例: `docker compose exec studio pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
 - lint は `make lint`（biome check、`pnpm typecheck`、scripts/check-migrations.sh、scripts/check-auth-schema.sh）でファイルを書き換えない。typecheck は `next typegen` で Next.js の型（LayoutProps 等）を生成してから tsc を実行する。フォーマットの修正は `make fmt`（biome format --write）
-- pnpm のバージョンを上げるときは package.json の `packageManager`、local/cms/Dockerfile・.build/Dockerfile・.gitlab-ci.yml の `PNPM_VERSION` を揃える（corepack は使わない）
+- pnpm のバージョンを上げるときは package.json の `packageManager`、local/studio/Dockerfile・.build/Dockerfile・.gitlab-ci.yml の `PNPM_VERSION` を揃える（corepack は使わない）
 - React Compiler を有効にしている（next.config.ts の `reactCompiler`）。useMemo / useCallback による手動メモ化は原則書かない
 
 # ディレクトリ構成
@@ -15,7 +15,7 @@
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
 | lib/core.ts | core の GraphQL を、ログイン中のオペレーターとして呼ぶ（`callCore`。サーバーだけ）。JWT は `auth.api.getToken({ headers })` でセッションの Cookie からもらう。core に届かない（502・503・504・つながらない・10 秒の時間切れ）ときは投げずに `{ ok: false, reason: "unavailable" }` を返し、401 はログイン画面へ移す |
-| graphql | `make gen-api` の生成物（`schema.graphql` は前提にする版の core のイメージから取り出した cms 用のスキーマ、ほかは graphql-codegen の型）。手で直さない。biome の対象から外している |
+| graphql | `make gen-api` の生成物（`schema.graphql` は前提にする版の core のイメージから取り出した studio 用のスキーマ、ほかは graphql-codegen の型）。手で直さない。biome の対象から外している |
 | codegen.ts・.graphqlrc.yaml | graphql-codegen の設定と、VSCode の GraphQL の拡張の設定（どちらも graphql/schema.graphql と app・lib の操作を指す） |
 | proxy.ts | 未ログインのときにログイン画面へ移す（Next.js 16 の proxy。Cookie の有無だけを見る） |
 | migrations | DB マイグレーション（`NNNN_name.sql` + `atlas.sum`）。better-auth のテーブルも `auth generate` で SQL にしてここに置き、Atlas で適用する |
@@ -24,29 +24,29 @@
 | scripts/check-auth-schema.sh | better-auth の設定と DB（DATABASE_URL）のスキーマに差分が無いことの検査（マイグレーションの作り忘れを防ぐ） |
 | scripts/seed.ts | 開発・テスト用の、メールアドレスを確認済みのオペレーターを作る（`pnpm db:seed`） |
 | tests | Playwright のテスト |
-| local/cms | 開発用 Dockerfile |
+| local/studio | 開発用 Dockerfile |
 | .build | 本番用 Dockerfile（standalone 出力を node で動かす。テスト用環境・CI でも使う） |
 | local/envoy | envoy の設定（開発環境・テスト用の環境の入口。relay-listener.yaml はテスト用の環境だけの中継役用の入口） |
 
 # 入口（envoy）
 
-- アクセスはすべて cms-envoy:10000 を経由する（ホストは CMS_PORT、既定 3001）。cms:3000 はホストに公開しない
-- envoy を経由するホスト名からのアクセスは Next.js の `allowedDevOrigins` に追加する（`cms-envoy`、`*.trycloudflare.com`）
+- アクセスはすべて studio-envoy:10000 を経由する（ホストは STUDIO_PORT、既定 3001）。studio:3000 はホストに公開しない
+- envoy を経由するホスト名からのアクセスは Next.js の `allowedDevOrigins` に追加する（`studio-envoy`、`*.trycloudflare.com`）
 
 # 画面の決まり
 
-参照プロジェクトの game の決まり（.claude/rules/）から、cms に合うものを取り入れた（cms#14）。見た目の作り方（デザインシステム）は cms#17 で決める。
+参照プロジェクトの game の決まり（.claude/rules/）から、studio に合うものを取り入れた（studio#14）。見た目の作り方（デザインシステム）は studio#17 で決める。
 
 - Next.js の仕様は、覚えている知識ではなく、入っている版に同梱された公式の文書（`node_modules/next/dist/docs`）を探して読んで確かめる（版ごとの変化が大きいため。参照の game の AGENTS.md の索引は、毎回の会話に数千トークン入るため読み込まない）
 
 - 画面は表示と入力の受け渡しに徹し、ドメインの判断（正誤・権限・計算）は core に任せる
 - core が返した一覧を画面で絞り込んだり並べ替えたりしない。要るなら core の引数で渡す
-- 入力の検査は送信前の最小限（`required` 等）にし、正誤は core に任せる。上限などの値を cms に書き写さない（core を変えたときにずれるため）
+- 入力の検査は送信前の最小限（`required` 等）にし、正誤は core に任せる。上限などの値を studio に書き写さない（core を変えたときにずれるため）
 - 画面が持つ状態は、表示のためのもの（開閉・入力中の値・読み込み中等）だけにする
-- 文言は cms が作る。core は文言を返さず、結果の型と値（`__typename`・`field`・`max` 等）だけを返す（core の決まり）ため、型と値から文言を組み立てる（参照の game は API の `Error` のメッセージをそのまま表示していた）
+- 文言は studio が作る。core は文言を返さず、結果の型と値（`__typename`・`field`・`max` 等）だけを返す（core の決まり）ため、型と値から文言を組み立てる（参照の game は API の `Error` のメッセージをそのまま表示していた）
 - 標準（JS・HTML・CSS）で用意されている機能があれば、それだけのためにパッケージを足さない（日付・数値の表示は `Intl`、ダイアログは `<dialog>`、ポップオーバーは `popover` 属性 等）。パッケージを足すときは、標準で足りない理由を MR に書く（graphql-codegen 等、標準に代わるものが無いものは足してよい）
-- 実行時の検査は、型で保証できない境界（フォームの入力の `FormData` 等）だけで行う。codegen で型が付いた core の応答と、境界でない関数の間の受け渡しは検査し直さない。中身の正誤は core が判定するため、cms が確かめるのは形（文字列であること等）だけ。構造のある検査が要る境界が出てきたら valibot を入れる（Zod は使わない。参照の game と同じ）
-- 絞り込み・ページ（カーソル）等は URL に持ち、`useState` で持たない（再読み込み・共有で同じ画面に戻るため）。ページ（Server Component）は `searchParams` で読み、変えるときは `next/form` の `<Form>`（GET）か `<Link>` を使う（画面の移動として Transition の中で進む）。参照の game の nuqs は、サーバーに問い合わせ直さずにブラウザの中の状態を URL に持つ（shallow）ためのもので、cms の一覧は条件が変わるたびにサーバーで core を呼び直すため入れない。そういう場面が出てきたら考える
+- 実行時の検査は、型で保証できない境界（フォームの入力の `FormData` 等）だけで行う。codegen で型が付いた core の応答と、境界でない関数の間の受け渡しは検査し直さない。中身の正誤は core が判定するため、studio が確かめるのは形（文字列であること等）だけ。構造のある検査が要る境界が出てきたら valibot を入れる（Zod は使わない。参照の game と同じ）
+- 絞り込み・ページ（カーソル）等は URL に持ち、`useState` で持たない（再読み込み・共有で同じ画面に戻るため）。ページ（Server Component）は `searchParams` で読み、変えるときは `next/form` の `<Form>`（GET）か `<Link>` を使う（画面の移動として Transition の中で進む）。参照の game の nuqs は、サーバーに問い合わせ直さずにブラウザの中の状態を URL に持つ（shallow）ためのもので、studio の一覧は条件が変わるたびにサーバーで core を呼び直すため入れない。そういう場面が出てきたら考える
 
 ## React（Async React）
 
@@ -62,19 +62,19 @@
 
 # 統合（core）
 
-- 共有ネットワーク `diecardomain` に参加するのは cms-envoy だけ。cms は参加させない（core・game から直接届くと x-client-ip を偽装できる。cms#11）。cms から core へは cms-envoy の `/cms/graphql`、core から cms へは cms-envoy を通す
-- envoy は `/cms/graphql` を core に転送する（core が止まっていれば 503）
-- cms が前提にする core の版は、Makefile の `CORE_VERSION` に書く（cms の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema cms` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（core の変更を使うには、core をリリースしてから上げる。cms#14）
+- 共有ネットワーク `diecardomain` に参加するのは studio-envoy だけ。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
+- envoy は `/studio/graphql` を core に転送する（core が止まっていれば 503）
+- studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（core の変更を使うには、core をリリースしてから上げる。studio#14）
 - 開発の環境（`make up`）の core は、ルートの決まり（core は 1 つを共有する）のため ../core のソースから動く。`CORE_VERSION` とずれることはありうる
-- core の宛先は環境変数 `CORE_GRAPHQL_URL`（cms-envoy の `/cms/graphql`）
+- core の宛先は環境変数 `CORE_GRAPHQL_URL`（studio-envoy の `/studio/graphql`）
 
 # テスト
 
-- `make test` は compose.test.yaml（プロジェクト名 cms-test）で専用の core・DB・本番用イメージの cms を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない。core は ../core のソースではなく、`CORE_VERSION` のリリース済みのイメージ（`diecardomain/core`・`core-migrate`）を使う（手元の ../core のブランチしだいで、前提と違う core でテストしないため）
+- `make test` は compose.test.yaml（プロジェクト名 studio-test）で専用の core・DB・本番用イメージの studio を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない。core は ../core のソースではなく、`CORE_VERSION` のリリース済みのイメージ（`diecardomain/core`・`core-migrate`）を使う（手元の ../core のブランチしだいで、前提と違う core でテストしないため）
 - core を呼ぶテストは並列に動き、core の DB を共有するため、カード名等にテストごとに一意の値を付ける。core に届かないときの表示・error.tsx・次のページへのリンクは自動のテストにせず、テスト用の環境で画面で確かめて MR に書く（途中で core を止めると並列のテストに響く・50 件を超えるデータが要るため）
-- テストは開発用イメージの cms-test-runner（profile: runner）から `docker compose run` で実行する。本番用イメージにはテストコードを含めない
-- Playwright のブラウザは cms-playwright コンテナ（公式イメージ）で動く。cms コンテナから `run-server` に接続して実行する
-- baseURL は `http://cms-envoy:10000`（本番と同じく envoy 経由で確認する）
+- テストは開発用イメージの studio-test-runner（profile: runner）から `docker compose run` で実行する。本番用イメージにはテストコードを含めない
+- Playwright のブラウザは studio-playwright コンテナ（公式イメージ）で動く。studio コンテナから `run-server` に接続して実行する
+- baseURL は `http://studio-envoy:10000`（本番と同じく envoy 経由で確認する）
 - `@playwright/test` と compose の Playwright イメージ・`run-server` のバージョンは一致させる
 - テストは tests/fixtures.ts の `test` / `expect` を使う。テストごとに `X-Forwarded-For` で別の IP を名乗り、本番モードのレート制限（ログインは同じ IP から 10 秒に 3 回）でほかのテストと枠を共有しないようにしている。名乗った IP が効くのは、テスト用の環境だけにある中継役用の入口（envoy の 10001。`PLAYWRIGHT_BASE_URL`）を通るとき。公開の入口は `PLAYWRIGHT_PUBLIC_URL`
 - `make test` のテスト用のオペレーターは seed（operator@example.com。パスワード付き・確認済み）。ほかのアカウントはテストの中でサインアップし、Mailpit の確認のメールで確認する（tests/account.ts）
@@ -84,12 +84,12 @@
 
 - better-auth は標準の範囲で使う（独自の項目・独自の認証処理は作らない）。メールアドレス + パスワード。サインアップはメールアドレスの確認つき（`requireEmailVerification`）
 - JWT の issuer / audience は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須）で渡し、core の設定と一致させる。core は (iss, sub) で operator を識別するため、運用を始めた環境では issuer を変えない
-- 誰をオペレーターにするか・権限は core が決める。better-auth に任せるのは、確認つきのサインアップ・ログイン・パスワードの再設定だけ。Admin プラグイン・role は使わない（cms#12）
+- 誰をオペレーターにするか・権限は core が決める。better-auth に任せるのは、確認つきのサインアップ・ログイン・パスワードの再設定だけ。Admin プラグイン・role は使わない（studio#12）
 - JWT には `definePayload` で `email`・`email_verified` だけを足す（core が初めてのログインでオペレーターに紐づけるのに使う）。メールアドレスの変更（changeEmail）は有効にしない（紐づけの前提が崩れる）
 - better-auth の `name` は空文字にし、表示・メールに使わない
 - lib/auth.ts とそこから読むファイル（lib/mail.ts）は、seed・better-auth の CLI が Node.js で直接読むため、パスの別名（`@/`）を使わず相対パス（`./mail.ts`）で import する（別名だと CLI が「server-only を外せ」という紛らわしいエラーを出す）
 - メールは lib/mail.ts の `sendMail` だけで送る。better-auth の送信の関数では送信を await しない（登録の有無で応答時間が変わるため。公式の注意）
-- 利用者の IP は envoy が上書きで入れる `x-client-ip` だけを見る（`advanced.ipAddress.ipAddressHeaders`）。cms の 3000 番を公開しない（直接届くと偽装できる）。中継役用の入口（local/envoy/relay-listener.yaml）は compose.test.yaml でだけ重ね、開発用・リリース版の環境に置かない
+- 利用者の IP は envoy が上書きで入れる `x-client-ip` だけを見る（`advanced.ipAddress.ipAddressHeaders`）。studio の 3000 番を公開しない（直接届くと偽装できる）。中継役用の入口（local/envoy/relay-listener.yaml）は compose.test.yaml でだけ重ね、開発用・リリース版の環境に置かない
 - レート制限の回数は DB（`rateLimit.storage: "database"`）で数える。テストのためにレート制限を無効にする設定は作らない
 - secret（BETTER_AUTH_SECRET）はそのまま変えると jwks を復号できず 500 になる。変えるときは README の手順に従う
 - lib/auth.ts は公式チュートリアルどおり、読み込み時に betterAuth を作る。next build 中は環境変数を渡さないため、better-auth が「Base URL is not set」（警告）と「default secret」（エラーのログ）を出すが、ビルドは成功し、実行時はコンテナの環境変数が使われる

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "cms",
+  title: "studio",
   description: "カルドセプト風ブラウザゲームの管理画面",
 };
 
