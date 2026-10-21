@@ -1,6 +1,6 @@
 # studio が前提にする core の版。make gen-api（スキーマの取り出し）と make test（テスト用の core）で使う。
 # 上げるときは make gen-api をやり直し、graphql/ の差分と一緒にコミットする（studio#14）
-CORE_VERSION := v0.10.0
+CORE_VERSION := v0.12.0
 
 # 環境管理
 
