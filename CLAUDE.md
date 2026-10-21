@@ -11,9 +11,10 @@
 
 | パス | 責務 |
 |---|---|
-| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く |
+| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts） |
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
+| lib/card-type.ts・lib/format.ts・lib/search-params.ts | 画面で共通に使う、カードの種類（絞り込みの選択肢・表示名）、日時の表示、ページの searchParams の読み方 |
 | lib/core.ts | core の GraphQL を、ログイン中のオペレーターとして呼ぶ（`callCore`。サーバーだけ）。JWT は `auth.api.getToken({ headers })` でセッションの Cookie からもらう。core に届かない（502・503・504・つながらない・10 秒の時間切れ）ときは投げずに `{ ok: false, reason: "unavailable" }` を返し、401 はログイン画面へ移す |
 | graphql | `make gen-api` の生成物（`schema.graphql` は前提にする版の core のイメージから取り出した studio 用のスキーマ、ほかは graphql-codegen の型）。手で直さない。biome の対象から外している |
 | codegen.ts・.graphqlrc.yaml | graphql-codegen の設定と、VSCode の GraphQL の拡張の設定（どちらも graphql/schema.graphql と app・lib の操作を指す） |
@@ -57,6 +58,7 @@
 - 更新の間: 絞り込み・ページの移動は Transition の中で行い、前の表示を残したまま次を待つ。素早い入力（名前の検索等）には `useDeferredValue` を使う
 - 先に見せる: 変更の結果を先に見せるときは `useOptimistic` を使う
 - 誤り: 想定内の誤り（入力の誤り・名前の重複・権限なし）は core の結果の型として表示し、想定外の誤りはエラーの境界（`error.tsx`）で受ける
+- 版（revision）: 変える・消す操作は、画面で見た版を隠し項目で送る（利用者には見せない）。core の操作の結果は id と revision だけで、詳細は投影から読むため、Server Action は詳細が結果の revision に届くまで読み直してから `refresh`・`redirect` で出し直す（届く前に出し直すと、古い版のまま次の操作をして「先に変えられた」になる。例: app/preset-decks/wait-preset-deck.ts。studio#20）。「先に変えられた」は、変えずに `refresh` で最新を出し直して知らせる。入力した値・確認の表示は、入力したときの版に結びつけ、版が変わったら残さない
 - React Compiler に任せ、手動のメモ化（`useMemo`・`useCallback`・`React.memo`）を書かない。`forwardRef` を使わない（`ref` は普通の prop）。非推奨の警告が出たら、今の推奨の書き方に直す
 - better-auth のクライアントを呼ぶ認証の画面（ログイン等）は、ブラウザで Cookie を受け取る形のため、今の形（`authClient` と `useState`）のままにする
 

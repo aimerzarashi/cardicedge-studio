@@ -6,7 +6,10 @@ import type {
   CardsQueryVariables,
   CardType,
 } from "@/graphql/graphql";
+import { CARD_TYPE_LABELS, CARD_TYPES, isCardType } from "@/lib/card-type";
 import { type CoreResult, callCore } from "@/lib/core";
+import { dateTimeFormat } from "@/lib/format";
+import { all, first } from "@/lib/search-params";
 
 const cardsQuery = graphql(`
   query Cards($filter: CardFilter, $after: String) {
@@ -30,46 +33,6 @@ const cardsQuery = graphql(`
     }
   }
 `);
-
-const CARD_TYPES: { value: CardType; label: string }[] = [
-  { value: "CREATURE", label: "クリーチャー" },
-  { value: "ITEM", label: "アイテム" },
-  { value: "SPELL", label: "スペル" },
-];
-
-type CardNode = Extract<
-  CardsQuery["cards"],
-  { __typename: "CardConnection" }
->["edges"][number]["node"];
-
-// Record<string, string> にしないのは、種類（Spell 等）が一覧の node に加わったときに足し忘れると、
-// 型検査に引っかからず種類の欄が黙って空になるため
-const TYPE_LABELS: Record<CardNode["__typename"], string> = {
-  Creature: "クリーチャー",
-  Item: "アイテム",
-  Spell: "スペル",
-};
-
-const dateTimeFormat = new Intl.DateTimeFormat("ja-JP", {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "Asia/Tokyo",
-});
-
-function first(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function all(value: string | string[] | undefined): string[] {
-  if (value === undefined) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
-}
-
-function isCardType(value: string): value is CardType {
-  return CARD_TYPES.some((type) => type.value === value);
-}
 
 // 条件は URL に持つ（再読み込み・共有で同じ一覧に戻るため）
 function pageURL(name: string, types: CardType[], after?: string): string {
@@ -189,7 +152,7 @@ function CardsResult({
                 {cards.edges.map(({ node }) => (
                   <tr key={node.id}>
                     <td>{node.name}</td>
-                    <td>{TYPE_LABELS[node.__typename]}</td>
+                    <td>{CARD_TYPE_LABELS[node.__typename]}</td>
                     <td>
                       {dateTimeFormat.format(new Date(node.registeredAt))}
                     </td>

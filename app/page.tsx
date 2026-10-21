@@ -30,6 +30,9 @@ export default async function Home() {
         <li>
           <Link href="/spells/new">Spell を登録</Link>
         </li>
+        <li>
+          <Link href="/preset-decks">プリセットデッキの一覧</Link>
+        </li>
       </ul>
       <LogoutButton />
     </main>

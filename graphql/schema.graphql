@@ -105,11 +105,59 @@ type Creature implements Card {
 """
 scalar DateTime
 """
+デッキに入れたカードと枚数
+"""
+type DeckCard {
+	"""
+	カード
+	"""
+	card: Card!
+	"""
+	枚数（1〜4）
+	"""
+	count: Int!
+}
+"""
+プリセットデッキを削除する入力
+"""
+input DeletePresetDeckInput {
+	"""
+	プリセットデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたプリセットデッキの revision
+	"""
+	revision: Int!
+}
+"""
+プリセットデッキの削除の結果
+"""
+union DeletePresetDeckResult = DeletePresetDeckSuccess | PresetDeckNotFoundError | RevisionConflictError | ForbiddenError
+"""
+プリセットデッキを削除した（名前はほかのプリセットデッキが使えるようになる）
+"""
+type DeletePresetDeckSuccess {
+	"""
+	削除したプリセットデッキの公開用の ID
+	"""
+	id: UUID!
+}
+"""
+一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
+"""
+type FieldDuplicated implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: cards.2.cardId）
+	"""
+	field: String!
+}
+"""
 入力の項目ごとの誤り。理由は __typename で見分ける
 """
 interface FieldError {
 	"""
-	誤りのある入力の項目（GraphQL の引数・入力の項目名と同じ。入れ子の入力は filter.nameContains のように . でつなぐ）
+	誤りのある入力の項目（GraphQL の引数・入力の項目名と同じ。入れ子の入力は filter.nameContains、一覧の中は cards.0.cardId のように . でつなぐ）
 	"""
 	field: String!
 }
@@ -117,6 +165,15 @@ interface FieldError {
 入力の形が正しくない（メールアドレスとして読めない、ページの位置（カーソル）が読めない等）
 """
 type FieldInvalidFormat implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+}
+"""
+入力の ID が指すもの（プリセットデッキに入れるカード等）が無い
+"""
+type FieldNotFound implements FieldError {
 	"""
 	誤りのある入力の項目
 	"""
@@ -158,6 +215,32 @@ type FieldTooLong implements FieldError {
 	field: String!
 	"""
 	上限の文字数
+	"""
+	max: Int!
+}
+"""
+合計がちょうど決まった値でない（スターターデッキセットに写すプリセットデッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
+"""
+type FieldTotalMismatch implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	合計の決まった値
+	"""
+	required: Int!
+}
+"""
+入力を当てた後の合計（プリセットデッキのカードの枚数の合計等）が上限を超える（入力の値そのものではなく、今の状態と合わせた結果の誤り）
+"""
+type FieldTotalTooLarge implements FieldError {
+	"""
+	誤りのある入力の項目（一覧全体の結果のときは一覧の項目名。例: cards）
+	"""
+	field: String!
+	"""
+	合計の上限
 	"""
 	max: Int!
 }
@@ -211,6 +294,42 @@ type Mutation {
 		input: RegisterItemInput!
 	): RegisterItemResult!
 	"""
+	プリセットデッキを登録する（紐づいたオペレーターだけ）
+	"""
+	registerPresetDeck(
+		"""
+		登録するプリセットデッキ
+		"""
+		input: RegisterPresetDeckInput!
+	): RegisterPresetDeckResult!
+	"""
+	プリセットデッキの名前を変える（紐づいたオペレーターだけ）
+	"""
+	renamePresetDeck(
+		"""
+		変える内容
+		"""
+		input: RenamePresetDeckInput!
+	): RenamePresetDeckResult!
+	"""
+	プリセットデッキのカードの枚数を変える（紐づいたオペレーターだけ）
+	"""
+	setPresetDeckCardCounts(
+		"""
+		変える内容
+		"""
+		input: SetPresetDeckCardCountsInput!
+	): SetPresetDeckCardCountsResult!
+	"""
+	プリセットデッキを削除する（紐づいたオペレーターだけ）
+	"""
+	deletePresetDeck(
+		"""
+		削除するプリセットデッキ
+		"""
+		input: DeletePresetDeckInput!
+	): DeletePresetDeckResult!
+	"""
 	スペルを登録する（紐づいたオペレーターだけ）
 	"""
 	registerSpell(
@@ -219,6 +338,15 @@ type Mutation {
 		"""
 		input: RegisterSpellInput!
 	): RegisterSpellResult!
+	"""
+	選んだプリセットデッキの中身を写して、スターターデッキセットを設定する（初めての設定・選び直し・写し直しのどれも。紐づいたオペレーターだけ）
+	"""
+	setStarterDeckSet(
+		"""
+		設定する内容
+		"""
+		input: SetStarterDeckSetInput!
+	): SetStarterDeckSetResult!
 }
 """
 ページの情報
@@ -241,6 +369,113 @@ type PageInfo {
 	"""
 	endCursor: String
 }
+"""
+プリセットデッキ
+"""
+type PresetDeck {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く）
+	"""
+	name: String!
+	"""
+	入れたカードと枚数（カードの一覧と同じ並び: 種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
+	"""
+	cards: [DeckCard!]!
+	"""
+	カードの枚数の合計
+	"""
+	totalCount: Int!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+変えるカードと、その枚数
+"""
+input PresetDeckCardCountInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	cardId: UUID!
+	"""
+	その枚数にする（0〜4。0 にするとデッキから外す）
+	"""
+	count: Int!
+}
+"""
+プリセットデッキの一覧の 1 ページ（名前の順）
+"""
+type PresetDeckConnection {
+	"""
+	このページのプリセットデッキ
+	"""
+	edges: [PresetDeckEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+プリセットデッキの一覧の 1 件と、その位置
+"""
+type PresetDeckEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	プリセットデッキ
+	"""
+	node: PresetDeck!
+}
+"""
+プリセットデッキの一覧の絞り込み
+"""
+input PresetDeckFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+}
+"""
+名前が、ほかのプリセットデッキですでに使われている。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type PresetDeckNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+プリセットデッキが無い（削除したものを含む）
+"""
+type PresetDeckNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+プリセットデッキの詳細の結果
+"""
+union PresetDeckResult = PresetDeck | PresetDeckNotFoundError | ForbiddenError
+"""
+プリセットデッキの一覧の結果
+"""
+union PresetDecksResult = PresetDeckConnection | ValidationErrors | ForbiddenError
 type Query {
 	"""
 	core の版（リリースのタグ。開発中は none）
@@ -265,6 +500,38 @@ type Query {
 		"""
 		after: String
 	): CardsResult!
+	"""
+	プリセットデッキの一覧（紐づいたオペレーターだけ）
+	"""
+	presetDecks(
+		"""
+		絞り込み
+		"""
+		filter: PresetDeckFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): PresetDecksResult!
+	"""
+	プリセットデッキの詳細（紐づいたオペレーターだけ）
+	"""
+	presetDeck(
+		"""
+		プリセットデッキの公開用の ID
+		"""
+		id: UUID!
+	): PresetDeckResult!
+	"""
+	スターターデッキセット（紐づいたオペレーターだけ。ゲーム全体で 1 つなので引数は無い）
+	"""
+	starterDeckSet: StarterDeckSetResult!
 }
 """
 クリーチャーを登録する入力
@@ -311,6 +578,32 @@ type RegisterItemSuccess {
 	item: Item!
 }
 """
+プリセットデッキを登録する入力
+"""
+input RegisterPresetDeckInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+プリセットデッキの登録の結果
+"""
+union RegisterPresetDeckResult = RegisterPresetDeckSuccess | ValidationErrors | PresetDeckNameAlreadyInUseError | ForbiddenError
+"""
+プリセットデッキを登録した
+"""
+type RegisterPresetDeckSuccess {
+	"""
+	登録したのプリセットデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録したの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 スペルを登録する入力
 """
 input RegisterSpellInput {
@@ -333,6 +626,109 @@ type RegisterSpellSuccess {
 	spell: Spell!
 }
 """
+プリセットデッキの名前を変える入力
+"""
+input RenamePresetDeckInput {
+	"""
+	プリセットデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたプリセットデッキの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+プリセットデッキの名前の変更の結果
+"""
+union RenamePresetDeckResult = RenamePresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | PresetDeckNameAlreadyInUseError | RevisionConflictError | ForbiddenError
+"""
+プリセットデッキの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenamePresetDeckSuccess {
+	"""
+	変えたのプリセットデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+先に変えられた（画面を開いた後に、ほかの操作でこの対象が変わった。操作は行われていない）。読み直してから操作し直す
+"""
+type RevisionConflictError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+プリセットデッキのカードの枚数を変える入力
+"""
+input SetPresetDeckCardCountsInput {
+	"""
+	プリセットデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたプリセットデッキの revision
+	"""
+	revision: Int!
+	"""
+	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り）
+	"""
+	cards: [PresetDeckCardCountInput!]!
+}
+"""
+プリセットデッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない）
+"""
+union SetPresetDeckCardCountsResult = SetPresetDeckCardCountsSuccess | ValidationErrors | PresetDeckNotFoundError | RevisionConflictError | ForbiddenError
+"""
+プリセットデッキのカードの枚数を変えた（1 回の操作で revision は 1 つ進む。何も変わらなければ進まない）
+"""
+type SetPresetDeckCardCountsSuccess {
+	"""
+	変えたのプリセットデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターデッキセットを設定する入力
+"""
+input SetStarterDeckSetInput {
+	"""
+	画面が見ていたスターターデッキセットの revision（未設定なら 0）
+	"""
+	revision: Int!
+	"""
+	写すプリセットデッキの公開用の ID（ちょうど 2 つ。違うもの。どれも合計がちょうど 40 枚。順番は問わない）
+	"""
+	presetDeckIds: [UUID!]!
+}
+"""
+スターターデッキセットの設定の結果
+"""
+union SetStarterDeckSetResult = SetStarterDeckSetSuccess | ValidationErrors | RevisionConflictError | ForbiddenError
+"""
+スターターデッキセットを設定した（写す中身が今と全部同じなら何も変えず、revision も進まない）
+"""
+type SetStarterDeckSetSuccess {
+	"""
+	設定した後の revision（内容は返さない。画面は読み直し、読み直した revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 スペル（カードの種類の 1 つ）
 """
 type Spell implements Card {
@@ -352,6 +748,61 @@ type Spell implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+スターターデッキ（プリセットデッキから写した中身）
+"""
+type StarterDeck {
+	"""
+	名前（写したときのプリセットデッキの名前）
+	"""
+	name: String!
+	"""
+	写したカードと枚数（カードの一覧と同じ並び）
+	"""
+	cards: [DeckCard!]!
+	"""
+	どのプリセットデッキの、どの時点から写したか
+	"""
+	source: StarterDeckSource!
+}
+"""
+スターターデッキセット（まだ設定していなければ、decks は空・revision は 0・updatedAt は null）
+"""
+type StarterDeckSet {
+	"""
+	スターターデッキ（元のプリセットデッキの公開 ID の順）
+	"""
+	decks: [StarterDeck!]!
+	"""
+	更新の番号（画面が見ていた版。設定の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	最後に設定した日時
+	"""
+	updatedAt: DateTime
+}
+"""
+スターターデッキセットの結果
+"""
+union StarterDeckSetResult = StarterDeckSet | ForbiddenError
+"""
+写した元
+"""
+type StarterDeckSource {
+	"""
+	元のプリセットデッキの公開用の ID（消されていることもある）
+	"""
+	presetDeckId: UUID!
+	"""
+	写したときの、元のプリセットデッキの revision
+	"""
+	revision: Int!
+	"""
+	写した後に、元のプリセットデッキが変わっている（設定し直すと反映される）
+	"""
+	changedSinceCopied: Boolean!
 }
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
