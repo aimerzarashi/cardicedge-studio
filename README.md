@@ -62,7 +62,7 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 
 | パイプライン | ジョブ | 内容 |
 |---|---|---|
-| マイルストーンのブランチに向かう MR（Issue の MR） | issue-mr | 何もしない（busybox で、リポジトリも取ってこない） |
+| マイルストーンのブランチに向かう MR（Issue の MR） | issue-mr（手動。実行しない） | 何もしない。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる |
 | main に向かう MR（マイルストーンの MR） | lint | `make lint` 相当 |
 | main に向かう MR | test | migrations を空の DB に Atlas で適用し、better-auth の設定とスキーマに差分が無いことを確かめる（Playwright のテストは CI では未実行） |
 | main に向かう MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後） |
@@ -72,7 +72,7 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 本番用イメージは Next.js の standalone 出力を `node server.js` で動かす（`.build/Dockerfile`）。
 バージョンは Conventional Commits で決まる（`feat:` → マイナー、`fix:` / `perf:` → パッチ、`BREAKING CHANGE` → メジャー）。
 
-Issue の MR では、何もしないジョブだけを動かす（lint・test は手元の `make lint`・`make test` で確かめる。パイプラインを作らないと「パイプラインが成功する必要がある」の設定でマージできず、その設定は main に向かう MR の歯止めとして残すため）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため。main は直接 push できない設定にしている）。共有 Runner の時間を減らすため（core#30・studio#22）。
+Issue の MR では、何もしない手動のジョブだけを置いて実行しない（lint・test は手元の `make lint`・`make test` で確かめる。パイプラインを作らないと「パイプラインが成功する必要がある」の設定でマージできず、その設定は main に向かう MR の歯止めとして残すため）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため。main は直接 push できない設定にしている）。共有 Runner の時間を減らすため（core#30・studio#22）。
 
 ## 認証（better-auth）
 
