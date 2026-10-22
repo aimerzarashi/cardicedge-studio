@@ -1,47 +1,16 @@
 import type { Page } from "@playwright/test";
-import { loginAsOperator, registerCreature, uniqueName } from "./card";
+import { loginAsOperator, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
-
-async function registerPresetDeck(page: Page, name: string) {
-  await page.goto("/preset-decks/new");
-  await page.getByLabel("名前").fill(name);
-  await page.getByRole("button", { name: "登録する" }).click();
-}
-
-// 登録すると、詳細に反映されてから詳細の画面に移る
-async function registerAndOpen(page: Page, name: string) {
-  await registerPresetDeck(page, name);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-}
-
-function section(page: Page, heading: string) {
-  return page.getByRole("region", { name: heading });
-}
+import {
+  registerAndOpen,
+  registerCreatures,
+  registerPresetDeck,
+  searchCards,
+  section,
+} from "./preset-deck";
 
 function deckRows(page: Page) {
   return page.locator("tbody tr");
-}
-
-async function registerCreatures(page: Page, names: string[]) {
-  for (const name of names) {
-    await registerCreature(page, name);
-    await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
-  }
-}
-
-// カードの一覧は投影されてから出るため、出るまで絞り込み直す
-async function searchCards(
-  page: Page,
-  deckURL: string,
-  name: string,
-  count: number,
-) {
-  await expect(async () => {
-    await page.goto(`${deckURL}?name=${encodeURIComponent(name)}`);
-    await expect(section(page, "カードを探す").locator("tbody tr")).toHaveCount(
-      count,
-    );
-  }).toPass();
 }
 
 test("登録すると詳細の画面に移り、一覧に合計 0 枚で出る", async ({ page }) => {
