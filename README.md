@@ -46,11 +46,11 @@ core・game から studio に envoy を通らずに直接届くと、`x-client-i
 - core から studio（JWKS 等）を呼ぶときも、studio-envoy（`http://studio-envoy:10000/api/auth/jwks`）を通す
 core は game / studio で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
 
-studio が前提にする core の版は Makefile の `CORE_VERSION` に書く。`make gen-api` はその版のイメージから studio 用 GraphQL のスキーマを取り出し（`docker run --rm diecardomain/core:<版> schema studio`）、graphql-codegen で型を作る（生成物 graphql/ はコミットする）。
+studio が前提にする core の版は Makefile の `CORE_VERSION` に書く。`make gen-api` はその版のイメージから studio 用 GraphQL のスキーマを取り出し（`docker run --rm diecardomain/core:<版> schema studio`）、graphql-codegen で型を作る（生成物 graphql/ はコミットする）。マイルストーンの途中で、まだリリースしていない core を使うときは、`make core-local` で手元の ../core から `local` の版のイメージを作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` で使う（Makefile の `CORE_VERSION` は local にしない。studio#23）。
 
 ### テスト用環境（compose.test.yaml）
 
-`make test` はプロジェクト名 `studio-test` で、専用の core・DB（`CORE_VERSION` のリリース済みのイメージ）と本番用イメージ（`.build/Dockerfile`）の studio を起動し、終了後に破棄する。テストは開発用イメージの studio-test-runner から実行する。
+`make test` はプロジェクト名 `studio-test` で、専用の core・DB（`CORE_VERSION` のイメージ。ふだんはリリース済みの版、マイルストーンの途中は `local` も使える）と本番用イメージ（`.build/Dockerfile`）の studio を起動し、終了後に破棄する。テストは開発用イメージの studio-test-runner から実行する。
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
 
 ### Tunnel（任意）

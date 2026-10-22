@@ -1,6 +1,6 @@
 # コマンド
 
-- `make up` / `make down` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
+- `make up` / `make down` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make core-local` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
 - `make up` は先に `../core` の `make up` を実行する。`make down` は studio だけを止める（core は止めない）
 - pnpm・node はコンテナ内で実行する（例: `docker compose exec studio pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
 - lint は `make lint`（biome check、`pnpm typecheck`、scripts/check-migrations.sh、scripts/check-auth-schema.sh）でファイルを書き換えない。typecheck は `next typegen` で Next.js の型（LayoutProps 等）を生成してから tsc を実行する。フォーマットの修正は `make fmt`（biome format --write）
@@ -66,13 +66,14 @@
 
 - 共有ネットワーク `diecardomain` に参加するのは studio-envoy だけ。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
 - envoy は `/studio/graphql` を core に転送する（core が止まっていれば 503）
-- studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（core の変更を使うには、core をリリースしてから上げる。studio#14）
+- studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（studio#14）
+- マイルストーンの途中で、まだリリースしていない core の変更を使うときは、`make core-local` で手元の ../core から `diecardomain/core:local`・`core-migrate:local` をリリースと同じ Dockerfile で作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` のように引数で渡す。Makefile の `CORE_VERSION` は local にしない（コミットした Makefile が手元にしか無いイメージを指さないようにするため）。マイルストーンの MR の前に、core のリリースした版に `CORE_VERSION` を固定して `make gen-api`（差分が無いこと）と `make test` をやり直す（作業の進め方を、マイルストーンの終わりに core をリリースする形に変えたため。studio#23）
 - 開発の環境（`make up`）の core は、ルートの決まり（core は 1 つを共有する）のため ../core のソースから動く。`CORE_VERSION` とずれることはありうる
 - core の宛先は環境変数 `CORE_GRAPHQL_URL`（studio-envoy の `/studio/graphql`）
 
 # テスト
 
-- `make test` は compose.test.yaml（プロジェクト名 studio-test）で専用の core・DB・本番用イメージの studio を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない。core は ../core のソースではなく、`CORE_VERSION` のリリース済みのイメージ（`diecardomain/core`・`core-migrate`）を使う（手元の ../core のブランチしだいで、前提と違う core でテストしないため）
+- `make test` は compose.test.yaml（プロジェクト名 studio-test）で専用の core・DB・本番用イメージの studio を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない。core は ../core のソースではなく、`CORE_VERSION` のイメージ（`diecardomain/core`・`core-migrate`）を使う。ふだんはリリース済みの版（手元の ../core のブランチしだいで、前提と違う core でテストしないため）。マイルストーンの途中だけ、`CORE_VERSION=local` で `make core-local` のイメージを使い、マイルストーンの MR の前にリリースした版でやり直す（studio#23）
 - core を呼ぶテストは並列に動き、core の DB を共有するため、カード名等にテストごとに一意の値を付ける。core に届かないときの表示・error.tsx・次のページへのリンクは自動のテストにせず、テスト用の環境で画面で確かめて MR に書く（途中で core を止めると並列のテストに響く・50 件を超えるデータが要るため）
 - テストは開発用イメージの studio-test-runner（profile: runner）から `docker compose run` で実行する。本番用イメージにはテストコードを含めない
 - Playwright のブラウザは studio-playwright コンテナ（公式イメージ）で動く。studio コンテナから `run-server` に接続して実行する
