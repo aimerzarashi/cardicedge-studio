@@ -122,7 +122,12 @@ services:
     init: true
     user: pwuser
     working_dir: /home/pwuser
-    command: ["npx", "-y", "playwright@1.63.0", "run-server", "--port", "3000", "--host", "0.0.0.0"]
+    # Playwright は studio の node_modules（package.json の @playwright/test）のものを使う。npx で起動のたびに npm から
+    # 取ってくると、npm に届かないときにサーバーが立たず、版も package.json と二重に書くことになるため（studio#25）。
+    # node_modules/.bin/playwright は pnpm がホストのパスを書いたスクリプトなので使わず、cli.js を node で起動する
+    volumes:
+      - ./node_modules:/home/pwuser/node_modules:ro
+    command: ["node", "node_modules/@playwright/test/cli.js", "run-server", "--port", "3000", "--host", "0.0.0.0"]
     # make up (--wait) で、サーバーが接続を受け付けるまで待つ
     healthcheck:
       test: ["CMD", "node", "-e", "require('net').connect(3000,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]

@@ -78,7 +78,7 @@
 - テストは開発用イメージの studio-test-runner（profile: runner）から `docker compose run` で実行する。本番用イメージにはテストコードを含めない
 - Playwright のブラウザは studio-playwright コンテナ（公式イメージ）で動く。studio コンテナから `run-server` に接続して実行する
 - baseURL は `http://studio-envoy:10000`（本番と同じく envoy 経由で確認する）
-- `@playwright/test` と compose の Playwright イメージ・`run-server` のバージョンは一致させる
+- `run-server` は studio の node_modules の `@playwright/test` を Playwright のコンテナに読み取り専用で渡して起動する（npx で起動のたびに npm から取ってこない。npm に届かないとサーバーが立たないため。studio#25）。`@playwright/test`（package.json）と compose の Playwright イメージのバージョンは一致させる
 - テストは tests/fixtures.ts の `test` / `expect` を使う。テストごとに `X-Forwarded-For` で別の IP を名乗り、本番モードのレート制限（ログインは同じ IP から 10 秒に 3 回）でほかのテストと枠を共有しないようにしている。名乗った IP が効くのは、テスト用の環境だけにある中継役用の入口（envoy の 10001。`PLAYWRIGHT_BASE_URL`）を通るとき。公開の入口は `PLAYWRIGHT_PUBLIC_URL`
 - `make test` のテスト用のオペレーターは seed（operator@example.com。パスワード付き・確認済み）。ほかのアカウントはテストの中でサインアップし、Mailpit の確認のメールで確認する（tests/account.ts）
 - メールは Mailpit が受け止め、テストは Mailpit の API で読む（tests/mail.ts）。メールのリンクのホスト名は BETTER_AUTH_URL のため、パスだけを使う（開発用の環境では localhost:3001 で、ブラウザのコンテナから届かない）
