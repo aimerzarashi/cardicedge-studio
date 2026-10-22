@@ -1,5 +1,8 @@
 # studio が前提にする core の版。make gen-api（スキーマの取り出し）と make test（テスト用の core）で使う。
-# 上げるときは make gen-api をやり直し、graphql/ の差分と一緒にコミットする（studio#14）
+# 上げるときは make gen-api をやり直し、graphql/ の差分と一緒にコミットする（studio#14）。
+# マイルストーンの途中で、まだリリースしていない core を使うときは、make core-local で作ったイメージを
+# make gen-api CORE_VERSION=local のように引数で渡す（ここを local にしない。コミットした Makefile が、手元にしか無い
+# イメージを指さないようにするため。studio#23）
 CORE_VERSION := v0.12.0
 
 # 環境管理
@@ -59,6 +62,13 @@ migrate-generate:
 	if [ -f $$file ]; then $(MAKE) migrate-hash; else echo "差分が無いためファイルは作っていない"; fi
 
 # 開発ツール
+
+# 手元の ../core から、core と core-migrate のイメージを local という版の名前で作る（Docker Hub には push しない）。
+# リリースと同じ Dockerfile で作るのは、本番と同じ作りのイメージで gen-api・test を通すため（開発用の air で動かす core とは中身が違う）
+.PHONY: core-local
+core-local:
+	docker build --pull --build-arg BUILD_VERSION=local -t diecardomain/core:local -f ../core/.build/Dockerfile ../core
+	docker build --pull -t diecardomain/core-migrate:local -f ../core/local/migrate/Dockerfile ../core
 
 # 前提にする版の core のイメージから studio 用 GraphQL のスキーマを取り出し（core#22）、それを読んで型を生成する。
 # 生成物（graphql/）はコミットする（CI に core が無くても、ビルドと型の検査が通るように）
