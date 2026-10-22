@@ -595,11 +595,11 @@ union RegisterPresetDeckResult = RegisterPresetDeckSuccess | ValidationErrors | 
 """
 type RegisterPresetDeckSuccess {
 	"""
-	登録したのプリセットデッキの公開用の ID
+	登録したプリセットデッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	登録したの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	登録したプリセットデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -651,11 +651,11 @@ union RenamePresetDeckResult = RenamePresetDeckSuccess | ValidationErrors | Pres
 """
 type RenamePresetDeckSuccess {
 	"""
-	変えたのプリセットデッキの公開用の ID
+	変えたプリセットデッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	変えたの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	変えたプリセットデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -694,11 +694,11 @@ union SetPresetDeckCardCountsResult = SetPresetDeckCardCountsSuccess | Validatio
 """
 type SetPresetDeckCardCountsSuccess {
 	"""
-	変えたのプリセットデッキの公開用の ID
+	変えたプリセットデッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	変えたの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	変えたプリセットデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -800,9 +800,13 @@ type StarterDeckSource {
 	"""
 	revision: Int!
 	"""
-	写した後に、元のプリセットデッキが変わっている（設定し直すと反映される）
+	写した後に、元のプリセットデッキが変わっている（設定し直すと反映される。元が削除されていれば false）
 	"""
 	changedSinceCopied: Boolean!
+	"""
+	元のプリセットデッキが削除されている（設定し直すときは、ほかのプリセットデッキを選ぶ）
+	"""
+	presetDeckDeleted: Boolean!
 }
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
