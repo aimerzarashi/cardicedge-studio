@@ -1,6 +1,6 @@
 # コマンド
 
-- `make up` / `make down` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
+- `make up` / `make down` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make core-local` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
 - `make up` は先に `../core` の `make up` を実行する。`make down` は studio だけを止める（core は止めない）
 - pnpm・node はコンテナ内で実行する（例: `docker compose exec studio pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
 - lint は `make lint`（biome check、`pnpm typecheck`、scripts/check-migrations.sh、scripts/check-auth-schema.sh）でファイルを書き換えない。typecheck は `next typegen` で Next.js の型（LayoutProps 等）を生成してから tsc を実行する。フォーマットの修正は `make fmt`（biome format --write）
@@ -11,11 +11,11 @@
 
 | パス | 責務 |
 |---|---|
-| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts） |
+| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）・`/starter-deck-set`（スターターデッキの照会）・`/starter-deck-set/edit`（変更。選んだプリセットデッキは URL に持つ）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts・app/starter-deck-set/edit-url.ts） |
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
 | lib/card-type.ts・lib/format.ts・lib/search-params.ts | 画面で共通に使う、カードの種類（絞り込みの選択肢・表示名）、日時の表示、ページの searchParams の読み方 |
-| lib/core.ts | core の GraphQL を、ログイン中のオペレーターとして呼ぶ（`callCore`。サーバーだけ）。JWT は `auth.api.getToken({ headers })` でセッションの Cookie からもらう。core に届かない（502・503・504・つながらない・10 秒の時間切れ）ときは投げずに `{ ok: false, reason: "unavailable" }` を返し、401 はログイン画面へ移す |
+| lib/core.ts | core の GraphQL を、ログイン中のオペレーターとして呼ぶ（`callCore`。サーバーだけ。最初に `connection()` を呼び、core を呼ぶ画面をビルドのときに前もって描かせない。studio#21）。JWT は `auth.api.getToken({ headers })` でセッションの Cookie からもらう。core に届かない（502・503・504・つながらない・10 秒の時間切れ）ときは投げずに `{ ok: false, reason: "unavailable" }` を返し、401 はログイン画面へ移す |
 | graphql | `make gen-api` の生成物（`schema.graphql` は前提にする版の core のイメージから取り出した studio 用のスキーマ、ほかは graphql-codegen の型）。手で直さない。biome の対象から外している |
 | codegen.ts・.graphqlrc.yaml | graphql-codegen の設定と、VSCode の GraphQL の拡張の設定（どちらも graphql/schema.graphql と app・lib の操作を指す） |
 | proxy.ts | 未ログインのときにログイン画面へ移す（Next.js 16 の proxy。Cookie の有無だけを見る） |
@@ -66,18 +66,19 @@
 
 - 共有ネットワーク `diecardomain` に参加するのは studio-envoy だけ。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
 - envoy は `/studio/graphql` を core に転送する（core が止まっていれば 503）
-- studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（core の変更を使うには、core をリリースしてから上げる。studio#14）
+- studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（studio#14）
+- マイルストーンの途中で、まだリリースしていない core の変更を使うときは、`make core-local` で手元の ../core から `diecardomain/core:local`・`core-migrate:local` をリリースと同じ Dockerfile で作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` のように引数で渡す。Makefile の `CORE_VERSION` は local にしない（コミットした Makefile が手元にしか無いイメージを指さないようにするため）。マイルストーンの MR の前に、core のリリースした版に `CORE_VERSION` を固定して `make gen-api`（差分が無いこと）と `make test` をやり直す（作業の進め方を、マイルストーンの終わりに core をリリースする形に変えたため。studio#23）
 - 開発の環境（`make up`）の core は、ルートの決まり（core は 1 つを共有する）のため ../core のソースから動く。`CORE_VERSION` とずれることはありうる
 - core の宛先は環境変数 `CORE_GRAPHQL_URL`（studio-envoy の `/studio/graphql`）
 
 # テスト
 
-- `make test` は compose.test.yaml（プロジェクト名 studio-test）で専用の core・DB・本番用イメージの studio を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない。core は ../core のソースではなく、`CORE_VERSION` のリリース済みのイメージ（`diecardomain/core`・`core-migrate`）を使う（手元の ../core のブランチしだいで、前提と違う core でテストしないため）
+- `make test` は compose.test.yaml（プロジェクト名 studio-test）で専用の core・DB・本番用イメージの studio を起動し、終了後に破棄する。開発用環境・開発用 DB には触れない。core は ../core のソースではなく、`CORE_VERSION` のイメージ（`diecardomain/core`・`core-migrate`）を使う。ふだんはリリース済みの版（手元の ../core のブランチしだいで、前提と違う core でテストしないため）。マイルストーンの途中だけ、`CORE_VERSION=local` で `make core-local` のイメージを使い、マイルストーンの MR の前にリリースした版でやり直す（studio#23）
 - core を呼ぶテストは並列に動き、core の DB を共有するため、カード名等にテストごとに一意の値を付ける。core に届かないときの表示・error.tsx・次のページへのリンクは自動のテストにせず、テスト用の環境で画面で確かめて MR に書く（途中で core を止めると並列のテストに響く・50 件を超えるデータが要るため）
 - テストは開発用イメージの studio-test-runner（profile: runner）から `docker compose run` で実行する。本番用イメージにはテストコードを含めない
 - Playwright のブラウザは studio-playwright コンテナ（公式イメージ）で動く。studio コンテナから `run-server` に接続して実行する
 - baseURL は `http://studio-envoy:10000`（本番と同じく envoy 経由で確認する）
-- `@playwright/test` と compose の Playwright イメージ・`run-server` のバージョンは一致させる
+- `run-server` は studio の node_modules の `@playwright/test` を Playwright のコンテナに読み取り専用で渡して起動する（npx で起動のたびに npm から取ってこない。npm に届かないとサーバーが立たないため。studio#25）。`@playwright/test`（package.json）と compose の Playwright イメージのバージョンは一致させる
 - テストは tests/fixtures.ts の `test` / `expect` を使う。テストごとに `X-Forwarded-For` で別の IP を名乗り、本番モードのレート制限（ログインは同じ IP から 10 秒に 3 回）でほかのテストと枠を共有しないようにしている。名乗った IP が効くのは、テスト用の環境だけにある中継役用の入口（envoy の 10001。`PLAYWRIGHT_BASE_URL`）を通るとき。公開の入口は `PLAYWRIGHT_PUBLIC_URL`
 - `make test` のテスト用のオペレーターは seed（operator@example.com。パスワード付き・確認済み）。ほかのアカウントはテストの中でサインアップし、Mailpit の確認のメールで確認する（tests/account.ts）
 - メールは Mailpit が受け止め、テストは Mailpit の API で読む（tests/mail.ts）。メールのリンクのホスト名は BETTER_AUTH_URL のため、パスだけを使う（開発用の環境では localhost:3001 で、ブラウザのコンテナから届かない）

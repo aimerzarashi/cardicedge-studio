@@ -46,11 +46,11 @@ core・game から studio に envoy を通らずに直接届くと、`x-client-i
 - core から studio（JWKS 等）を呼ぶときも、studio-envoy（`http://studio-envoy:10000/api/auth/jwks`）を通す
 core は game / studio で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
 
-studio が前提にする core の版は Makefile の `CORE_VERSION` に書く。`make gen-api` はその版のイメージから studio 用 GraphQL のスキーマを取り出し（`docker run --rm diecardomain/core:<版> schema studio`）、graphql-codegen で型を作る（生成物 graphql/ はコミットする）。
+studio が前提にする core の版は Makefile の `CORE_VERSION` に書く。`make gen-api` はその版のイメージから studio 用 GraphQL のスキーマを取り出し（`docker run --rm diecardomain/core:<版> schema studio`）、graphql-codegen で型を作る（生成物 graphql/ はコミットする）。マイルストーンの途中で、まだリリースしていない core を使うときは、`make core-local` で手元の ../core から `local` の版のイメージを作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` で使う（Makefile の `CORE_VERSION` は local にしない。studio#23）。
 
 ### テスト用環境（compose.test.yaml）
 
-`make test` はプロジェクト名 `studio-test` で、専用の core・DB（`CORE_VERSION` のリリース済みのイメージ）と本番用イメージ（`.build/Dockerfile`）の studio を起動し、終了後に破棄する。テストは開発用イメージの studio-test-runner から実行する。
+`make test` はプロジェクト名 `studio-test` で、専用の core・DB（`CORE_VERSION` のイメージ。ふだんはリリース済みの版、マイルストーンの途中は `local` も使える）と本番用イメージ（`.build/Dockerfile`）の studio を起動し、終了後に破棄する。テストは開発用イメージの studio-test-runner から実行する。
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
 
 ### Tunnel（任意）
@@ -62,14 +62,17 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 
 | パイプライン | ジョブ | 内容 |
 |---|---|---|
-| MR | lint | `make lint` 相当 |
-| MR | test | migrations を空の DB に Atlas で適用し、better-auth の設定とスキーマに差分が無いことを確かめる（Playwright のテストは CI では未実行） |
-| MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後） |
-| main | lint / test / release | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない |
+| マイルストーンのブランチに向かう MR（Issue の MR） | issue-mr（手動。実行しない） | 何もしない。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる |
+| main に向かう MR（マイルストーンの MR） | lint | `make lint` 相当 |
+| main に向かう MR | test | migrations を空の DB に Atlas で適用し、better-auth の設定とスキーマに差分が無いことを確かめる（Playwright のテストは CI では未実行） |
+| main に向かう MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後） |
+| main | release | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない |
 | タグ（`v*`） | deploy | Docker Hub の `diecardomain/studio:<タグ>`・`:latest` と `diecardomain/studio-migrate:<タグ>`・`:latest` に push |
 
 本番用イメージは Next.js の standalone 出力を `node server.js` で動かす（`.build/Dockerfile`）。
 バージョンは Conventional Commits で決まる（`feat:` → マイナー、`fix:` / `perf:` → パッチ、`BREAKING CHANGE` → メジャー）。
+
+Issue の MR では、何もしない手動のジョブだけを置いて実行しない（lint・test は手元の `make lint`・`make test` で確かめる。パイプラインを作らないと「パイプラインが成功する必要がある」の設定でマージできず、その設定は main に向かう MR の歯止めとして残すため）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため。main は直接 push できない設定にしている）。共有 Runner の時間を減らすため（core#30・studio#22）。
 
 ## 認証（better-auth）
 
