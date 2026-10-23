@@ -4,7 +4,9 @@
 #   - 適用済みファイルの変更: atlas.sum を作り直されると apply は黙って通る
 #   - 指示行（-- atlas:txmode none 等）の直後に空行が無い: 指示が無視される
 #   - 適用済みより小さい番号の追加: 空の DB に全部を適用するテストでは通り、本番で初めて out of order で止まる
-# 使い方: scripts/check-migrations.sh [比較元のコミット]（指定したときだけ、そこからの変更・削除・改名を検査する）
+# 使い方: scripts/check-migrations.sh [比較元のコミット]（指定したときだけ、そこからの変更・削除・改名を検査する）。
+# 比較元と migrations/BASELINE の 1 行目が違えば、並びそのものが作り直された（リリース前の例外。core#33）とみなし、
+# 比較元との比べ合わせを飛ばす。同じ並びの中では、今までどおり止める
 set -euo pipefail
 
 dir=migrations
@@ -28,6 +30,16 @@ dups=$(for f in "${files[@]}"; do basename "$f" | cut -d_ -f1; done | sort | uni
 for v in $dups; do
   fail "番号 $v が重複している: $(cd "$dir" && echo "$v"_*.sql)"
 done
+
+baseline=$(head -n1 "$dir/BASELINE" 2>/dev/null || true)
+[[ -n $baseline ]] || fail "BASELINE が無い（1 行目に、並びをどの作り直しから始めたかを書く）"
+if [[ -n $base ]]; then
+  base_baseline=$(git show "$base:$dir/BASELINE" 2>/dev/null | head -n1 || true)
+  if [[ $base_baseline != "$baseline" ]]; then
+    echo "migrations: 比較元とは並びが作り直されている（BASELINE: 比較元「${base_baseline:-なし}」→「$baseline」）ため、比較元との比べ合わせを飛ばす" >&2
+    base=
+  fi
+fi
 
 if [[ -n $base ]]; then
   changed=$(git diff --name-status --diff-filter=MDR "$base" HEAD -- "$dir/*.sql")
