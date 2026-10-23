@@ -27,6 +27,7 @@
 | tests | Playwright のテスト |
 | local/studio | 開発用 Dockerfile |
 | .build | 本番用 Dockerfile（standalone 出力を node で動かす。テスト用環境・CI でも使う） |
+| local/core-db | テスト用の環境（compose.test.yaml）の core-db の初期化（core_game を作る。core のものを使わないのは、../core のブランチしだいで中身が変わるため） |
 | local/envoy | envoy の設定（開発環境・テスト用の環境の入口。relay-listener.yaml はテスト用の環境だけの中継役用の入口） |
 
 # 入口（envoy）
@@ -99,5 +100,5 @@
 - JWT_ISSUER / JWT_AUDIENCE が未設定だと better-auth は黙って BETTER_AUTH_URL を使うため、lib/auth.ts で実行時に必須チェックしている（next build 中は `NEXT_PHASE=phase-production-build` で判定して確かめない）
 - lib/auth.ts は `import "server-only"` でクライアントからの読み込みをビルドエラーにしている。Node.js で直接動かす seed・CLI は `--conditions=react-server` を付けて実行する（付けないと server-only がエラーを投げる）
 - DB のスキーマは better-auth の CLI（`auth migrate`）で直接変えない。`make migrate-generate` で差分 SQL を migrations に出し、Atlas で適用する（core・game と同じ手順・同じ記録にするため）
-- マイグレーションは追加のみ。適用済みのファイルは変更・削除・改名しない。Atlas のバージョンは local/migrate/Dockerfile の FROM を core / game と揃える
+- マイグレーションは追加のみ。適用済みのファイルは変更・削除・改名しない。リリース前に限り並びを作り直してよく、そのときは migrations/BASELINE の 1 行目を書き換える（core と同じ。core#33）。Atlas のバージョンは local/migrate/Dockerfile の FROM を core / game と揃える
 - 環境変数はサーバー側（lib/auth.ts）でだけ読む。`NEXT_PUBLIC_` は使わない（ビルド時に埋め込まれ、コンテナの環境変数で変えられなくなるため）
