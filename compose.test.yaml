@@ -16,6 +16,11 @@ services:
       STUDIO_JWKS_URL: http://studio-envoy:10000/api/auth/jwks
       STUDIO_JWT_ISSUER: diecardomain-studio
       STUDIO_JWT_AUDIENCE: diecardomain-core
+      # game の JWT（core#34 の後の core で必須）。studio のテストでは game を起動しないため JWKS には届かないが、core は届かなくても
+      # 起動する（最初の JWT が来たときに取りに行く）。前提の版の core は読まない（studio#27）
+      GAME_JWKS_URL: http://game-envoy:10000/api/auth/jwks
+      GAME_JWT_ISSUER: diecardomain-game
+      GAME_JWT_AUDIENCE: diecardomain-core
       # seed のオペレーター（scripts/seed.ts）と同じアドレス。ログインして core を呼ぶと紐づく
       STUDIO_INITIAL_OPERATOR_EMAIL: operator@example.com
     healthcheck:
