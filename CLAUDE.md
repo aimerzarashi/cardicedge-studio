@@ -65,7 +65,7 @@
 
 # 統合（core）
 
-- 共有ネットワーク `diecardomain` に参加するのは studio-envoy だけ。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
+- core と共有する studio 用のネットワーク `diecardomain-studio` に参加するのは studio-envoy だけ（game 用の `diecardomain-game` とは分け、game から studio に内部から届く経路を無くす。studio#30）。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
 - envoy は `/studio/graphql` を core に転送する（core が止まっていれば 503）
 - studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（studio#14）
 - マイルストーンの途中で、まだリリースしていない core の変更を使うときは、`make core-local` で手元の ../core から `diecardomain/core:local`・`core-migrate:local` をリリースと同じ Dockerfile で作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` のように引数で渡す。Makefile の `CORE_VERSION` は local にしない（コミットした Makefile が手元にしか無いイメージを指さないようにするため）。マイルストーンの MR の前に、core のリリースした版に `CORE_VERSION` を固定して `make gen-api`（差分が無いこと）と `make test` をやり直す（作業の進め方を、マイルストーンの終わりに core をリリースする形に変えたため。studio#23）

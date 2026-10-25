@@ -39,7 +39,7 @@ cloudflared（任意）───┼─▶ studio-envoy:10000 ─┤
 Playwright のブラウザ ┘                     └─▶ core:3333（/studio/graphql）
 ```
 
-共有ネットワーク `diecardomain` に参加するのは **studio-envoy だけ**で、studio 自身は参加しない（core（../core で `make up`）とは studio-envoy を通してつながる）。
+core と共有する studio 用のネットワーク `diecardomain-studio` に参加するのは **studio-envoy だけ**で（game 用の `diecardomain-game` とは分ける。studio#30）、studio 自身は参加しない（core（../core で `make up`）とは studio-envoy を通してつながる）。
 core・game から studio に envoy を通らずに直接届くと、`x-client-ip` を自由に付けてレート制限をすり抜けられるため（studio#11）。
 
 - studio のサーバーから core を呼ぶときは、studio-envoy の `/studio/graphql`（`http://studio-envoy:10000/studio/graphql`）を通す

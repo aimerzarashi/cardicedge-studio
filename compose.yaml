@@ -35,7 +35,7 @@ services:
       PLAYWRIGHT_PUBLIC_URL: http://studio-envoy:10000
       # Playwright のテストが、届いたメールを Mailpit の API で読む
       PLAYWRIGHT_MAILPIT_URL: http://studio-mailpit:8025
-    # 共有ネットワーク（diecardomain）には参加しない。参加すると core・game から envoy を通らずに直接届き、
+    # 共有ネットワーク（diecardomain-studio）には参加しない。参加すると core・game から envoy を通らずに直接届き、
     # x-client-ip を自由に付けてレート制限をすり抜けられる（studio#11）。core を呼ぶときは studio-envoy の /studio/graphql を通す
     depends_on:
       studio-migrate:
@@ -97,7 +97,7 @@ services:
     # /studio/graphql を core:3333 に転送し、core から studio（JWKS 等）にもここを通って届くよう、共有ネットワークにも参加する
     networks:
       - default
-      - diecardomain
+      - diecardomain-studio
     # イメージに curl が無いため bash の /dev/tcp で admin の /ready を確認する（HTTP/1.0 は 426 になる）
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9901 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q LIVE <&3"]
@@ -140,7 +140,8 @@ services:
 volumes:
   node-cache:
 
-# core / game と共有するネットワーク（core の make up で作成される）。studio 側は studio-envoy だけが参加する
+# core と共有する studio 用のネットワーク（core の make up で作成される）。studio 側は studio-envoy だけが参加する。
+# game 用のネットワーク（diecardomain-game）とは分け、game から studio に内部から届く経路を無くす（studio#30・core#45）
 networks:
-  diecardomain:
+  diecardomain-studio:
     external: true
