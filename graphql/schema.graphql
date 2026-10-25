@@ -11,6 +11,14 @@ interface Card {
 	"""
 	name: String!
 	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: CardStatus!
+	"""
+	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
 	登録した日時
 	"""
 	registeredAt: DateTime!
@@ -57,6 +65,10 @@ input CardFilter {
 	種類（指定が無ければすべて。空のリストは入力の誤り）
 	"""
 	types: [CardType!]
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [CardStatus!]
 }
 """
 カード名が、ほかのカード（Creature・Item・Spell のどれか）ですでに使われている。前後の空白を除き、全角・半角の英数字などを同じ文字とみなして比べる
@@ -66,6 +78,33 @@ type CardNameAlreadyInUseError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
+}
+"""
+カードが無い（公開用の ID に当たるカードが無い。カードでない ID を含む）
+"""
+type CardNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+カードの状態。準備中は自由に変えられ、デッキに入れられず、game に写さない。公開中はデッキに入れられ、game に写す。
+使用不可は新しくデッキに入れられないが、プレイヤーが持っているので game には写す
+"""
+enum CardStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
 }
 """
 カードの種類（一覧の絞り込みに使う）
@@ -91,6 +130,14 @@ type Creature implements Card {
 	カード名（登録したときの表記。前後の空白は除く）
 	"""
 	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: CardStatus!
+	"""
+	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
 	"""
 	登録した日時
 	"""
@@ -118,6 +165,19 @@ type DeckCard {
 	count: Int!
 }
 """
+変えるカードと、その枚数
+"""
+input DeckCardCountInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	cardId: UUID!
+	"""
+	その枚数にする（0〜4。0 にするとデッキから外す）
+	"""
+	count: Int!
+}
+"""
 プリセットデッキを削除する入力
 """
 input DeletePresetDeckInput {
@@ -140,6 +200,32 @@ union DeletePresetDeckResult = DeletePresetDeckSuccess | PresetDeckNotFoundError
 type DeletePresetDeckSuccess {
 	"""
 	削除したプリセットデッキの公開用の ID
+	"""
+	id: UUID!
+}
+"""
+スターターデッキを削除する入力
+"""
+input DeleteStarterDeckInput {
+	"""
+	スターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターデッキの revision
+	"""
+	revision: Int!
+}
+"""
+スターターデッキの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteStarterDeckResult = DeleteStarterDeckSuccess | StarterDeckNotFoundError | StarterDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターデッキを削除した（名前はほかのスターターデッキが使えるようになる）
+"""
+type DeleteStarterDeckSuccess {
+	"""
+	削除したスターターデッキの公開用の ID
 	"""
 	id: UUID!
 }
@@ -219,7 +305,7 @@ type FieldTooLong implements FieldError {
 	max: Int!
 }
 """
-合計がちょうど決まった値でない（スターターデッキセットに写すプリセットデッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
+合計がちょうど決まった値でない（公開するスターターデッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
 """
 type FieldTotalMismatch implements FieldError {
 	"""
@@ -245,9 +331,36 @@ type FieldTotalTooLarge implements FieldError {
 	max: Int!
 }
 """
+入力の ID が指すものが、使えない状態（準備中・使用不可のカード等）。あるが、今の状態では使えない
+"""
+type FieldUnavailable implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: cards.2.cardId）
+	"""
+	field: String!
+}
+"""
 操作する権限が無い（JWT は正しいが、core のオペレーターとして登録されていない等）
 """
 type ForbiddenError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中のカードを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidCardStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中のスターターデッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidStarterDeckStatusTransitionError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
@@ -266,6 +379,14 @@ type Item implements Card {
 	"""
 	name: String!
 	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: CardStatus!
+	"""
+	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
 	登録した日時
 	"""
 	registeredAt: DateTime!
@@ -275,6 +396,24 @@ type Item implements Card {
 	updatedAt: DateTime!
 }
 type Mutation {
+	"""
+	カードを公開中にする（紐づいたオペレーターだけ。準備中・使用不可から）
+	"""
+	publishCard(
+		"""
+		公開するカード
+		"""
+		input: PublishCardInput!
+	): PublishCardResult!
+	"""
+	カードを使用不可にする（紐づいたオペレーターだけ。公開中から）
+	"""
+	retireCard(
+		"""
+		使用不可にするカード
+		"""
+		input: RetireCardInput!
+	): RetireCardResult!
 	"""
 	クリーチャーを登録する（紐づいたオペレーターだけ）
 	"""
@@ -339,14 +478,68 @@ type Mutation {
 		input: RegisterSpellInput!
 	): RegisterSpellResult!
 	"""
-	選んだプリセットデッキの中身を写して、スターターデッキセットを設定する（初めての設定・選び直し・写し直しのどれも。紐づいたオペレーターだけ）
+	スターターデッキを空から登録する（準備中。紐づいたオペレーターだけ）
 	"""
-	setStarterDeckSet(
+	registerStarterDeck(
 		"""
-		設定する内容
+		登録するスターターデッキ
 		"""
-		input: SetStarterDeckSetInput!
-	): SetStarterDeckSetResult!
+		input: RegisterStarterDeckInput!
+	): RegisterStarterDeckResult!
+	"""
+	プリセットデッキから写してスターターデッキを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerStarterDeckFromPresetDeck(
+		"""
+		写す元
+		"""
+		input: RegisterStarterDeckFromPresetDeckInput!
+	): RegisterStarterDeckFromPresetDeckResult!
+	"""
+	スターターデッキの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameStarterDeck(
+		"""
+		変える内容
+		"""
+		input: RenameStarterDeckInput!
+	): RenameStarterDeckResult!
+	"""
+	スターターデッキのカードの枚数を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setStarterDeckCardCounts(
+		"""
+		変える内容
+		"""
+		input: SetStarterDeckCardCountsInput!
+	): SetStarterDeckCardCountsResult!
+	"""
+	スターターデッキを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteStarterDeck(
+		"""
+		削除するスターターデッキ
+		"""
+		input: DeleteStarterDeckInput!
+	): DeleteStarterDeckResult!
+	"""
+	スターターデッキを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishStarterDeck(
+		"""
+		公開するスターターデッキ
+		"""
+		input: PublishStarterDeckInput!
+	): PublishStarterDeckResult!
+	"""
+	スターターデッキを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireStarterDeck(
+		"""
+		使用不可にするスターターデッキ
+		"""
+		input: RetireStarterDeckInput!
+	): RetireStarterDeckResult!
 }
 """
 ページの情報
@@ -401,19 +594,6 @@ type PresetDeck {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
-}
-"""
-変えるカードと、その枚数
-"""
-input PresetDeckCardCountInput {
-	"""
-	カード（Creature・Item・Spell）の公開用の ID
-	"""
-	cardId: UUID!
-	"""
-	その枚数にする（0〜4。0 にするとデッキから外す）
-	"""
-	count: Int!
 }
 """
 プリセットデッキの一覧の 1 ページ（名前の順）
@@ -476,11 +656,67 @@ union PresetDeckResult = PresetDeck | PresetDeckNotFoundError | ForbiddenError
 プリセットデッキの一覧の結果
 """
 union PresetDecksResult = PresetDeckConnection | ValidationErrors | ForbiddenError
+"""
+カードを公開中にする入力
+"""
+input PublishCardInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの revision
+	"""
+	revision: Int!
+}
+"""
+カードを公開中にする操作の結果
+"""
+union PublishCardResult = PublishCardSuccess | CardNotFoundError | RevisionConflictError | InvalidCardStatusTransitionError | ForbiddenError
+"""
+カードを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishCardSuccess {
+	"""
+	公開したカードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開したカードの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターデッキを公開する入力
+"""
+input PublishStarterDeckInput {
+	"""
+	スターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターデッキの revision
+	"""
+	revision: Int!
+}
+"""
+スターターデッキの公開の結果（準備中・使用不可から公開中にできる。公開中の数が上限なら公開できない）
+"""
+union PublishStarterDeckResult = PublishStarterDeckSuccess | ValidationErrors | StarterDeckNotFoundError | StarterDeckLimitReachedError | RevisionConflictError | ForbiddenError
+"""
+スターターデッキを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishStarterDeckSuccess {
+	"""
+	公開したスターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開したスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
 type Query {
-	"""
-	core の版（リリースのタグ。開発中は none）
-	"""
-	version: String!
 	"""
 	カードの一覧（紐づいたオペレーターだけ）
 	"""
@@ -529,9 +765,33 @@ type Query {
 		id: UUID!
 	): PresetDeckResult!
 	"""
-	スターターデッキセット（紐づいたオペレーターだけ。ゲーム全体で 1 つなので引数は無い）
+	スターターデッキの一覧（紐づいたオペレーターだけ）
 	"""
-	starterDeckSet: StarterDeckSetResult!
+	starterDecks(
+		"""
+		絞り込み
+		"""
+		filter: StarterDeckFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): StarterDecksResult!
+	"""
+	スターターデッキの詳細（紐づいたオペレーターだけ）
+	"""
+	starterDeck(
+		"""
+		スターターデッキの公開用の ID
+		"""
+		id: UUID!
+	): StarterDeckResult!
 }
 """
 クリーチャーを登録する入力
@@ -626,6 +886,58 @@ type RegisterSpellSuccess {
 	spell: Spell!
 }
 """
+スターターデッキをプリセットデッキから写して登録する入力
+"""
+input RegisterStarterDeckFromPresetDeckInput {
+	"""
+	写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい）
+	"""
+	presetDeckId: UUID!
+}
+"""
+プリセットデッキから写したスターターデッキの登録の結果
+"""
+union RegisterStarterDeckFromPresetDeckResult = RegisterStarterDeckFromPresetDeckSuccess | PresetDeckNotFoundError | StarterDeckNameAlreadyInUseError | ForbiddenError
+"""
+プリセットデッキから写してスターターデッキを登録した（準備中。写した元の公開 ID と revision を記録する）
+"""
+type RegisterStarterDeckFromPresetDeckSuccess {
+	"""
+	登録したスターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録したスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターデッキを空から登録する入力
+"""
+input RegisterStarterDeckInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+スターターデッキの登録の結果
+"""
+union RegisterStarterDeckResult = RegisterStarterDeckSuccess | ValidationErrors | StarterDeckNameAlreadyInUseError | ForbiddenError
+"""
+スターターデッキを登録した（準備中）
+"""
+type RegisterStarterDeckSuccess {
+	"""
+	登録したスターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録したスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 プリセットデッキの名前を変える入力
 """
 input RenamePresetDeckInput {
@@ -660,6 +972,100 @@ type RenamePresetDeckSuccess {
 	revision: Int!
 }
 """
+スターターデッキの名前を変える入力
+"""
+input RenameStarterDeckInput {
+	"""
+	スターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターデッキの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+スターターデッキの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameStarterDeckResult = RenameStarterDeckSuccess | ValidationErrors | StarterDeckNotFoundError | StarterDeckNameAlreadyInUseError | StarterDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターデッキの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameStarterDeckSuccess {
+	"""
+	変えたスターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+カードを使用不可にする入力
+"""
+input RetireCardInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの revision
+	"""
+	revision: Int!
+}
+"""
+カードを使用不可にする操作の結果
+"""
+union RetireCardResult = RetireCardSuccess | CardNotFoundError | RevisionConflictError | InvalidCardStatusTransitionError | ForbiddenError
+"""
+カードを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireCardSuccess {
+	"""
+	使用不可にしたカードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にしたカードの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターデッキを使用不可にする入力
+"""
+input RetireStarterDeckInput {
+	"""
+	スターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターデッキの revision
+	"""
+	revision: Int!
+}
+"""
+スターターデッキの使用不可の結果
+"""
+union RetireStarterDeckResult = RetireStarterDeckSuccess | StarterDeckNotFoundError | InvalidStarterDeckStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+スターターデッキを使用不可にした（すでに使用不可なら何も変えず、revision も進まない。新しいプレイヤーには配らない）
+"""
+type RetireStarterDeckSuccess {
+	"""
+	使用不可にしたスターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にしたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 先に変えられた（画面を開いた後に、ほかの操作でこの対象が変わった。操作は行われていない）。読み直してから操作し直す
 """
 type RevisionConflictError {
@@ -683,7 +1089,7 @@ input SetPresetDeckCardCountsInput {
 	"""
 	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り）
 	"""
-	cards: [PresetDeckCardCountInput!]!
+	cards: [DeckCardCountInput!]!
 }
 """
 プリセットデッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない）
@@ -703,28 +1109,36 @@ type SetPresetDeckCardCountsSuccess {
 	revision: Int!
 }
 """
-スターターデッキセットを設定する入力
+スターターデッキのカードの枚数を変える入力
 """
-input SetStarterDeckSetInput {
+input SetStarterDeckCardCountsInput {
 	"""
-	画面が見ていたスターターデッキセットの revision（未設定なら 0）
+	スターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターデッキの revision
 	"""
 	revision: Int!
 	"""
-	写すプリセットデッキの公開用の ID（ちょうど 2 つ。違うもの。どれも合計がちょうど 40 枚。順番は問わない）
+	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ）
 	"""
-	presetDeckIds: [UUID!]!
+	cards: [DeckCardCountInput!]!
 }
 """
-スターターデッキセットの設定の結果
+スターターデッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない。準備中のものだけ変えられる）
 """
-union SetStarterDeckSetResult = SetStarterDeckSetSuccess | ValidationErrors | RevisionConflictError | ForbiddenError
+union SetStarterDeckCardCountsResult = SetStarterDeckCardCountsSuccess | ValidationErrors | StarterDeckNotFoundError | StarterDeckNotDraftError | RevisionConflictError | ForbiddenError
 """
-スターターデッキセットを設定した（写す中身が今と全部同じなら何も変えず、revision も進まない）
+スターターデッキのカードの枚数を変えた（1 回の操作で revision は 1 つ進む。何も変わらなければ進まない）
 """
-type SetStarterDeckSetSuccess {
+type SetStarterDeckCardCountsSuccess {
 	"""
-	設定した後の revision（内容は返さない。画面は読み直し、読み直した revision を持つ）
+	変えたスターターデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -741,6 +1155,14 @@ type Spell implements Card {
 	"""
 	name: String!
 	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: CardStatus!
+	"""
+	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
 	登録した日時
 	"""
 	registeredAt: DateTime!
@@ -750,43 +1172,125 @@ type Spell implements Card {
 	updatedAt: DateTime!
 }
 """
-スターターデッキ（プリセットデッキから写した中身）
+スターターデッキ
 """
 type StarterDeck {
 	"""
-	名前（写したときのプリセットデッキの名前）
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべてのスターターデッキの中で一意）
 	"""
 	name: String!
 	"""
-	写したカードと枚数（カードの一覧と同じ並び）
+	状態（準備中・公開中・使用不可）
+	"""
+	status: StarterDeckStatus!
+	"""
+	入れたカードと枚数（カードの一覧と同じ並び: 種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
 	"""
 	cards: [DeckCard!]!
 	"""
-	どのプリセットデッキの、どの時点から写したか
+	カードの枚数の合計
 	"""
-	source: StarterDeckSource!
-}
-"""
-スターターデッキセット（まだ設定していなければ、decks は空・revision は 0・updatedAt は null）
-"""
-type StarterDeckSet {
+	totalCount: Int!
 	"""
-	スターターデッキ（元のプリセットデッキの公開 ID の順）
+	プリセットデッキから写して作ったときの写し元（空から作ったときは null）
 	"""
-	decks: [StarterDeck!]!
+	source: StarterDeckSource
 	"""
-	更新の番号（画面が見ていた版。設定の入力にそのまま渡す。利用者には見せない）
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
 	"""
-	最後に設定した日時
+	登録した日時
 	"""
-	updatedAt: DateTime
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
 }
 """
-スターターデッキセットの結果
+スターターデッキの一覧の 1 ページ（名前の順）
 """
-union StarterDeckSetResult = StarterDeckSet | ForbiddenError
+type StarterDeckConnection {
+	"""
+	このページのスターターデッキ
+	"""
+	edges: [StarterDeckEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+スターターデッキの一覧の 1 件と、その位置
+"""
+type StarterDeckEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	スターターデッキ
+	"""
+	node: StarterDeck!
+}
+"""
+スターターデッキの一覧の絞り込み
+"""
+input StarterDeckFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [StarterDeckStatus!]
+}
+"""
+公開中のスターターデッキの数が上限に達している（ほかのものを使用不可にすると公開できる）
+"""
+type StarterDeckLimitReachedError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+名前が、ほかのスターターデッキですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type StarterDeckNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でないスターターデッキの名前・枚数を変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type StarterDeckNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+スターターデッキが無い（削除したものを含む）
+"""
+type StarterDeckNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+スターターデッキの詳細の結果
+"""
+union StarterDeckResult = StarterDeck | StarterDeckNotFoundError | ForbiddenError
 """
 写した元
 """
@@ -800,14 +1304,36 @@ type StarterDeckSource {
 	"""
 	revision: Int!
 	"""
-	写した後に、元のプリセットデッキが変わっている（設定し直すと反映される。元が削除されていれば false）
+	写した後に、元のプリセットデッキが変わっている（元が削除されていれば false）
 	"""
 	changedSinceCopied: Boolean!
 	"""
-	元のプリセットデッキが削除されている（設定し直すときは、ほかのプリセットデッキを選ぶ）
+	元のプリセットデッキが削除されている
 	"""
 	presetDeckDeleted: Boolean!
 }
+"""
+スターターデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たし、
+新しいプレイヤーに配る。使用不可は配らない（配り済みのデッキはプレイヤーの持ち物なので変わらない）
+"""
+enum StarterDeckStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+スターターデッキの一覧の結果
+"""
+union StarterDecksResult = StarterDeckConnection | ValidationErrors | ForbiddenError
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
 """

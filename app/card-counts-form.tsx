@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { type SetCardCountsState, setPresetDeckCardCounts } from "./actions";
+import type { SetCardCountsState } from "./deck-form";
 
 export type CardCountRow = {
   cardId: string;
@@ -14,18 +14,20 @@ const initialState: SetCardCountsState = {};
 
 // 表の各行で枚数を変え、変えた行だけをまとめて送る（1 回の保存が core の 1 回の操作になる）
 export function CardCountsForm({
+  action,
   id,
   revision,
   rows,
 }: {
+  action: (
+    previous: SetCardCountsState,
+    form: FormData,
+  ) => Promise<SetCardCountsState>;
   id: string;
   revision: number;
   rows: CardCountRow[];
 }) {
-  const [state, formAction, isPending] = useActionState(
-    setPresetDeckCardCounts,
-    initialState,
-  );
+  const [state, formAction, isPending] = useActionState(action, initialState);
   const kept = state.revision === revision ? state : {};
 
   return (

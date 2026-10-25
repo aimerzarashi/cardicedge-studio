@@ -34,7 +34,7 @@ export default async function Home() {
           <Link href="/preset-decks">プリセットデッキの一覧</Link>
         </li>
         <li>
-          <Link href="/starter-deck-set">スターターデッキ</Link>
+          <Link href="/starter-decks">スターターデッキの一覧</Link>
         </li>
       </ul>
       <LogoutButton />
