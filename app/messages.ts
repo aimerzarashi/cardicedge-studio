@@ -83,5 +83,6 @@ export function publishErrorMessage(errors: FieldError[]): string {
 
 export const STARTER_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
-export const STARTER_DECK_LIMIT_REACHED =
-  "公開中のスターターデッキの数が上限に達しています。ほかのものを使用不可にすると公開できます";
+export function starterDeckLimitReachedMessage(max: number): string {
+  return `公開中のスターターデッキは ${max} 個までです。ほかのものを使用不可にすると公開できます`;
+}

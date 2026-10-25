@@ -321,3 +321,42 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
     .click();
   await expect(other.getByRole("definition").first()).toHaveText("使用不可");
 });
+
+test("公開中の数の上限に達していると、上限の数が出て準備中のまま", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  // テストの core の公開中の上限は既定の 2。ほかのテストは公開したら使用不可にして終えるため、ここで 2 つ公開すれば埋まる
+  const decks = [];
+  for (const base of ["火・地", "水・風", "光・闇"]) {
+    decks.push((await registerFullStarterDeck(page, uniqueName(base))).deckURL);
+  }
+  const published: string[] = [];
+  try {
+    for (const deckURL of decks.slice(0, 2)) {
+      await page.goto(deckURL);
+      const publish = section(page, "公開");
+      await publish.getByRole("button", { name: "公開する" }).click();
+      await expect(publish.getByText("公開しました")).toBeVisible();
+      published.push(deckURL);
+    }
+
+    await page.goto(decks[2]);
+    const publish = section(page, "公開");
+    await publish.getByRole("button", { name: "公開する" }).click();
+    await expect(
+      publish.getByText(
+        "公開中のスターターデッキは 2 個までです。ほかのものを使用不可にすると公開できます",
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole("definition").first()).toHaveText("準備中");
+  } finally {
+    for (const deckURL of published) {
+      await page.goto(deckURL);
+      await section(page, "公開")
+        .getByRole("button", { name: "使用不可にする" })
+        .click();
+      await expect(page.getByRole("definition").first()).toHaveText("使用不可");
+    }
+  }
+});
