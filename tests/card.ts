@@ -29,3 +29,28 @@ export async function registerSpell(page: Page, name: string) {
   await page.getByLabel("カード名").fill(name);
   await page.getByRole("button", { name: "登録する" }).click();
 }
+
+// カードの一覧は投影されてから出るため、出るまで開き直す
+export async function openCardRow(page: Page, name: string) {
+  await expect(async () => {
+    await page.goto(`/cards?name=${encodeURIComponent(name)}`);
+    await expect(page.locator("tbody tr", { hasText: name })).toHaveCount(1, {
+      timeout: 1_000,
+    });
+  }).toPass();
+  return page.locator("tbody tr", { hasText: name });
+}
+
+export async function publishCard(page: Page, name: string) {
+  const row = await openCardRow(page, name);
+  await row.getByRole("button", { name: `${name}を公開する` }).click();
+  await expect(row.getByText("公開しました")).toBeVisible();
+  await expect(row).toContainText("公開中");
+}
+
+export async function retireCard(page: Page, name: string) {
+  const row = await openCardRow(page, name);
+  await row.getByRole("button", { name: `${name}を使用不可にする` }).click();
+  await expect(row.getByText("使用不可にしました")).toBeVisible();
+  await expect(row).toContainText("使用不可");
+}

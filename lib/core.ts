@@ -47,7 +47,7 @@ export async function callCore<TResult, TVariables>(
   ...[variables]: TVariables extends Record<string, never> ? [] : [TVariables]
 ): Promise<CoreResult<TResult>> {
   // core の結果はリクエストのたびに違うため、ビルドのときに前もって描かせない。URL の値（searchParams）を読まないページ
-  // （/starter-deck-set 等）は、Next.js がビルドのときに描こうとし、環境変数の無いビルド中に core を呼んでしまうため
+  // は、Next.js がビルドのときに描こうとし、環境変数の無いビルド中に core を呼んでしまうため
   await connection();
   // 環境変数が無いのは設定の誤り（想定外）なので、届かないこととは分けて投げる
   const url = coreGraphQLURL();

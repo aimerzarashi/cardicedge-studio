@@ -11,7 +11,7 @@
 
 | パス | 責務 |
 |---|---|
-| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）・`/starter-deck-set`（スターターデッキの照会）・`/starter-deck-set/edit`（変更。選んだプリセットデッキは URL に持つ）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts・app/starter-deck-set/edit-url.ts） |
+| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧。状態の絞り込み・公開する・使用不可にする）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）・`/starter-decks`（スターターデッキの一覧）・`/starter-decks/new`（空から登録・プリセットデッキから写して登録）・`/starter-decks/[id]`（詳細。準備中だけ名前・カードの枚数の変更と削除。公開する・使用不可にする）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts。プリセットデッキとスターターデッキの詳細で共通のフォーム・文言は app 直下の card-counts-form.tsx・rename-deck-form.tsx・delete-deck.tsx・deck-form.ts・messages.ts） |
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
 | lib/card-type.ts・lib/format.ts・lib/search-params.ts | 画面で共通に使う、カードの種類（絞り込みの選択肢・表示名）、日時の表示、ページの searchParams の読み方 |

@@ -10,9 +10,14 @@ import { CARD_TYPE_LABELS, CARD_TYPES, isCardType } from "@/lib/card-type";
 import { type CoreResult, callCore } from "@/lib/core";
 import { dateTimeFormat } from "@/lib/format";
 import { all, first } from "@/lib/search-params";
-import { type CardCountRow, CardCountsForm } from "./card-counts-form";
-import { DeletePresetDeck } from "./delete-preset-deck";
-import { RenameForm } from "./rename-form";
+import { type CardCountRow, CardCountsForm } from "../../card-counts-form";
+import { DeleteDeck } from "../../delete-deck";
+import { RenameDeckForm } from "../../rename-deck-form";
+import {
+  deletePresetDeck,
+  renamePresetDeck,
+  setPresetDeckCardCounts,
+} from "./actions";
 
 const presetDeckQuery = graphql(`
   query PresetDeck($id: UUID!) {
@@ -116,6 +121,8 @@ export default async function PresetDeckPage({
       ...(name !== "" && { nameContains: name }),
       // 1 つも選ばなければすべての種類（core は空のリストを入力の誤りにするため送らない）
       ...(types.length > 0 && { types }),
+      // 準備中・使用不可のカードは入れられない（core が誤りにする）ため、選べるのは公開中だけ
+      statuses: ["PUBLISHED"],
     },
     after,
   };
@@ -172,7 +179,12 @@ export default async function PresetDeckPage({
 
       <section aria-labelledby="rename-heading">
         <h2 id="rename-heading">名前の変更</h2>
-        <RenameForm id={deck.id} revision={deck.revision} name={deck.name} />
+        <RenameDeckForm
+          action={renamePresetDeck}
+          id={deck.id}
+          revision={deck.revision}
+          name={deck.name}
+        />
       </section>
 
       <section aria-labelledby="deck-cards-heading">
@@ -181,6 +193,7 @@ export default async function PresetDeckPage({
           <p>カードが入っていません。下の「カードを探す」から入れてください</p>
         ) : (
           <CardCountsForm
+            action={setPresetDeckCardCounts}
             id={deck.id}
             revision={deck.revision}
             rows={deckRows}
@@ -223,7 +236,8 @@ export default async function PresetDeckPage({
 
       <section aria-labelledby="delete-heading">
         <h2 id="delete-heading">削除</h2>
-        <DeletePresetDeck
+        <DeleteDeck
+          action={deletePresetDeck}
           id={deck.id}
           revision={deck.revision}
           name={deck.name}
@@ -278,6 +292,7 @@ function Candidates({
             <p>カードがありません</p>
           ) : (
             <CardCountsForm
+              action={setPresetDeckCardCounts}
               id={deckId}
               revision={revision}
               rows={cards.edges.map(({ node }) => ({
