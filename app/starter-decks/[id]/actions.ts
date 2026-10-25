@@ -22,8 +22,8 @@ import {
   nameErrorMessage,
   publishErrorMessage,
   REVISION_CONFLICT,
-  STARTER_DECK_LIMIT_REACHED,
   STARTER_DECK_NOT_DRAFT,
+  starterDeckLimitReachedMessage,
 } from "../../messages";
 import { waitStarterDeck } from "../wait-starter-deck";
 
@@ -87,6 +87,9 @@ const publishStarterDeckMutation = graphql(`
       ... on PublishStarterDeckSuccess {
         id
         revision
+      }
+      ... on StarterDeckLimitReachedError {
+        max
       }
       ... on ValidationErrors {
         errors {
@@ -274,7 +277,7 @@ export async function publishStarterDeck(
     case "ValidationErrors":
       return { error: publishErrorMessage(published.errors) };
     case "StarterDeckLimitReachedError":
-      return { error: STARTER_DECK_LIMIT_REACHED };
+      return { error: starterDeckLimitReachedMessage(published.max) };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };

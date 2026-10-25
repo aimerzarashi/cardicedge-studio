@@ -519,7 +519,7 @@ export type PublishStarterDeckMutation = { publishStarterDeck:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'PublishStarterDeckSuccess', id: string, revision: number }
     | { __typename: 'RevisionConflictError' }
-    | { __typename: 'StarterDeckLimitReachedError' }
+    | { __typename: 'StarterDeckLimitReachedError', max: number }
     | { __typename: 'StarterDeckNotFoundError' }
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
@@ -988,6 +988,9 @@ export const PublishStarterDeckDocument = new TypedDocumentString(`
     ... on PublishStarterDeckSuccess {
       id
       revision
+    }
+    ... on StarterDeckLimitReachedError {
+      max
     }
     ... on ValidationErrors {
       errors {
