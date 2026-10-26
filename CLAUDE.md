@@ -11,7 +11,7 @@
 
 | パス | 責務 |
 |---|---|
-| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）・`/starter-deck-set`（スターターデッキの照会）・`/starter-deck-set/edit`（変更。選んだプリセットデッキは URL に持つ）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts・app/starter-deck-set/edit-url.ts） |
+| app | App Router のページ・レイアウト（`/login`・`/signup`・`/forgot-password`・`/reset-password`、`/api/auth/[...all]` は better-auth、`/cards`（カードの一覧。状態の絞り込み・公開する・使用不可にする）・`/creatures/new`（Creature の登録）・`/items/new`（Item の登録）・`/spells/new`（Spell の登録）・`/preset-decks`（プリセットデッキの一覧）・`/preset-decks/new`（登録）・`/preset-decks/[id]`（詳細。名前の変更・カードの枚数の変更・削除）・`/starter-decks`（スターターデッキの一覧）・`/starter-decks/new`（空から登録・プリセットデッキから写して登録）・`/starter-decks/[id]`（詳細。準備中だけ名前・カードの枚数の変更と削除。公開する・使用不可にする）、`error.tsx`（想定外の誤り））。core の操作は、使うページと同じディレクトリに `graphql()` で書く（いくつかのページで使うものは、その親のディレクトリに置く。例: app/preset-decks/wait-preset-deck.ts。プリセットデッキとスターターデッキの詳細で共通のフォーム・文言は app 直下の card-counts-form.tsx・rename-deck-form.tsx・delete-deck.tsx・deck-form.ts・messages.ts） |
 | lib/auth.ts | better-auth の設定（サーバー側）。公式どおり `export const auth = betterAuth(...)`。CLI もこれを読む |
 | lib/auth-client.ts | better-auth のクライアント |
 | lib/card-type.ts・lib/format.ts・lib/search-params.ts | 画面で共通に使う、カードの種類（絞り込みの選択肢・表示名）、日時の表示、ページの searchParams の読み方 |
@@ -27,6 +27,7 @@
 | tests | Playwright のテスト |
 | local/studio | 開発用 Dockerfile |
 | .build | 本番用 Dockerfile（standalone 出力を node で動かす。テスト用環境・CI でも使う） |
+| local/core-db | テスト用の環境（compose.test.yaml）の core-db の初期化（core_game を作る。core のものを使わないのは、../core のブランチしだいで中身が変わるため） |
 | local/envoy | envoy の設定（開発環境・テスト用の環境の入口。relay-listener.yaml はテスト用の環境だけの中継役用の入口） |
 
 # 入口（envoy）
@@ -64,7 +65,7 @@
 
 # 統合（core）
 
-- 共有ネットワーク `diecardomain` に参加するのは studio-envoy だけ。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
+- core と共有する studio 用のネットワーク `diecardomain-studio` に参加するのは studio-envoy だけ（game 用の `diecardomain-game` とは分け、game から studio に内部から届く経路を無くす。studio#30）。studio は参加させない（core・game から直接届くと x-client-ip を偽装できる。studio#11）。studio から core へは studio-envoy の `/studio/graphql`、core から studio へは studio-envoy を通す
 - envoy は `/studio/graphql` を core に転送する（core が止まっていれば 503）
 - studio が前提にする core の版は、Makefile の `CORE_VERSION` に書く（studio の .env は git 管理しないため）。`make gen-api` は、その版のイメージから `docker run --rm diecardomain/core:<版> schema studio` でスキーマを取り出して graphql/schema.graphql に書き、graphql-codegen で型を作る。版を上げるときは `CORE_VERSION` を変えて `make gen-api` し、graphql/ の差分と一緒にコミットする（studio#14）
 - マイルストーンの途中で、まだリリースしていない core の変更を使うときは、`make core-local` で手元の ../core から `diecardomain/core:local`・`core-migrate:local` をリリースと同じ Dockerfile で作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` のように引数で渡す。Makefile の `CORE_VERSION` は local にしない（コミットした Makefile が手元にしか無いイメージを指さないようにするため）。マイルストーンの MR の前に、core のリリースした版に `CORE_VERSION` を固定して `make gen-api`（差分が無いこと）と `make test` をやり直す（作業の進め方を、マイルストーンの終わりに core をリリースする形に変えたため。studio#23）
@@ -99,5 +100,5 @@
 - JWT_ISSUER / JWT_AUDIENCE が未設定だと better-auth は黙って BETTER_AUTH_URL を使うため、lib/auth.ts で実行時に必須チェックしている（next build 中は `NEXT_PHASE=phase-production-build` で判定して確かめない）
 - lib/auth.ts は `import "server-only"` でクライアントからの読み込みをビルドエラーにしている。Node.js で直接動かす seed・CLI は `--conditions=react-server` を付けて実行する（付けないと server-only がエラーを投げる）
 - DB のスキーマは better-auth の CLI（`auth migrate`）で直接変えない。`make migrate-generate` で差分 SQL を migrations に出し、Atlas で適用する（core・game と同じ手順・同じ記録にするため）
-- マイグレーションは追加のみ。適用済みのファイルは変更・削除・改名しない。Atlas のバージョンは local/migrate/Dockerfile の FROM を core / game と揃える
+- マイグレーションは追加のみ。適用済みのファイルは変更・削除・改名しない。リリース前に限り並びを作り直してよく、そのときは migrations/BASELINE の 1 行目を書き換える（core と同じ。core#33）。Atlas のバージョンは local/migrate/Dockerfile の FROM を core / game と揃える
 - 環境変数はサーバー側（lib/auth.ts）でだけ読む。`NEXT_PUBLIC_` は使わない（ビルド時に埋め込まれ、コンテナの環境変数で変えられなくなるため）

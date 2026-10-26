@@ -21,11 +21,19 @@ variables:
   # local/migrate/Dockerfile の FROM と揃える
   ATLAS_VERSION: "1.3.3"
 
-# lint / test は main に向かう MR（マイルストーンの MR）でだけ実行する。main への push では実行しない（直前の MR で同じ中身を
-# 確かめているため。マイルストーンのブランチは main に rebase してから MR にする。core#30・studio#22）
+# lint / test は main に向かう MR（マイルストーンの MR）で実行する。main への push では実行しない（直前の MR で同じ中身を
+# 確かめているため。マイルストーンのブランチは main に rebase してから MR にする。core#30・studio#22）。
+# マイルストーンのブランチに向かう Issue の MR では手動にし、ふだんは手元の make lint・make test で確かめる（共有 Runner の時間を
+# Issue ごとに使わないため）。CI の手順を変えたとき等、CI で確かめたいときだけ手で動かす。手動のジョブだけのパイプラインは skipped に
+# なり、「スキップされたパイプラインを成功とみなす」の設定でマージできる（「パイプラインが成功する必要がある」の設定は、main に
+# 向かう MR の歯止めとして残す）。rules の中の when: manual は allow_failure が既定で false になり、パイプラインが blocked で
+# 止まるため、true を明示する。前は何もしない手動のジョブ（issue-mr）を置いていたが、CI で確かめたいときに使えなかった（core#33・studio#26）
 .on-mr:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
 
 # イメージのビルドに使う Docker in Docker
 .docker:
@@ -81,24 +89,6 @@ test:
     - chmod +x /usr/local/bin/atlas
     - atlas migrate apply --dir file://migrations --url "$DATABASE_URL?sslmode=disable"
     - scripts/check-auth-schema.sh
-
-# マイルストーンのブランチに向かう Issue の MR では、何もしない手動のジョブだけを置き、実行しない（lint・test は手元の
-# make lint・make test で確かめる）。パイプラインを作らないと「パイプラインが成功する必要がある」の設定でマージできず、
-# その設定は main に向かう MR の歯止めとして残すため、パイプラインは作る。手動のジョブだけのパイプラインは skipped になり、
-# 「スキップされたパイプラインを成功とみなす」の設定でマージできる（共有 Runner の時間は使わない）。rules の中の when: manual は
-# allow_failure が既定で false になり、パイプラインが blocked で止まるため、true を明示する。手で実行されたときのため、
-# image は小さいものを指定し、リポジトリも取ってこない（core#30・studio#22・studio#24）
-issue-mr:
-  stage: test
-  image: busybox:1.38.0
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME != $CI_DEFAULT_BRANCH
-      when: manual
-      allow_failure: true
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - ":"
 
 # MR の確認用イメージ（手動）。アプリとマイグレーション用イメージを GitLab Container Registry に mr-<MR番号> で push する
 build-mr:

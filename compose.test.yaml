@@ -6,11 +6,18 @@ services:
   core:
     image: diecardomain/core:${CORE_VERSION:?make test から CORE_VERSION を渡す}
     environment:
-      DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core sslmode=disable"
+      # core は studio 用・game 用の DB を分けて使う（core#33）
+      STUDIO_DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core_studio sslmode=disable"
+      GAME_DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core_game sslmode=disable"
       # JWKS は studio-envoy を通して取る（studio#11: studio には envoy を通してしか届かない）。iss・aud は studio の JWT_ISSUER・JWT_AUDIENCE と一致させる
       STUDIO_JWKS_URL: http://studio-envoy:10000/api/auth/jwks
       STUDIO_JWT_ISSUER: diecardomain-studio
       STUDIO_JWT_AUDIENCE: diecardomain-core
+      # game の JWT（core で必須。core#34）。studio のテストでは game を起動しないため JWKS には届かないが、core は届かなくても
+      # 起動する（最初の JWT が来たときに取りに行く）
+      GAME_JWKS_URL: http://game-envoy:10000/api/auth/jwks
+      GAME_JWT_ISSUER: diecardomain-game
+      GAME_JWT_AUDIENCE: diecardomain-core
       # seed のオペレーター（scripts/seed.ts）と同じアドレス。ログインして core を呼ぶと紐づく
       STUDIO_INITIAL_OPERATOR_EMAIL: operator@example.com
     healthcheck:
@@ -21,13 +28,24 @@ services:
       timeout: 5s
       retries: 3
     depends_on:
-      core-migrate:
+      core-migrate-studio:
+        condition: service_completed_successfully
+      core-migrate-game:
         condition: service_completed_successfully
 
-  core-migrate:
+  # studio 用・game 用の DB に、同じマイグレーションを流す（core#33。前提の版の core では core_game は使われない）
+  core-migrate-studio:
     image: diecardomain/core-migrate:${CORE_VERSION:?make test から CORE_VERSION を渡す}
     environment:
-      DATABASE_URL: "postgres://core_user:core_password@core-db:5432/core?sslmode=disable"
+      DATABASE_URL: "postgres://core_user:core_password@core-db:5432/core_studio?sslmode=disable"
+    depends_on:
+      core-db:
+        condition: service_healthy
+
+  core-migrate-game:
+    image: diecardomain/core-migrate:${CORE_VERSION:?make test から CORE_VERSION を渡す}
+    environment:
+      DATABASE_URL: "postgres://core_user:core_password@core-db:5432/core_game?sslmode=disable"
     depends_on:
       core-db:
         condition: service_healthy
@@ -37,11 +55,13 @@ services:
     environment:
       POSTGRES_USER: core_user
       POSTGRES_PASSWORD: core_password
-      POSTGRES_DB: core
+      POSTGRES_DB: core_studio
+    volumes:
+      - ./local/core-db:/docker-entrypoint-initdb.d:ro
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U core_user -d core"]
+      test: ["CMD-SHELL", "pg_isready -U core_user -d core_studio"]
       interval: 2s
       timeout: 5s
       retries: 30

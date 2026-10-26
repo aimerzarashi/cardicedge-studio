@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { registerCreature } from "./card";
+import { publishCard, registerCreature } from "./card";
 import { expect } from "./fixtures";
 
 export async function registerPresetDeck(page: Page, name: string) {
@@ -18,10 +18,14 @@ export function section(page: Page, heading: string) {
   return page.getByRole("region", { name: heading });
 }
 
+// デッキに入れられるのは公開中のカードだけのため、登録したら公開する
 export async function registerCreatures(page: Page, names: string[]) {
   for (const name of names) {
     await registerCreature(page, name);
     await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  }
+  for (const name of names) {
+    await publishCard(page, name);
   }
 }
 

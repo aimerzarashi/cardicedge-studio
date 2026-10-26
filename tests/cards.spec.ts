@@ -2,9 +2,12 @@ import type { Page } from "@playwright/test";
 import { login, signUpAndVerify } from "./account";
 import {
   loginAsOperator,
+  openCardRow,
+  publishCard,
   registerCreature,
   registerItem,
   registerSpell,
+  retireCard,
   uniqueName,
 } from "./card";
 import { expect, test } from "./fixtures";
@@ -206,4 +209,76 @@ test("名前で絞り込むと、その文字を含むカードだけが出る",
   await expect(cardRows(page).nth(1)).toContainText(`b-${id}`);
   // 条件は URL に持つ
   await expect(page).toHaveURL(new RegExp(`name=${id}`));
+});
+
+test("登録したカードは準備中で、公開すると公開中、使用不可にすると使用不可になり、公開し直せる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ドラゴン");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  const row = await openCardRow(page, name);
+  await expect(row).toContainText("準備中");
+  await expect(
+    row.getByRole("button", { name: `${name}を使用不可にする` }),
+  ).toHaveCount(0);
+
+  await publishCard(page, name);
+  await expect(
+    row.getByRole("button", { name: `${name}を使用不可にする` }),
+  ).toBeVisible();
+
+  await retireCard(page, name);
+  await expect(
+    row.getByRole("button", { name: `${name}を公開する` }),
+  ).toBeVisible();
+
+  await publishCard(page, name);
+});
+
+test("状態で絞り込むと、その状態のカードだけが出る", async ({ page }) => {
+  await loginAsOperator(page);
+  const id = crypto.randomUUID().slice(0, 8);
+  await registerCreature(page, `a-${id}`);
+  await expect(page.getByText(`「a-${id}」を登録しました`)).toBeVisible();
+  await registerCreature(page, `b-${id}`);
+  await expect(page.getByText(`「b-${id}」を登録しました`)).toBeVisible();
+  await publishCard(page, `b-${id}`);
+
+  await page.goto(`/cards?name=${id}`);
+  await page.getByLabel("公開中").check();
+  await page.getByRole("button", { name: "絞り込む" }).click();
+
+  // 条件は URL に持つ
+  await expect(page).toHaveURL(/status=PUBLISHED/);
+  await expect(cardRows(page)).toHaveCount(1);
+  await expect(cardRows(page).first()).toContainText(`b-${id}`);
+
+  await page.getByLabel("公開中").uncheck();
+  await page.getByLabel("準備中").check();
+  await page.getByRole("button", { name: "絞り込む" }).click();
+  await expect(cardRows(page)).toHaveCount(1);
+  await expect(cardRows(page).first()).toContainText(`a-${id}`);
+});
+
+test("ほかの画面で先に公開されていると、変えずに最新の状態を表示して知らせる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ドラゴン");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  const row = await openCardRow(page, name);
+  const other = await page.context().newPage();
+  const otherRow = await openCardRow(other, name);
+  await publishCard(page, name);
+
+  await otherRow.getByRole("button", { name: `${name}を公開する` }).click();
+
+  await expect(
+    otherRow.getByText("ほかの操作で変わっていたため、変えませんでした"),
+  ).toBeVisible();
+  await expect(otherRow).toContainText("公開中");
+  await expect(row).toContainText("公開中");
 });

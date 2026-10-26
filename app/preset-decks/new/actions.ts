@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
-import { FORBIDDEN, NAME_ALREADY_IN_USE, nameErrorMessage } from "../messages";
+import {
+  FORBIDDEN,
+  NAME_ALREADY_IN_USE,
+  nameErrorMessage,
+} from "../../messages";
 import { waitPresetDeck } from "../wait-preset-deck";
 
 const registerPresetDeckMutation = graphql(`

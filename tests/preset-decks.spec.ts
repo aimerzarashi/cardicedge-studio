@@ -1,5 +1,10 @@
 import type { Page } from "@playwright/test";
-import { loginAsOperator, uniqueName } from "./card";
+import {
+  loginAsOperator,
+  registerCreature,
+  retireCard,
+  uniqueName,
+} from "./card";
 import { expect, test } from "./fixtures";
 import {
   registerAndOpen,
@@ -173,4 +178,41 @@ test("ほかの画面で先に変えられていると、変えずに最新の�
   ).toBeVisible();
   await expect(other.getByRole("heading", { level: 1 })).toHaveText(renamed);
   await expect(stale.getByLabel("名前")).toHaveValue(renamed);
+});
+
+test("カードを探す一覧には公開中のカードだけが出る", async ({ page }) => {
+  await loginAsOperator(page);
+  const id = crypto.randomUUID().slice(0, 8);
+  await registerCreature(page, `draft-${id}`);
+  await expect(page.getByText(`「draft-${id}」を登録しました`)).toBeVisible();
+  await registerCreatures(page, [`published-${id}`]);
+  await registerAndOpen(page, uniqueName("火・地"));
+
+  await searchCards(page, new URL(page.url()).pathname, id, 1);
+
+  const candidates = section(page, "カードを探す");
+  await expect(candidates.getByLabel(`published-${id}の枚数`)).toBeVisible();
+  await expect(candidates.getByLabel(`draft-${id}の枚数`)).toHaveCount(0);
+});
+
+test("探した後に公開中でなくなったカードを入れようとすると、そのカードの行に誤りが表示される", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ドラゴン");
+  await registerCreatures(page, [name]);
+  await registerAndOpen(page, uniqueName("火・地"));
+  const deckURL = new URL(page.url()).pathname;
+  await searchCards(page, deckURL, name, 1);
+  const candidates = section(page, "カードを探す");
+  await candidates.getByLabel(`${name}の枚数`).fill("2");
+  const other = await page.context().newPage();
+  await retireCard(other, name);
+
+  await candidates.getByRole("button", { name: "枚数を保存" }).click();
+
+  await expect(
+    candidates.getByText("このカードは公開中でないため、入れられません"),
+  ).toBeVisible();
+  await expect(candidates.getByLabel(`${name}の枚数`)).toHaveValue("2");
 });

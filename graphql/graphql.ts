@@ -8,15 +8,37 @@ import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
 export type CardFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
   nameContains?: string | null | undefined;
+  /** 状態（指定が無ければすべて。空のリストは入力の誤り） */
+  statuses?: Array<CardStatus> | null | undefined;
   /** 種類（指定が無ければすべて。空のリストは入力の誤り） */
   types?: Array<CardType> | null | undefined;
 };
+
+/**
+ * カードの状態。準備中は自由に変えられ、デッキに入れられず、game に写さない。公開中はデッキに入れられ、game に写す。
+ * 使用不可は新しくデッキに入れられないが、プレイヤーが持っているので game には写す
+ */
+export type CardStatus =
+  /** 準備中（登録したときの状態） */
+  | 'DRAFT'
+  /** 公開中 */
+  | 'PUBLISHED'
+  /** 使用不可 */
+  | 'RETIRED';
 
 /** カードの種類（一覧の絞り込みに使う） */
 export type CardType =
   | 'CREATURE'
   | 'ITEM'
   | 'SPELL';
+
+/** 変えるカードと、その枚数 */
+export type DeckCardCountInput = {
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  cardId: string;
+  /** その枚数にする（0〜4。0 にするとデッキから外す） */
+  count: number;
+};
 
 /** プリセットデッキを削除する入力 */
 export type DeletePresetDeckInput = {
@@ -26,18 +48,34 @@ export type DeletePresetDeckInput = {
   revision: number;
 };
 
-/** 変えるカードと、その枚数 */
-export type PresetDeckCardCountInput = {
-  /** カード（Creature・Item・Spell）の公開用の ID */
-  cardId: string;
-  /** その枚数にする（0〜4。0 にするとデッキから外す） */
-  count: number;
+/** スターターデッキを削除する入力 */
+export type DeleteStarterDeckInput = {
+  /** スターターデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていたスターターデッキの revision */
+  revision: number;
 };
 
 /** プリセットデッキの一覧の絞り込み */
 export type PresetDeckFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
   nameContains?: string | null | undefined;
+};
+
+/** カードを公開中にする入力 */
+export type PublishCardInput = {
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの revision */
+  revision: number;
+};
+
+/** スターターデッキを公開する入力 */
+export type PublishStarterDeckInput = {
+  /** スターターデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていたスターターデッキの revision */
+  revision: number;
 };
 
 /** クリーチャーを登録する入力 */
@@ -64,6 +102,18 @@ export type RegisterSpellInput = {
   name: string;
 };
 
+/** スターターデッキをプリセットデッキから写して登録する入力 */
+export type RegisterStarterDeckFromPresetDeckInput = {
+  /** 写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい） */
+  presetDeckId: string;
+};
+
+/** スターターデッキを空から登録する入力 */
+export type RegisterStarterDeckInput = {
+  /** 名前（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
+};
+
 /** プリセットデッキの名前を変える入力 */
 export type RenamePresetDeckInput = {
   /** プリセットデッキの公開用の ID */
@@ -74,23 +124,97 @@ export type RenamePresetDeckInput = {
   revision: number;
 };
 
+/** スターターデッキの名前を変える入力 */
+export type RenameStarterDeckInput = {
+  /** スターターデッキの公開用の ID */
+  id: string;
+  /** 新しい名前（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
+  /** 画面が見ていたスターターデッキの revision */
+  revision: number;
+};
+
+/** カードを使用不可にする入力 */
+export type RetireCardInput = {
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの revision */
+  revision: number;
+};
+
+/** スターターデッキを使用不可にする入力 */
+export type RetireStarterDeckInput = {
+  /** スターターデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていたスターターデッキの revision */
+  revision: number;
+};
+
 /** プリセットデッキのカードの枚数を変える入力 */
 export type SetPresetDeckCardCountsInput = {
   /** 変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り） */
-  cards: Array<PresetDeckCardCountInput>;
+  cards: Array<DeckCardCountInput>;
   /** プリセットデッキの公開用の ID */
   id: string;
   /** 画面が見ていたプリセットデッキの revision */
   revision: number;
 };
 
-/** スターターデッキセットを設定する入力 */
-export type SetStarterDeckSetInput = {
-  /** 写すプリセットデッキの公開用の ID（ちょうど 2 つ。違うもの。どれも合計がちょうど 40 枚。順番は問わない） */
-  presetDeckIds: Array<string>;
-  /** 画面が見ていたスターターデッキセットの revision（未設定なら 0） */
+/** スターターデッキのカードの枚数を変える入力 */
+export type SetStarterDeckCardCountsInput = {
+  /** 変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ） */
+  cards: Array<DeckCardCountInput>;
+  /** スターターデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていたスターターデッキの revision */
   revision: number;
 };
+
+/** スターターデッキの一覧の絞り込み */
+export type StarterDeckFilter = {
+  /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
+  nameContains?: string | null | undefined;
+  /** 状態（指定が無ければすべて。空のリストは入力の誤り） */
+  statuses?: Array<StarterDeckStatus> | null | undefined;
+};
+
+/**
+ * スターターデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たし、
+ * 新しいプレイヤーに配る。使用不可は配らない（配り済みのデッキはプレイヤーの持ち物なので変わらない）
+ */
+export type StarterDeckStatus =
+  /** 準備中（登録したときの状態） */
+  | 'DRAFT'
+  /** 公開中 */
+  | 'PUBLISHED'
+  /** 使用不可 */
+  | 'RETIRED';
+
+export type PublishCardMutationVariables = Exact<{
+  input: PublishCardInput;
+}>;
+
+
+export type PublishCardMutation = { publishCard:
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'InvalidCardStatusTransitionError' }
+    | { __typename: 'PublishCardSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type RetireCardMutationVariables = Exact<{
+  input: RetireCardInput;
+}>;
+
+
+export type RetireCardMutation = { retireCard:
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'InvalidCardStatusTransitionError' }
+    | { __typename: 'RetireCardSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
 
 export type CardsQueryVariables = Exact<{
   filter?: CardFilter | null | undefined;
@@ -100,10 +224,25 @@ export type CardsQueryVariables = Exact<{
 
 export type CardsQuery = { cards:
     | { __typename: 'CardConnection', edges: Array<{ node:
-          | { __typename: 'Creature', id: string, name: string, registeredAt: string, updatedAt: string }
-          | { __typename: 'Item', id: string, name: string, registeredAt: string, updatedAt: string }
-          | { __typename: 'Spell', id: string, name: string, registeredAt: string, updatedAt: string }
+          | { __typename: 'Creature', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
+          | { __typename: 'Item', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
+          | { __typename: 'Spell', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
          }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type CardRevisionQueryVariables = Exact<{
+  name: string;
+}>;
+
+
+export type CardRevisionQuery = { cards:
+    | { __typename: 'CardConnection', edges: Array<{ node:
+          | { id: string, revision: number }
+          | { id: string, revision: number }
+          | { id: string, revision: number }
+         }> }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
    };
@@ -126,6 +265,7 @@ export type RegisterCreatureMutation = { registerCreature:
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
       > }
    };
 
@@ -147,6 +287,7 @@ export type RegisterItemMutation = { registerItem:
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
       > }
    };
 
@@ -170,6 +311,7 @@ export type RenamePresetDeckMutation = { renamePresetDeck:
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
       > }
    };
 
@@ -192,6 +334,7 @@ export type SetPresetDeckCardCountsMutation = { setPresetDeckCardCounts:
         | { __typename: 'FieldTooLong', field: string }
         | { __typename: 'FieldTotalMismatch', field: string }
         | { __typename: 'FieldTotalTooLarge', max: number, field: string }
+        | { __typename: 'FieldUnavailable', field: string }
       > }
    };
 
@@ -256,6 +399,7 @@ export type RegisterPresetDeckMutation = { registerPresetDeck:
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
       > }
    };
 
@@ -300,18 +444,46 @@ export type RegisterSpellMutation = { registerSpell:
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
       > }
    };
 
-export type SetStarterDeckSetMutationVariables = Exact<{
-  input: SetStarterDeckSetInput;
+export type RenameStarterDeckMutationVariables = Exact<{
+  input: RenameStarterDeckInput;
 }>;
 
 
-export type SetStarterDeckSetMutation = { setStarterDeckSet:
+export type RenameStarterDeckMutation = { renameStarterDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RenameStarterDeckSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'StarterDeckNameAlreadyInUseError' }
+    | { __typename: 'StarterDeckNotDraftError' }
+    | { __typename: 'StarterDeckNotFoundError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type SetStarterDeckCardCountsMutationVariables = Exact<{
+  input: SetStarterDeckCardCountsInput;
+}>;
+
+
+export type SetStarterDeckCardCountsMutation = { setStarterDeckCardCounts:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RevisionConflictError' }
-    | { __typename: 'SetStarterDeckSetSuccess', revision: number }
+    | { __typename: 'SetStarterDeckCardCountsSuccess', id: string, revision: number }
+    | { __typename: 'StarterDeckNotDraftError' }
+    | { __typename: 'StarterDeckNotFoundError' }
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
@@ -319,60 +491,160 @@ export type SetStarterDeckSetMutation = { setStarterDeckSet:
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
-        | { __typename: 'FieldTotalMismatch', required: number, field: string }
-        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', max: number, field: string }
+        | { __typename: 'FieldUnavailable', field: string }
       > }
    };
 
-export type StarterDeckSetForEditQueryVariables = Exact<{ [key: string]: never; }>;
+export type DeleteStarterDeckMutationVariables = Exact<{
+  input: DeleteStarterDeckInput;
+}>;
 
 
-export type StarterDeckSetForEditQuery = { starterDeckSet:
+export type DeleteStarterDeckMutation = { deleteStarterDeck:
+    | { __typename: 'DeleteStarterDeckSuccess' }
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'StarterDeckSet', revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'StarterDeckNotDraftError' }
+    | { __typename: 'StarterDeckNotFoundError' }
    };
 
-export type SelectedPresetDeckQueryVariables = Exact<{
+export type PublishStarterDeckMutationVariables = Exact<{
+  input: PublishStarterDeckInput;
+}>;
+
+
+export type PublishStarterDeckMutation = { publishStarterDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'PublishStarterDeckSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'StarterDeckLimitReachedError', max: number }
+    | { __typename: 'StarterDeckNotFoundError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong' }
+        | { __typename: 'FieldTotalMismatch', required: number }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type RetireStarterDeckMutationVariables = Exact<{
+  input: RetireStarterDeckInput;
+}>;
+
+
+export type RetireStarterDeckMutation = { retireStarterDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'InvalidStarterDeckStatusTransitionError' }
+    | { __typename: 'RetireStarterDeckSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'StarterDeckNotFoundError' }
+   };
+
+export type StarterDeckQueryVariables = Exact<{
   id: string;
 }>;
 
 
-export type SelectedPresetDeckQuery = { presetDeck:
+export type StarterDeckQuery = { starterDeck:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'PresetDeck', name: string, totalCount: number }
-    | { __typename: 'PresetDeckNotFoundError' }
+    | { __typename: 'StarterDeck', id: string, name: string, status: StarterDeckStatus, totalCount: number, revision: number, registeredAt: string, updatedAt: string, cards: Array<{ count: number, card:
+          | { __typename: 'Creature', id: string, name: string }
+          | { __typename: 'Item', id: string, name: string }
+          | { __typename: 'Spell', id: string, name: string }
+         }>, source: { presetDeckId: string, changedSinceCopied: boolean, presetDeckDeleted: boolean } | null }
+    | { __typename: 'StarterDeckNotFoundError' }
    };
 
-export type StarterDeckSetCandidatesQueryVariables = Exact<{
+export type StarterDeckCandidateCardsQueryVariables = Exact<{
+  filter?: CardFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type StarterDeckCandidateCardsQuery = { cards:
+    | { __typename: 'CardConnection', edges: Array<{ node:
+          | { __typename: 'Creature', id: string, name: string }
+          | { __typename: 'Item', id: string, name: string }
+          | { __typename: 'Spell', id: string, name: string }
+         }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type RegisterStarterDeckMutationVariables = Exact<{
+  input: RegisterStarterDeckInput;
+}>;
+
+
+export type RegisterStarterDeckMutation = { registerStarterDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RegisterStarterDeckSuccess', id: string, revision: number }
+    | { __typename: 'StarterDeckNameAlreadyInUseError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type RegisterStarterDeckFromPresetDeckMutationVariables = Exact<{
+  input: RegisterStarterDeckFromPresetDeckInput;
+}>;
+
+
+export type RegisterStarterDeckFromPresetDeckMutation = { registerStarterDeckFromPresetDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'PresetDeckNotFoundError' }
+    | { __typename: 'RegisterStarterDeckFromPresetDeckSuccess', id: string, revision: number }
+    | { __typename: 'StarterDeckNameAlreadyInUseError' }
+   };
+
+export type CopySourcePresetDecksQueryVariables = Exact<{
   filter?: PresetDeckFilter | null | undefined;
   after?: string | null | undefined;
 }>;
 
 
-export type StarterDeckSetCandidatesQuery = { presetDecks:
+export type CopySourcePresetDecksQuery = { presetDecks:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'PresetDeckConnection', edges: Array<{ node: { id: string, name: string, totalCount: number } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ValidationErrors' }
    };
 
-export type StarterDeckSetQueryVariables = Exact<{ [key: string]: never; }>;
+export type StarterDecksQueryVariables = Exact<{
+  filter?: StarterDeckFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
 
 
-export type StarterDeckSetQuery = { starterDeckSet:
+export type StarterDecksQuery = { starterDecks:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'StarterDeckSet', updatedAt: string | null, decks: Array<{ name: string, cards: Array<{ count: number, card:
-            | { __typename: 'Creature', id: string, name: string }
-            | { __typename: 'Item', id: string, name: string }
-            | { __typename: 'Spell', id: string, name: string }
-           }>, source: { presetDeckId: string, changedSinceCopied: boolean, presetDeckDeleted: boolean } }> }
+    | { __typename: 'StarterDeckConnection', edges: Array<{ node: { id: string, name: string, status: StarterDeckStatus, totalCount: number, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ValidationErrors' }
    };
 
-export type StarterDeckSetRevisionQueryVariables = Exact<{ [key: string]: never; }>;
+export type StarterDeckRevisionQueryVariables = Exact<{
+  id: string;
+}>;
 
 
-export type StarterDeckSetRevisionQuery = { starterDeckSet:
+export type StarterDeckRevisionQuery = { starterDeck:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'StarterDeckSet', revision: number }
+    | { __typename: 'StarterDeck', revision: number }
+    | { __typename: 'StarterDeckNotFoundError' }
    };
 
 export class TypedDocumentString<TResult, TVariables>
@@ -394,6 +666,28 @@ export class TypedDocumentString<TResult, TVariables>
   }
 }
 
+export const PublishCardDocument = new TypedDocumentString(`
+    mutation PublishCard($input: PublishCardInput!) {
+  publishCard(input: $input) {
+    __typename
+    ... on PublishCardSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PublishCardMutation, PublishCardMutationVariables>;
+export const RetireCardDocument = new TypedDocumentString(`
+    mutation RetireCard($input: RetireCardInput!) {
+  retireCard(input: $input) {
+    __typename
+    ... on RetireCardSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RetireCardMutation, RetireCardMutationVariables>;
 export const CardsDocument = new TypedDocumentString(`
     query Cards($filter: CardFilter, $after: String) {
   cards(filter: $filter, after: $after) {
@@ -404,6 +698,8 @@ export const CardsDocument = new TypedDocumentString(`
           __typename
           id
           name
+          status
+          revision
           registeredAt
           updatedAt
         }
@@ -416,6 +712,21 @@ export const CardsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<CardsQuery, CardsQueryVariables>;
+export const CardRevisionDocument = new TypedDocumentString(`
+    query CardRevision($name: String!) {
+  cards(filter: { nameContains: $name }, first: 100) {
+    __typename
+    ... on CardConnection {
+      edges {
+        node {
+          id
+          revision
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CardRevisionQuery, CardRevisionQueryVariables>;
 export const RegisterCreatureDocument = new TypedDocumentString(`
     mutation RegisterCreature($input: RegisterCreatureInput!) {
   registerCreature(input: $input) {
@@ -620,11 +931,31 @@ export const RegisterSpellDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RegisterSpellMutation, RegisterSpellMutationVariables>;
-export const SetStarterDeckSetDocument = new TypedDocumentString(`
-    mutation SetStarterDeckSet($input: SetStarterDeckSetInput!) {
-  setStarterDeckSet(input: $input) {
+export const RenameStarterDeckDocument = new TypedDocumentString(`
+    mutation RenameStarterDeck($input: RenameStarterDeckInput!) {
+  renameStarterDeck(input: $input) {
     __typename
-    ... on SetStarterDeckSetSuccess {
+    ... on RenameStarterDeckSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RenameStarterDeckMutation, RenameStarterDeckMutationVariables>;
+export const SetStarterDeckCardCountsDocument = new TypedDocumentString(`
+    mutation SetStarterDeckCardCounts($input: SetStarterDeckCardCountsInput!) {
+  setStarterDeckCardCounts(input: $input) {
+    __typename
+    ... on SetStarterDeckCardCountsSuccess {
+      id
       revision
     }
     ... on ValidationErrors {
@@ -635,6 +966,35 @@ export const SetStarterDeckSetDocument = new TypedDocumentString(`
           min
           max
         }
+        ... on FieldTotalTooLarge {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SetStarterDeckCardCountsMutation, SetStarterDeckCardCountsMutationVariables>;
+export const DeleteStarterDeckDocument = new TypedDocumentString(`
+    mutation DeleteStarterDeck($input: DeleteStarterDeckInput!) {
+  deleteStarterDeck(input: $input) {
+    __typename
+  }
+}
+    `) as unknown as TypedDocumentString<DeleteStarterDeckMutation, DeleteStarterDeckMutationVariables>;
+export const PublishStarterDeckDocument = new TypedDocumentString(`
+    mutation PublishStarterDeck($input: PublishStarterDeckInput!) {
+  publishStarterDeck(input: $input) {
+    __typename
+    ... on PublishStarterDeckSuccess {
+      id
+      revision
+    }
+    ... on StarterDeckLimitReachedError {
+      max
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
         ... on FieldTotalMismatch {
           required
         }
@@ -642,30 +1002,99 @@ export const SetStarterDeckSetDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<SetStarterDeckSetMutation, SetStarterDeckSetMutationVariables>;
-export const StarterDeckSetForEditDocument = new TypedDocumentString(`
-    query StarterDeckSetForEdit {
-  starterDeckSet {
+    `) as unknown as TypedDocumentString<PublishStarterDeckMutation, PublishStarterDeckMutationVariables>;
+export const RetireStarterDeckDocument = new TypedDocumentString(`
+    mutation RetireStarterDeck($input: RetireStarterDeckInput!) {
+  retireStarterDeck(input: $input) {
     __typename
-    ... on StarterDeckSet {
+    ... on RetireStarterDeckSuccess {
+      id
       revision
     }
   }
 }
-    `) as unknown as TypedDocumentString<StarterDeckSetForEditQuery, StarterDeckSetForEditQueryVariables>;
-export const SelectedPresetDeckDocument = new TypedDocumentString(`
-    query SelectedPresetDeck($id: UUID!) {
-  presetDeck(id: $id) {
+    `) as unknown as TypedDocumentString<RetireStarterDeckMutation, RetireStarterDeckMutationVariables>;
+export const StarterDeckDocument = new TypedDocumentString(`
+    query StarterDeck($id: UUID!) {
+  starterDeck(id: $id) {
     __typename
-    ... on PresetDeck {
+    ... on StarterDeck {
+      id
       name
+      cards {
+        count
+        card {
+          __typename
+          id
+          name
+        }
+      }
+      status
+      source {
+        presetDeckId
+        changedSinceCopied
+        presetDeckDeleted
+      }
       totalCount
+      revision
+      registeredAt
+      updatedAt
     }
   }
 }
-    `) as unknown as TypedDocumentString<SelectedPresetDeckQuery, SelectedPresetDeckQueryVariables>;
-export const StarterDeckSetCandidatesDocument = new TypedDocumentString(`
-    query StarterDeckSetCandidates($filter: PresetDeckFilter, $after: String) {
+    `) as unknown as TypedDocumentString<StarterDeckQuery, StarterDeckQueryVariables>;
+export const StarterDeckCandidateCardsDocument = new TypedDocumentString(`
+    query StarterDeckCandidateCards($filter: CardFilter, $after: String) {
+  cards(filter: $filter, after: $after) {
+    __typename
+    ... on CardConnection {
+      edges {
+        node {
+          __typename
+          id
+          name
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<StarterDeckCandidateCardsQuery, StarterDeckCandidateCardsQueryVariables>;
+export const RegisterStarterDeckDocument = new TypedDocumentString(`
+    mutation RegisterStarterDeck($input: RegisterStarterDeckInput!) {
+  registerStarterDeck(input: $input) {
+    __typename
+    ... on RegisterStarterDeckSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterStarterDeckMutation, RegisterStarterDeckMutationVariables>;
+export const RegisterStarterDeckFromPresetDeckDocument = new TypedDocumentString(`
+    mutation RegisterStarterDeckFromPresetDeck($input: RegisterStarterDeckFromPresetDeckInput!) {
+  registerStarterDeckFromPresetDeck(input: $input) {
+    __typename
+    ... on RegisterStarterDeckFromPresetDeckSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterStarterDeckFromPresetDeckMutation, RegisterStarterDeckFromPresetDeckMutationVariables>;
+export const CopySourcePresetDecksDocument = new TypedDocumentString(`
+    query CopySourcePresetDecks($filter: PresetDeckFilter, $after: String) {
   presetDecks(filter: $filter, after: $after) {
     __typename
     ... on PresetDeckConnection {
@@ -683,40 +1112,37 @@ export const StarterDeckSetCandidatesDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<StarterDeckSetCandidatesQuery, StarterDeckSetCandidatesQueryVariables>;
-export const StarterDeckSetDocument = new TypedDocumentString(`
-    query StarterDeckSet {
-  starterDeckSet {
+    `) as unknown as TypedDocumentString<CopySourcePresetDecksQuery, CopySourcePresetDecksQueryVariables>;
+export const StarterDecksDocument = new TypedDocumentString(`
+    query StarterDecks($filter: StarterDeckFilter, $after: String) {
+  starterDecks(filter: $filter, after: $after) {
     __typename
-    ... on StarterDeckSet {
-      updatedAt
-      decks {
-        name
-        cards {
-          count
-          card {
-            __typename
-            id
-            name
-          }
+    ... on StarterDeckConnection {
+      edges {
+        node {
+          id
+          name
+          status
+          totalCount
+          registeredAt
+          updatedAt
         }
-        source {
-          presetDeckId
-          changedSinceCopied
-          presetDeckDeleted
-        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }
 }
-    `) as unknown as TypedDocumentString<StarterDeckSetQuery, StarterDeckSetQueryVariables>;
-export const StarterDeckSetRevisionDocument = new TypedDocumentString(`
-    query StarterDeckSetRevision {
-  starterDeckSet {
+    `) as unknown as TypedDocumentString<StarterDecksQuery, StarterDecksQueryVariables>;
+export const StarterDeckRevisionDocument = new TypedDocumentString(`
+    query StarterDeckRevision($id: UUID!) {
+  starterDeck(id: $id) {
     __typename
-    ... on StarterDeckSet {
+    ... on StarterDeck {
       revision
     }
   }
 }
-    `) as unknown as TypedDocumentString<StarterDeckSetRevisionQuery, StarterDeckSetRevisionQueryVariables>;
+    `) as unknown as TypedDocumentString<StarterDeckRevisionQuery, StarterDeckRevisionQueryVariables>;

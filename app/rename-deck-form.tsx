@@ -1,23 +1,25 @@
 "use client";
 
 import { useActionState } from "react";
-import { type RenamePresetDeckState, renamePresetDeck } from "./actions";
+import type { RenameDeckState } from "./deck-form";
 
-const initialState: RenamePresetDeckState = {};
+const initialState: RenameDeckState = {};
 
-export function RenameForm({
+export function RenameDeckForm({
+  action,
   id,
   revision,
   name,
 }: {
+  action: (
+    previous: RenameDeckState,
+    form: FormData,
+  ) => Promise<RenameDeckState>;
   id: string;
   revision: number;
   name: string;
 }) {
-  const [state, formAction, isPending] = useActionState(
-    renamePresetDeck,
-    initialState,
-  );
+  const [state, formAction, isPending] = useActionState(action, initialState);
   const kept = state.revision === revision ? state : {};
 
   return (

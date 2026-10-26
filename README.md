@@ -39,7 +39,7 @@ cloudflared（任意）───┼─▶ studio-envoy:10000 ─┤
 Playwright のブラウザ ┘                     └─▶ core:3333（/studio/graphql）
 ```
 
-共有ネットワーク `diecardomain` に参加するのは **studio-envoy だけ**で、studio 自身は参加しない（core（../core で `make up`）とは studio-envoy を通してつながる）。
+core と共有する studio 用のネットワーク `diecardomain-studio` に参加するのは **studio-envoy だけ**で（game 用の `diecardomain-game` とは分ける。studio#30）、studio 自身は参加しない（core（../core で `make up`）とは studio-envoy を通してつながる）。
 core・game から studio に envoy を通らずに直接届くと、`x-client-ip` を自由に付けてレート制限をすり抜けられるため（studio#11）。
 
 - studio のサーバーから core を呼ぶときは、studio-envoy の `/studio/graphql`（`http://studio-envoy:10000/studio/graphql`）を通す
@@ -52,6 +52,7 @@ studio が前提にする core の版は Makefile の `CORE_VERSION` に書く�
 
 `make test` はプロジェクト名 `studio-test` で、専用の core・DB（`CORE_VERSION` のイメージ。ふだんはリリース済みの版、マイルストーンの途中は `local` も使える）と本番用イメージ（`.build/Dockerfile`）の studio を起動し、終了後に破棄する。テストは開発用イメージの studio-test-runner から実行する。
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
+core の DB は、core と同じく studio 用・game 用の 2 つ（core_studio・core_game。core_game は local/core-db の初期化の SQL で作る）。
 
 ### Tunnel（任意）
 
@@ -62,7 +63,7 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 
 | パイプライン | ジョブ | 内容 |
 |---|---|---|
-| マイルストーンのブランチに向かう MR（Issue の MR） | issue-mr（手動。実行しない） | 何もしない。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる |
+| マイルストーンのブランチに向かう MR（Issue の MR） | lint・test（手動） | ふだんは実行せず、手元の `make lint`・`make test` で確かめる。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる。CI の手順を変えたとき等、CI で確かめたいときだけ手で動かす（失敗するとマージできなくなる） |
 | main に向かう MR（マイルストーンの MR） | lint | `make lint` 相当 |
 | main に向かう MR | test | migrations を空の DB に Atlas で適用し、better-auth の設定とスキーマに差分が無いことを確かめる（Playwright のテストは CI では未実行） |
 | main に向かう MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後） |
@@ -170,6 +171,7 @@ better-auth の CLI（`auth migrate`）で直接 DB を変えるのではなく�
 ### 決まり
 
 - 追加のみ。適用済みのファイルは変更・削除・改名しない。down は無い
+- 例外として、リリース前（本番の DB ができる前）に限り、並びを作り直してよい。作り直したら `migrations/BASELINE` の 1 行目を書き換える（`check-migrations.sh` は比較元とこの行が違えば比べ合わせを飛ばす。core#33）
 - ファイル名は `NNNN_name.sql`（番号は数字だけ）。`-- atlas:txmode none` 等の指示行の直後には空行を入れる
 - lib/auth.ts を変えたのにマイグレーションを作り忘れると、Atlas の適用は通るのに本番でテーブル・列が足りずに壊れる。`scripts/check-auth-schema.sh`（`auth generate` で差分が無いことを確かめる）で検査する（`make lint`・CI の test）
 - 上記と番号の重複・適用済みより小さい番号の追加は、Atlas が検出しないため `scripts/check-migrations.sh`（core と同じもの）で検査する（`make lint`・CI の lint）
