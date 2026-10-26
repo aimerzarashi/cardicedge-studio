@@ -52,7 +52,7 @@ studio が前提にする core の版は Makefile の `CORE_VERSION` に書く�
 
 `make test` はプロジェクト名 `studio-test` で、専用の core・DB（`CORE_VERSION` のイメージ。ふだんはリリース済みの版、マイルストーンの途中は `local` も使える）と本番用イメージ（`.build/Dockerfile`）の studio を起動し、終了後に破棄する。テストは開発用イメージの studio-test-runner から実行する。
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
-core の DB は、core#33 の後の core と同じく studio 用・game 用の 2 つ（core_studio・core_game。core_game は local/core-db の初期化の SQL で作る）にし、前提の版（DB が 1 つの core）でも動くよう `DB_DSN` も渡している（前提の版を core#33 の後の版に上げるときに消す）。
+core の DB は、core と同じく studio 用・game 用の 2 つ（core_studio・core_game。core_game は local/core-db の初期化の SQL で作る）。
 
 ### Tunnel（任意）
 

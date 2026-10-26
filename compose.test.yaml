@@ -6,18 +6,15 @@ services:
   core:
     image: diecardomain/core:${CORE_VERSION:?make test から CORE_VERSION を渡す}
     environment:
-      # 前提の版（DB が 1 つの core。DB_DSN を読む）と、手元の core（core#33 で studio 用・game 用の DB に分けた。STUDIO_DB_DSN・
-      # GAME_DB_DSN を読む）の、どちらでも動くように全部渡す（どちらも知らない変数は読まない）。DB_DSN は、前提の版を core#33 の後の
-      # 版に上げるときに消す
-      DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core_studio sslmode=disable"
+      # core は studio 用・game 用の DB を分けて使う（core#33）
       STUDIO_DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core_studio sslmode=disable"
       GAME_DB_DSN: "host=core-db port=5432 user=core_user password=core_password dbname=core_game sslmode=disable"
       # JWKS は studio-envoy を通して取る（studio#11: studio には envoy を通してしか届かない）。iss・aud は studio の JWT_ISSUER・JWT_AUDIENCE と一致させる
       STUDIO_JWKS_URL: http://studio-envoy:10000/api/auth/jwks
       STUDIO_JWT_ISSUER: diecardomain-studio
       STUDIO_JWT_AUDIENCE: diecardomain-core
-      # game の JWT（core#34 の後の core で必須）。studio のテストでは game を起動しないため JWKS には届かないが、core は届かなくても
-      # 起動する（最初の JWT が来たときに取りに行く）。前提の版の core は読まない（studio#27）
+      # game の JWT（core で必須。core#34）。studio のテストでは game を起動しないため JWKS には届かないが、core は届かなくても
+      # 起動する（最初の JWT が来たときに取りに行く）
       GAME_JWKS_URL: http://game-envoy:10000/api/auth/jwks
       GAME_JWT_ISSUER: diecardomain-game
       GAME_JWT_AUDIENCE: diecardomain-core
