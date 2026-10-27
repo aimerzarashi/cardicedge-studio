@@ -29,6 +29,8 @@ const LINK = 20;
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 4;
 const ZOOM_STEP = 1.25;
+// 拡大・縮小で新しい倍率へ動く時間（ms）。続けて回したときも、動いている途中から次へ向かう
+const ZOOM_DURATION = 200;
 // 押してからこの距離（px）動いたらドラッグ、動かずに離したらマス・つながりを押した扱い
 const DRAG_THRESHOLD = 4;
 
@@ -96,6 +98,10 @@ export function BoardGrid({
     moved: boolean;
   } | null>(null);
   const suppressClick = useRef(false);
+  // 拡大・縮小・全体を表示は、新しい倍率と位置へなめらかに動かす（カメラワーク）。最初に開いたときは収まる位置にそのまま出し、
+  // ドラッグの最中は指やマウスにそのまま付いてくるよう遅らせない
+  const [animated, setAnimated] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const fitted = size ? fitView(size, width, height) : null;
   const shown = view ?? fitted;
@@ -124,6 +130,7 @@ export function BoardGrid({
       event.preventDefault();
       const rect = element.getBoundingClientRect();
       const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+      setAnimated(true);
       setView((current) =>
         zoomAt(
           current ?? fitView(size, width, height),
@@ -141,6 +148,7 @@ export function BoardGrid({
     if (!size || !shown) {
       return;
     }
+    setAnimated(true);
     setView(zoomAt(shown, factor, size.width / 2, size.height / 2));
   }
 
@@ -166,6 +174,7 @@ export function BoardGrid({
     const dy = event.clientY - d.startY;
     if (!d.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
       d.moved = true;
+      setDragging(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     if (d.moved) {
@@ -182,6 +191,7 @@ export function BoardGrid({
       }, 0);
     }
     drag.current = null;
+    setDragging(false);
   }
 
   const cells = [];
@@ -236,7 +246,13 @@ export function BoardGrid({
         <button type="button" onClick={() => zoom(1 / ZOOM_STEP)}>
           縮小
         </button>
-        <button type="button" onClick={() => setView(null)}>
+        <button
+          type="button"
+          onClick={() => {
+            setAnimated(true);
+            setView(null);
+          }}
+        >
           全体を表示
         </button>
       </div>
@@ -276,6 +292,10 @@ export function BoardGrid({
             width: span(width),
             height: span(height),
             transformOrigin: "0 0",
+            transition:
+              animated && !dragging
+                ? `transform ${ZOOM_DURATION}ms ease-out`
+                : "none",
             transform: shown
               ? `translate(${shown.x}px, ${shown.y}px) scale(${shown.scale}) scaleY(0.5) rotate(45deg)`
               : undefined,
