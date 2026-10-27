@@ -73,7 +73,6 @@ export function LayoutEditor({
         key={revision}
         formAction={formAction}
         isPending={isPending}
-        result={kept}
         id={id}
         revision={revision}
         sizeRange={sizeRange}
@@ -86,7 +85,6 @@ export function LayoutEditor({
 function LayoutForm({
   formAction,
   isPending,
-  result,
   id,
   revision,
   sizeRange,
@@ -94,7 +92,6 @@ function LayoutForm({
 }: {
   formAction: (form: FormData) => void;
   isPending: boolean;
-  result: ChangeLayoutState;
   id: string;
   revision: number;
   sizeRange: { min: number; max: number };
@@ -114,19 +111,6 @@ function LayoutForm({
     height: initial.height,
   });
   const [tool, setTool] = useState<Tool>("LAND");
-  // 誤りの印は保存した時点のレイアウトに対するもの。直したあとも残さないよう、編集したら外す
-  const [shown, setShown] = useState(result);
-  const [edited, setEdited] = useState(false);
-  if (shown !== result) {
-    setShown(result);
-    setEdited(false);
-  }
-  const marks = edited ? [] : (result.layoutErrors ?? []);
-
-  function edit(next: Cells) {
-    setCells(next);
-    setEdited(true);
-  }
 
   function inRange(text: string, current: number): number {
     const value = Number(text);
@@ -147,7 +131,7 @@ function LayoutForm({
   }
 
   function pressTile(position: Position) {
-    edit(
+    setCells(
       tool === "ERASE"
         ? removeTile(cells, position)
         : placeTile(cells, position, tool),
@@ -155,7 +139,7 @@ function LayoutForm({
   }
 
   function pressConnection(connection: Connection) {
-    edit(toggleConnection(cells, connection));
+    setCells(toggleConnection(cells, connection));
   }
 
   return (
@@ -224,10 +208,6 @@ function LayoutForm({
         height={grid.height}
         tiles={cells.tiles}
         connections={cells.connections}
-        markedTiles={marks.flatMap((m) => (m.tile ? [m.tile] : []))}
-        markedConnections={marks.flatMap((m) =>
-          m.connection ? [m.connection] : [],
-        )}
         onTile={pressTile}
         onConnection={pressConnection}
       />

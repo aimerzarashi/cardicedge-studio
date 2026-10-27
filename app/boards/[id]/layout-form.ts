@@ -9,17 +9,14 @@ import {
   type Cells,
   type Connection,
   isTileKind,
-  type Position,
   type Tile,
 } from "../board-layout";
 
 export type Layout = Cells & { width: number; height: number };
 
-// 誤りの文言と、格子で印を付ける場所（格子の外のマス・格子に無いつながりは印を付けられないため、文言だけになる）
+// 格子に印は付けない。画面の操作で起こせるレイアウトの誤りは格子の外のマスだけで、格子に描かれないため（studio#33）
 export type LayoutError = {
   message: string;
-  tile?: Position;
-  connection?: Connection;
 };
 
 // 誤りは、画面で見た版（revision）に結びつける。編集中のレイアウトは画面の状態（layout-editor.tsx）が持つため、ここには残さない
@@ -99,18 +96,12 @@ export function layoutErrors(
     }
     const tile = kind === "tiles" ? sent.tiles[Number(index)] : undefined;
     if (tile !== undefined) {
-      return {
-        message: boardTileErrorMessage(tile, error),
-        tile,
-      };
+      return { message: boardTileErrorMessage(tile, error) };
     }
     const connection =
       kind === "connections" ? sent.connections[Number(index)] : undefined;
     if (connection !== undefined) {
-      return {
-        message: boardConnectionErrorMessage(connection, error),
-        connection,
-      };
+      return { message: boardConnectionErrorMessage(connection, error) };
     }
     return { message: BOARD_LAYOUT_INVALID };
   });
