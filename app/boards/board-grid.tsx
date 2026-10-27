@@ -6,8 +6,6 @@ import {
   connectionBetween,
   hasConnection,
   type Position,
-  sameConnection,
-  samePosition,
   TILE_KIND_LABELS,
   type Tile,
   tileAt,
@@ -72,8 +70,6 @@ export function BoardGrid({
   height,
   tiles,
   connections,
-  markedTiles = [],
-  markedConnections = [],
   onTile,
   onConnection,
 }: {
@@ -81,8 +77,6 @@ export function BoardGrid({
   height: number;
   tiles: Tile[];
   connections: Connection[];
-  markedTiles?: Position[];
-  markedConnections?: Connection[];
   onTile?: (position: Position) => void;
   onConnection?: (connection: Connection) => void;
 }) {
@@ -202,7 +196,6 @@ export function BoardGrid({
             key={key}
             position={{ x, y }}
             tile={tileAt(tiles, { x, y })}
-            marked={markedTiles.some((p) => samePosition(p, { x, y }))}
             onTile={onTile}
           />,
         );
@@ -223,9 +216,6 @@ export function BoardGrid({
               tileAt(tiles, connection.a) !== undefined &&
               tileAt(tiles, connection.b) !== undefined
             }
-            marked={markedConnections.some((c) =>
-              sameConnection(c, connection),
-            )}
             onConnection={onConnection}
           />,
         );
@@ -334,17 +324,14 @@ const KIND_COLORS = {
   BASE: "#f4a6a6",
   CHECKPOINT: "#a9bff4",
 };
-const MARK = "2px solid #d00000";
 
 function TileButton({
   position,
   tile,
-  marked,
   onTile,
 }: {
   position: Position;
   tile: Tile | undefined;
-  marked: boolean;
   onTile?: (position: Position) => void;
 }) {
   const name = `(${position.x}, ${position.y}) のマス`;
@@ -352,14 +339,12 @@ function TileButton({
     <button
       type="button"
       aria-label={tile ? `${name} ${TILE_KIND_LABELS[tile.kind]}` : name}
-      aria-invalid={marked ? true : undefined}
       disabled={onTile === undefined}
       onClick={() => onTile?.(position)}
       style={{
         padding: 0,
         border: tile ? "1px solid #555" : "1px dashed #999",
         background: tile ? KIND_COLORS[tile.kind] : "transparent",
-        outline: marked ? MARK : undefined,
       }}
     />
   );
@@ -370,14 +355,12 @@ function ConnectionButton({
   vertical,
   connected,
   bothEnds,
-  marked,
   onConnection,
 }: {
   connection: Connection;
   vertical: boolean;
   connected: boolean;
   bothEnds: boolean;
-  marked: boolean;
   onConnection?: (connection: Connection) => void;
 }) {
   const { a, b } = connection;
@@ -386,7 +369,6 @@ function ConnectionButton({
       type="button"
       aria-label={`(${a.x}, ${a.y}) と (${b.x}, ${b.y}) のつながり`}
       aria-pressed={connected}
-      aria-invalid={marked ? true : undefined}
       // 両側にマスが無いと、つなぐことも切ることもできない
       disabled={onConnection === undefined || !bothEnds}
       onClick={() => onConnection?.(connection)}
@@ -396,7 +378,6 @@ function ConnectionButton({
         // 細い棒で、つながっているときだけ塗る（間のマスが無い印は薄くして押せないことを示す）
         background: connected ? "#555" : "#ddd",
         opacity: bothEnds ? 1 : 0.2,
-        outline: marked ? MARK : undefined,
         margin: vertical ? `0 ${(TILE - 16) / 2}px` : `${(TILE - 16) / 2}px 0`,
       }}
     />
