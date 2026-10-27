@@ -15,11 +15,11 @@ type Board {
 	"""
 	status: BoardStatus!
 	"""
-	幅（列の数。1〜32。登録した直後は 8）
+	幅（列の数。範囲は studioRules.board。登録した直後は 8 を範囲に収めた値）
 	"""
 	width: Int!
 	"""
-	高さ（行の数。1〜32。登録した直後は 8）
+	高さ（行の数。範囲は studioRules.board。登録した直後は 8 を範囲に収めた値）
 	"""
 	height: Int!
 	"""
@@ -160,6 +160,19 @@ input BoardPositionInput {
 ボードの詳細の結果
 """
 union BoardResult = Board | BoardNotFoundError | ForbiddenError
+"""
+ボードの決まり
+"""
+type BoardRules {
+	"""
+	幅・高さの下限（この値を含む。幅・高さに共通）
+	"""
+	minSize: Int!
+	"""
+	幅・高さの上限（この値を含む。幅・高さに共通）
+	"""
+	maxSize: Int!
+}
 """
 ボードの状態。準備中は名前・レイアウトを自由に変えられ、公開の条件を満たさなくてよい。公開中は公開の条件を満たす。
 使用不可は新しい対戦に使わない
@@ -392,11 +405,11 @@ input ChangeBoardLayoutInput {
 	"""
 	revision: Int!
 	"""
-	幅（1〜32）
+	幅（studioRules.board の範囲の中。外なら入力の誤り）
 	"""
 	width: Int!
 	"""
-	高さ（1〜32）
+	高さ（studioRules.board の範囲の中。外なら入力の誤り）
 	"""
 	height: Int!
 	"""
@@ -1255,6 +1268,10 @@ type Query {
 		"""
 		id: UUID!
 	): StarterDeckResult!
+	"""
+	studio でマスタを作るときの決まり（紐づいたオペレーターだけ）
+	"""
+	studioRules: StudioRulesResult!
 }
 """
 ボードを登録する入力
@@ -1270,7 +1287,7 @@ input RegisterBoardInput {
 """
 union RegisterBoardResult = RegisterBoardSuccess | ValidationErrors | BoardNameAlreadyInUseError | ForbiddenError
 """
-ボードを登録した（準備中。四角形の 8×8 で、マスもつながりも無い）
+ボードを登録した（準備中。四角形の 8×8（範囲の外なら範囲に収めた値）で、マスもつながりも無い）
 """
 type RegisterBoardSuccess {
 	"""
@@ -1891,6 +1908,19 @@ enum StarterDeckStatus {
 スターターデッキの一覧の結果
 """
 union StarterDecksResult = StarterDeckConnection | ValidationErrors | ForbiddenError
+"""
+studio でマスタを作るときの決まり
+"""
+type StudioRules {
+	"""
+	ボードの決まり
+	"""
+	board: BoardRules!
+}
+"""
+studio の決まりの結果
+"""
+union StudioRulesResult = StudioRules | ForbiddenError
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
 """

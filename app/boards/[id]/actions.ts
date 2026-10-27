@@ -18,6 +18,11 @@ import {
   REVISION_CONFLICT,
 } from "../../messages";
 import { waitBoard } from "../wait-board";
+import {
+  type ChangeLayoutState,
+  layoutErrors,
+  parseLayout,
+} from "./layout-form";
 
 const renameBoardMutation = graphql(`
   mutation RenameBoard($input: RenameBoardInput!) {
@@ -31,6 +36,28 @@ const renameBoardMutation = graphql(`
         errors {
           __typename
           ... on FieldTooLong {
+            max
+          }
+        }
+      }
+    }
+  }
+`);
+
+const changeBoardLayoutMutation = graphql(`
+  mutation ChangeBoardLayout($input: ChangeBoardLayoutInput!) {
+    changeBoardLayout(input: $input) {
+      __typename
+      ... on ChangeBoardLayoutSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldOutOfRange {
+            min
             max
           }
         }
@@ -135,6 +162,50 @@ export async function renameBoard(
       return {};
     case "ForbiddenError":
       return { revision: board.revision, value: name, error: FORBIDDEN };
+  }
+}
+
+export async function changeBoardLayout(
+  _previous: ChangeLayoutState,
+  form: FormData,
+): Promise<ChangeLayoutState> {
+  const board = target(form);
+  const layout = parseLayout(form);
+  if (board === undefined || layout === undefined) {
+    return { error: INVALID_TARGET };
+  }
+
+  const result = await callCore(changeBoardLayoutMutation, {
+    input: { ...board, ...layout },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+
+  const changed = result.data.changeBoardLayout;
+  switch (changed.__typename) {
+    case "ChangeBoardLayoutSuccess":
+      return showChanged(
+        changed.id,
+        changed.revision,
+        "レイアウトを保存しました",
+      );
+    case "ValidationErrors":
+      return {
+        revision: board.revision,
+        layoutErrors: layoutErrors(changed.errors, layout),
+      };
+    case "BoardNotDraftError":
+      refresh();
+      return { error: BOARD_NOT_DRAFT };
+    case "RevisionConflictError":
+      refresh();
+      return { error: REVISION_CONFLICT };
+    case "BoardNotFoundError":
+      refresh();
+      return {};
+    case "ForbiddenError":
+      return { error: FORBIDDEN };
   }
 }
 

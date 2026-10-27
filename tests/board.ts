@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "./fixtures";
+import { section } from "./preset-deck";
 
 // 登録すると、詳細に反映されてから詳細の画面に移る
 export async function registerBoard(page: Page, name: string) {
@@ -19,22 +20,7 @@ export type Connection = {
   b: { x: number; y: number };
 };
 
-// 拠点 1 つ・チェックポイント 1 つが、土地を通ってつながった 3×1 のレイアウト（公開できる）
-export const publishableLayout = {
-  width: 3,
-  height: 1,
-  tiles: [
-    { x: 0, y: 0, kind: "BASE" },
-    { x: 1, y: 0, kind: "LAND" },
-    { x: 2, y: 0, kind: "CHECKPOINT" },
-  ] satisfies Tile[],
-  connections: [
-    { a: { x: 0, y: 0 }, b: { x: 1, y: 0 } },
-    { a: { x: 1, y: 0 }, b: { x: 2, y: 0 } },
-  ] satisfies Connection[],
-};
-
-// レイアウトの編集の画面は studio#32 で作るため、それまでの間は、ログイン中のオペレーターの JWT で core を直接呼んで入れる。
+// 画面で作るのが重いレイアウト（拠点から行けないマスの座標の確かめ等）は、ログイン中のオペレーターの JWT で core を直接呼んで入れる。
 // 公開の入口（envoy の 10000）を使うのは、中継役用の入口には core への経路が無いため
 async function callCore(
   page: Page,
@@ -96,4 +82,52 @@ export async function setBoardLayout(
       page.getByText(`${layout.width}×${layout.height}`, { exact: true }),
     ).toBeVisible({ timeout: 1_000 });
   }).toPass();
+}
+
+function layout(page: Page) {
+  return section(page, "レイアウト");
+}
+
+export function tileButton(page: Page, x: number, y: number) {
+  // 置いてあるマスの名前は、種類が付く（「(2, 0) のマス 拠点」）
+  return layout(page).getByRole("button", {
+    name: new RegExp(`^\\(${x}, ${y}\\) のマス`),
+  });
+}
+
+export function connectionButton(
+  page: Page,
+  a: [number, number],
+  b: [number, number],
+) {
+  return layout(page).getByRole("button", {
+    name: `(${a[0]}, ${a[1]}) と (${b[0]}, ${b[1]}) のつながり`,
+    exact: true,
+  });
+}
+
+// 道具を選んで、マスを順に押す
+export async function putTiles(
+  page: Page,
+  tool: "土地" | "拠点" | "チェックポイント" | "消す",
+  positions: [number, number][],
+) {
+  await layout(page).getByLabel(tool, { exact: true }).check();
+  for (const [x, y] of positions) {
+    await tileButton(page, x, y).click();
+  }
+}
+
+export async function saveLayout(page: Page) {
+  const editor = layout(page);
+  await editor.getByRole("button", { name: "レイアウトを保存" }).click();
+  await expect(editor.getByText("レイアウトを保存しました")).toBeVisible();
+}
+
+// 拠点 1 つ・チェックポイント 1 つが、土地を通ってつながった横一列のレイアウト（公開できる）を画面で作って保存する
+export async function savePublishableLayout(page: Page) {
+  await putTiles(page, "拠点", [[0, 0]]);
+  await putTiles(page, "土地", [[1, 0]]);
+  await putTiles(page, "チェックポイント", [[2, 0]]);
+  await saveLayout(page);
 }

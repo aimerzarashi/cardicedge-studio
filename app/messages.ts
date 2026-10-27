@@ -117,3 +117,47 @@ export function boardPublishErrorMessage(error: {
   }
   return messages.join("。");
 }
+
+// ボードのレイアウトを保存できないときの誤り（範囲は core が返したものを使う。座標は (列, 行) の順で、core と同じ 0 始まり）
+export function boardSizeErrorMessage(
+  label: "幅" | "高さ",
+  error: { min?: number; max?: number },
+): string {
+  return `${label}は ${error.min}〜${error.max} にしてください`;
+}
+
+export function boardTileErrorMessage(
+  position: { x: number; y: number },
+  error: { __typename: string; field: string; min?: number; max?: number },
+): string {
+  const at = `(${position.x}, ${position.y})`;
+  switch (error.__typename) {
+    case "FieldOutOfRange": {
+      const axis = error.field.endsWith(".x") ? "列" : "行";
+      return `${at} のマスが格子の外です。${axis}は ${error.min}〜${error.max} の範囲に置いてください`;
+    }
+    case "FieldDuplicated":
+      return `${at} のマスが重複しています`;
+    default:
+      return `${at} のマスの入力が正しくありません`;
+  }
+}
+
+export function boardConnectionErrorMessage(
+  connection: { a: { x: number; y: number }; b: { x: number; y: number } },
+  error: { __typename: string },
+): string {
+  const ends = `(${connection.a.x}, ${connection.a.y}) と (${connection.b.x}, ${connection.b.y}) のつながり`;
+  switch (error.__typename) {
+    case "FieldNotFound":
+      return `${ends}の端にマスがありません`;
+    case "FieldNotAdjacent":
+      return `${ends}は、上下左右に隣り合うマスどうしではありません`;
+    case "FieldDuplicated":
+      return `${ends}が重複しています`;
+    default:
+      return `${ends}の入力が正しくありません`;
+  }
+}
+
+export const BOARD_LAYOUT_INVALID = "レイアウトの入力が正しくありません";

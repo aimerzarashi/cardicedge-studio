@@ -6,7 +6,15 @@ import { STATUS_LABELS } from "@/lib/status";
 import { DeleteDeck } from "../../delete-deck";
 import { RenameDeckForm } from "../../rename-deck-form";
 import { StatusButton } from "../../status-button";
-import { deleteBoard, publishBoard, renameBoard, retireBoard } from "./actions";
+import { BoardGrid } from "../board-grid";
+import {
+  changeBoardLayout,
+  deleteBoard,
+  publishBoard,
+  renameBoard,
+  retireBoard,
+} from "./actions";
+import { LayoutEditor } from "./layout-editor";
 
 const boardQuery = graphql(`
   query Board($id: UUID!) {
@@ -19,16 +27,32 @@ const boardQuery = graphql(`
         width
         height
         tiles {
+          x
+          y
           kind
         }
         connections {
           a {
             x
+            y
+          }
+          b {
+            x
+            y
           }
         }
         revision
         registeredAt
         updatedAt
+      }
+    }
+    studioRules {
+      __typename
+      ... on StudioRules {
+        board {
+          minSize
+          maxSize
+        }
       }
     }
   }
@@ -69,6 +93,7 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
     );
   }
   const board = result.data.board;
+  const rules = result.data.studioRules;
   switch (board.__typename) {
     case "ForbiddenError":
       return (
@@ -81,6 +106,14 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
       return <NotFound />;
     case "Board":
       break;
+  }
+  if (rules.__typename === "ForbiddenError") {
+    return (
+      <main>
+        <h1>ボード</h1>
+        <p role="alert">この操作をする権限がありません</p>
+      </main>
+    );
   }
 
   return (
@@ -118,6 +151,32 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
             label="公開する"
             id={board.id}
             revision={board.revision}
+          />
+        )}
+      </section>
+
+      <section aria-labelledby="layout-heading">
+        <h2 id="layout-heading">レイアウト</h2>
+        {board.status === "DRAFT" ? (
+          <LayoutEditor
+            action={changeBoardLayout}
+            id={board.id}
+            revision={board.revision}
+            width={board.width}
+            height={board.height}
+            sizeRange={{
+              min: rules.board.minSize,
+              max: rules.board.maxSize,
+            }}
+            tiles={board.tiles}
+            connections={board.connections}
+          />
+        ) : (
+          <BoardGrid
+            width={board.width}
+            height={board.height}
+            tiles={board.tiles}
+            connections={board.connections}
           />
         )}
       </section>
