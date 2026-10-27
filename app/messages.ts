@@ -86,3 +86,34 @@ export const STARTER_DECK_NOT_DRAFT =
 export function starterDeckLimitReachedMessage(max: number): string {
   return `公開中のスターターデッキは ${max} 個までです。ほかのものを使用不可にすると公開できます`;
 }
+
+export const BOARD_NOT_DRAFT =
+  "準備中でないため、変えられません。最新の状態を表示しています";
+
+// ボードを公開できないときの誤り（数と座標は core が返したものを使う。座標は core と同じ 0 始まりで、(列, 行) の順に出す）
+export function boardPublishErrorMessage(error: {
+  baseCount: number;
+  checkpointCount: number;
+  unreachableTiles: { x: number; y: number }[];
+}): string {
+  const messages: string[] = [];
+  if (error.baseCount === 0) {
+    messages.push("拠点が 0 個です。ちょうど 1 つ置いてください");
+  } else if (error.baseCount > 1) {
+    messages.push(
+      `拠点が ${error.baseCount} 個あります。ちょうど 1 つにしてください`,
+    );
+  }
+  if (error.checkpointCount === 0) {
+    messages.push("チェックポイントがありません。1 つ以上置いてください");
+  }
+  if (error.unreachableTiles.length > 0) {
+    const positions = error.unreachableTiles
+      .map(({ x, y }) => `(${x}, ${y})`)
+      .join("・");
+    messages.push(
+      `拠点から行けないマスがあります: ${positions}（(列, 行) の順。0 から数えます）`,
+    );
+  }
+  return messages.join("。");
+}

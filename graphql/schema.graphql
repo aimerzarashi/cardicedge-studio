@@ -1,4 +1,265 @@
 """
+ボード
+"""
+type Board {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべてのボードの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: BoardStatus!
+	"""
+	幅（列の数。1〜32。登録した直後は 8）
+	"""
+	width: Int!
+	"""
+	高さ（行の数。1〜32。登録した直後は 8）
+	"""
+	height: Int!
+	"""
+	置いてあるマス（置いていない座標は含まない。行 → 列の順: y の小さい順、同じ y では x の小さい順）
+	"""
+	tiles: [BoardTile!]!
+	"""
+	マスどうしのつながり（向きは無い。a の座標が小さい側になり、a → b の順に並べる）
+	"""
+	connections: [BoardConnection!]!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+マスどうしのつながり（向きは無い）
+"""
+type BoardConnection {
+	"""
+	片方の端（座標が小さい側。行 → 列の順に比べる）
+	"""
+	a: BoardPosition!
+	"""
+	もう片方の端
+	"""
+	b: BoardPosition!
+}
+"""
+つなぐマスの入力（向きは無い。a と b を入れ替えても同じつながり）
+"""
+input BoardConnectionInput {
+	"""
+	片方の端（マスが置いてある座標）
+	"""
+	a: BoardPositionInput!
+	"""
+	もう片方の端（a の上下左右に隣り合う、マスが置いてある座標）
+	"""
+	b: BoardPositionInput!
+}
+"""
+ボードの一覧の絞り込み
+"""
+input BoardFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [BoardStatus!]
+}
+"""
+名前が、ほかのボードですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type BoardNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でないボードの名前・レイアウトを変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type BoardNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+ボードが無い（削除したものを含む）
+"""
+type BoardNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+公開の条件を満たしていない（拠点がちょうど 1 つ、チェックポイントが 1 つ以上、すべてのマスに拠点からつながりをたどって行ける）
+"""
+type BoardNotPublishableError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	拠点の数（ちょうど 1 つでなければ公開できない）
+	"""
+	baseCount: Int!
+	"""
+	チェックポイントの数（1 つ以上でなければ公開できない）
+	"""
+	checkpointCount: Int!
+	"""
+	拠点からつながりをたどって行けないマス（行 → 列の順）。拠点がちょうど 1 つのときだけ計算し、0 個・2 個以上のときは空
+	"""
+	unreachableTiles: [BoardPosition!]!
+}
+"""
+格子の座標。x が列、y が行（どちらも 0 始まり）
+"""
+type BoardPosition {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+}
+"""
+つながりの端の座標の入力
+"""
+input BoardPositionInput {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
+ボードの詳細の結果
+"""
+union BoardResult = Board | BoardNotFoundError | ForbiddenError
+"""
+ボードの状態。準備中は名前・レイアウトを自由に変えられ、公開の条件を満たさなくてよい。公開中は公開の条件を満たす。
+使用不可は新しい対戦に使わない
+"""
+enum BoardStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+置いてあるマス
+"""
+type BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+	"""
+	種類
+	"""
+	kind: BoardTileKind!
+}
+"""
+置くマスの入力
+"""
+input BoardTileInput {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+	"""
+	種類
+	"""
+	kind: BoardTileKind!
+}
+"""
+マスの種類
+"""
+enum BoardTileKind {
+	"""
+	土地（ふつうのマス）
+	"""
+	LAND
+	"""
+	拠点（公開するボードにちょうど 1 つ）
+	"""
+	BASE
+	"""
+	チェックポイント（公開するボードに 1 つ以上）
+	"""
+	CHECKPOINT
+}
+"""
+ボードの一覧の 1 ページ（名前の順）
+"""
+type BoardsConnection {
+	"""
+	このページのボード
+	"""
+	edges: [BoardsEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+ボードの一覧の 1 件と、その位置
+"""
+type BoardsEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	ボード
+	"""
+	node: Board!
+}
+"""
+ボードの一覧の結果
+"""
+union BoardsResult = BoardsConnection | ValidationErrors | ForbiddenError
+"""
 カード（Creature・Item・Spell）。種類は __typename で見分け、種類ごとの項目は断片（... on Creature 等）で取る
 """
 interface Card {
@@ -119,6 +380,52 @@ enum CardType {
 """
 union CardsResult = CardConnection | ValidationErrors | ForbiddenError
 """
+ボードのレイアウトを変える入力（変えた後の全体。前の内容は引き継がれず、ここに無いマス・つながりは消える）
+"""
+input ChangeBoardLayoutInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+	"""
+	幅（1〜32）
+	"""
+	width: Int!
+	"""
+	高さ（1〜32）
+	"""
+	height: Int!
+	"""
+	置くマスの全体（同じ座標を 2 回入れると入力の誤り）
+	"""
+	tiles: [BoardTileInput!]!
+	"""
+	つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り）
+	"""
+	connections: [BoardConnectionInput!]!
+}
+"""
+ボードのレイアウトの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
+"""
+union ChangeBoardLayoutResult = ChangeBoardLayoutSuccess | ValidationErrors | BoardNotFoundError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードのレイアウトを変えた（前と変わらなければ何も変えず、revision も進まない）
+"""
+type ChangeBoardLayoutSuccess {
+	"""
+	変えたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 クリーチャー（カードの種類の 1 つ）
 """
 type Creature implements Card {
@@ -176,6 +483,32 @@ input DeckCardCountInput {
 	その枚数にする（0〜4。0 にするとデッキから外す）
 	"""
 	count: Int!
+}
+"""
+ボードを削除する入力
+"""
+input DeleteBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+}
+"""
+ボードの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteBoardResult = DeleteBoardSuccess | BoardNotFoundError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードを削除した（名前はほかのボードが使えるようになる）
+"""
+type DeleteBoardSuccess {
+	"""
+	削除したボードの公開用の ID
+	"""
+	id: UUID!
 }
 """
 プリセットデッキを削除する入力
@@ -253,6 +586,15 @@ interface FieldError {
 type FieldInvalidFormat implements FieldError {
 	"""
 	誤りのある入力の項目
+	"""
+	field: String!
+}
+"""
+つながりの両端が隣どうし（上下左右に 1 マス）でない（同じ座標を指すものを含む）
+"""
+type FieldNotAdjacent implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: connections.2）
 	"""
 	field: String!
 }
@@ -349,6 +691,15 @@ type ForbiddenError {
 	message: String!
 }
 """
+準備中のボードを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidBoardStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 準備中のカードを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidCardStatusTransitionError {
@@ -396,6 +747,60 @@ type Item implements Card {
 	updatedAt: DateTime!
 }
 type Mutation {
+	"""
+	ボードを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerBoard(
+		"""
+		登録するボード
+		"""
+		input: RegisterBoardInput!
+	): RegisterBoardResult!
+	"""
+	ボードの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameBoard(
+		"""
+		変える内容
+		"""
+		input: RenameBoardInput!
+	): RenameBoardResult!
+	"""
+	ボードのレイアウト（大きさ・マス・つながり）を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	changeBoardLayout(
+		"""
+		変える内容
+		"""
+		input: ChangeBoardLayoutInput!
+	): ChangeBoardLayoutResult!
+	"""
+	ボードを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteBoard(
+		"""
+		削除するボード
+		"""
+		input: DeleteBoardInput!
+	): DeleteBoardResult!
+	"""
+	ボードを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishBoard(
+		"""
+		公開するボード
+		"""
+		input: PublishBoardInput!
+	): PublishBoardResult!
+	"""
+	ボードを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireBoard(
+		"""
+		使用不可にするボード
+		"""
+		input: RetireBoardInput!
+	): RetireBoardResult!
 	"""
 	カードを公開中にする（紐づいたオペレーターだけ。準備中・使用不可から）
 	"""
@@ -657,6 +1062,36 @@ union PresetDeckResult = PresetDeck | PresetDeckNotFoundError | ForbiddenError
 """
 union PresetDecksResult = PresetDeckConnection | ValidationErrors | ForbiddenError
 """
+ボードを公開する入力
+"""
+input PublishBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+}
+"""
+ボードの公開の結果（準備中・使用不可から公開中にできる。公開の条件を満たさなければ公開できない）
+"""
+union PublishBoardResult = PublishBoardSuccess | BoardNotFoundError | BoardNotPublishableError | RevisionConflictError | ForbiddenError
+"""
+ボードを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishBoardSuccess {
+	"""
+	公開したボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開したボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 カードを公開中にする入力
 """
 input PublishCardInput {
@@ -717,6 +1152,34 @@ type PublishStarterDeckSuccess {
 	revision: Int!
 }
 type Query {
+	"""
+	ボードの一覧（紐づいたオペレーターだけ）
+	"""
+	boards(
+		"""
+		絞り込み
+		"""
+		filter: BoardFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): BoardsResult!
+	"""
+	ボードの詳細（紐づいたオペレーターだけ）
+	"""
+	board(
+		"""
+		ボードの公開用の ID
+		"""
+		id: UUID!
+	): BoardResult!
 	"""
 	カードの一覧（紐づいたオペレーターだけ）
 	"""
@@ -792,6 +1255,32 @@ type Query {
 		"""
 		id: UUID!
 	): StarterDeckResult!
+}
+"""
+ボードを登録する入力
+"""
+input RegisterBoardInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+ボードの登録の結果
+"""
+union RegisterBoardResult = RegisterBoardSuccess | ValidationErrors | BoardNameAlreadyInUseError | ForbiddenError
+"""
+ボードを登録した（準備中。四角形の 8×8 で、マスもつながりも無い）
+"""
+type RegisterBoardSuccess {
+	"""
+	登録したボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録したボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
 }
 """
 クリーチャーを登録する入力
@@ -938,6 +1427,40 @@ type RegisterStarterDeckSuccess {
 	revision: Int!
 }
 """
+ボードの名前を変える入力
+"""
+input RenameBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+ボードの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameBoardResult = RenameBoardSuccess | ValidationErrors | BoardNotFoundError | BoardNameAlreadyInUseError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameBoardSuccess {
+	"""
+	変えたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 プリセットデッキの名前を変える入力
 """
 input RenamePresetDeckInput {
@@ -1002,6 +1525,36 @@ type RenameStarterDeckSuccess {
 	id: UUID!
 	"""
 	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+ボードを使用不可にする入力
+"""
+input RetireBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+}
+"""
+ボードの使用不可の結果
+"""
+union RetireBoardResult = RetireBoardSuccess | BoardNotFoundError | InvalidBoardStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+ボードを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireBoardSuccess {
+	"""
+	使用不可にしたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にしたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }

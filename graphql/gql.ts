@@ -15,6 +15,14 @@ import * as types from './graphql';
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+    "\n  mutation RenameBoard($input: RenameBoardInput!) {\n    renameBoard(input: $input) {\n      __typename\n      ... on RenameBoardSuccess {\n        id\n        revision\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": typeof types.RenameBoardDocument,
+    "\n  mutation DeleteBoard($input: DeleteBoardInput!) {\n    deleteBoard(input: $input) {\n      __typename\n    }\n  }\n": typeof types.DeleteBoardDocument,
+    "\n  mutation PublishBoard($input: PublishBoardInput!) {\n    publishBoard(input: $input) {\n      __typename\n      ... on PublishBoardSuccess {\n        id\n        revision\n      }\n      ... on BoardNotPublishableError {\n        baseCount\n        checkpointCount\n        unreachableTiles {\n          x\n          y\n        }\n      }\n    }\n  }\n": typeof types.PublishBoardDocument,
+    "\n  mutation RetireBoard($input: RetireBoardInput!) {\n    retireBoard(input: $input) {\n      __typename\n      ... on RetireBoardSuccess {\n        id\n        revision\n      }\n    }\n  }\n": typeof types.RetireBoardDocument,
+    "\n  query Board($id: UUID!) {\n    board(id: $id) {\n      __typename\n      ... on Board {\n        id\n        name\n        status\n        width\n        height\n        tiles {\n          kind\n        }\n        connections {\n          a {\n            x\n          }\n        }\n        revision\n        registeredAt\n        updatedAt\n      }\n    }\n  }\n": typeof types.BoardDocument,
+    "\n  mutation RegisterBoard($input: RegisterBoardInput!) {\n    registerBoard(input: $input) {\n      __typename\n      ... on RegisterBoardSuccess {\n        id\n        revision\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": typeof types.RegisterBoardDocument,
+    "\n  query Boards($filter: BoardFilter, $after: String) {\n    boards(filter: $filter, after: $after) {\n      __typename\n      ... on BoardsConnection {\n        edges {\n          node {\n            id\n            name\n            status\n            width\n            height\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n": typeof types.BoardsDocument,
+    "\n  query BoardRevision($id: UUID!) {\n    board(id: $id) {\n      __typename\n      ... on Board {\n        revision\n      }\n    }\n  }\n": typeof types.BoardRevisionDocument,
     "\n  mutation PublishCard($input: PublishCardInput!) {\n    publishCard(input: $input) {\n      __typename\n      ... on PublishCardSuccess {\n        id\n        revision\n      }\n    }\n  }\n": typeof types.PublishCardDocument,
     "\n  mutation RetireCard($input: RetireCardInput!) {\n    retireCard(input: $input) {\n      __typename\n      ... on RetireCardSuccess {\n        id\n        revision\n      }\n    }\n  }\n": typeof types.RetireCardDocument,
     "\n  query Cards($filter: CardFilter, $after: String) {\n    cards(filter: $filter, after: $after) {\n      __typename\n      ... on CardConnection {\n        edges {\n          node {\n            __typename\n            id\n            name\n            status\n            revision\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n": typeof types.CardsDocument,
@@ -44,6 +52,14 @@ type Documents = {
     "\n  query StarterDeckRevision($id: UUID!) {\n    starterDeck(id: $id) {\n      __typename\n      ... on StarterDeck {\n        revision\n      }\n    }\n  }\n": typeof types.StarterDeckRevisionDocument,
 };
 const documents: Documents = {
+    "\n  mutation RenameBoard($input: RenameBoardInput!) {\n    renameBoard(input: $input) {\n      __typename\n      ... on RenameBoardSuccess {\n        id\n        revision\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": types.RenameBoardDocument,
+    "\n  mutation DeleteBoard($input: DeleteBoardInput!) {\n    deleteBoard(input: $input) {\n      __typename\n    }\n  }\n": types.DeleteBoardDocument,
+    "\n  mutation PublishBoard($input: PublishBoardInput!) {\n    publishBoard(input: $input) {\n      __typename\n      ... on PublishBoardSuccess {\n        id\n        revision\n      }\n      ... on BoardNotPublishableError {\n        baseCount\n        checkpointCount\n        unreachableTiles {\n          x\n          y\n        }\n      }\n    }\n  }\n": types.PublishBoardDocument,
+    "\n  mutation RetireBoard($input: RetireBoardInput!) {\n    retireBoard(input: $input) {\n      __typename\n      ... on RetireBoardSuccess {\n        id\n        revision\n      }\n    }\n  }\n": types.RetireBoardDocument,
+    "\n  query Board($id: UUID!) {\n    board(id: $id) {\n      __typename\n      ... on Board {\n        id\n        name\n        status\n        width\n        height\n        tiles {\n          kind\n        }\n        connections {\n          a {\n            x\n          }\n        }\n        revision\n        registeredAt\n        updatedAt\n      }\n    }\n  }\n": types.BoardDocument,
+    "\n  mutation RegisterBoard($input: RegisterBoardInput!) {\n    registerBoard(input: $input) {\n      __typename\n      ... on RegisterBoardSuccess {\n        id\n        revision\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n": types.RegisterBoardDocument,
+    "\n  query Boards($filter: BoardFilter, $after: String) {\n    boards(filter: $filter, after: $after) {\n      __typename\n      ... on BoardsConnection {\n        edges {\n          node {\n            id\n            name\n            status\n            width\n            height\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n": types.BoardsDocument,
+    "\n  query BoardRevision($id: UUID!) {\n    board(id: $id) {\n      __typename\n      ... on Board {\n        revision\n      }\n    }\n  }\n": types.BoardRevisionDocument,
     "\n  mutation PublishCard($input: PublishCardInput!) {\n    publishCard(input: $input) {\n      __typename\n      ... on PublishCardSuccess {\n        id\n        revision\n      }\n    }\n  }\n": types.PublishCardDocument,
     "\n  mutation RetireCard($input: RetireCardInput!) {\n    retireCard(input: $input) {\n      __typename\n      ... on RetireCardSuccess {\n        id\n        revision\n      }\n    }\n  }\n": types.RetireCardDocument,
     "\n  query Cards($filter: CardFilter, $after: String) {\n    cards(filter: $filter, after: $after) {\n      __typename\n      ... on CardConnection {\n        edges {\n          node {\n            __typename\n            id\n            name\n            status\n            revision\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n": types.CardsDocument,
@@ -73,6 +89,38 @@ const documents: Documents = {
     "\n  query StarterDeckRevision($id: UUID!) {\n    starterDeck(id: $id) {\n      __typename\n      ... on StarterDeck {\n        revision\n      }\n    }\n  }\n": types.StarterDeckRevisionDocument,
 };
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RenameBoard($input: RenameBoardInput!) {\n    renameBoard(input: $input) {\n      __typename\n      ... on RenameBoardSuccess {\n        id\n        revision\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n"): typeof import('./graphql').RenameBoardDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteBoard($input: DeleteBoardInput!) {\n    deleteBoard(input: $input) {\n      __typename\n    }\n  }\n"): typeof import('./graphql').DeleteBoardDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation PublishBoard($input: PublishBoardInput!) {\n    publishBoard(input: $input) {\n      __typename\n      ... on PublishBoardSuccess {\n        id\n        revision\n      }\n      ... on BoardNotPublishableError {\n        baseCount\n        checkpointCount\n        unreachableTiles {\n          x\n          y\n        }\n      }\n    }\n  }\n"): typeof import('./graphql').PublishBoardDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RetireBoard($input: RetireBoardInput!) {\n    retireBoard(input: $input) {\n      __typename\n      ... on RetireBoardSuccess {\n        id\n        revision\n      }\n    }\n  }\n"): typeof import('./graphql').RetireBoardDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Board($id: UUID!) {\n    board(id: $id) {\n      __typename\n      ... on Board {\n        id\n        name\n        status\n        width\n        height\n        tiles {\n          kind\n        }\n        connections {\n          a {\n            x\n          }\n        }\n        revision\n        registeredAt\n        updatedAt\n      }\n    }\n  }\n"): typeof import('./graphql').BoardDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RegisterBoard($input: RegisterBoardInput!) {\n    registerBoard(input: $input) {\n      __typename\n      ... on RegisterBoardSuccess {\n        id\n        revision\n      }\n      ... on ValidationErrors {\n        errors {\n          __typename\n          ... on FieldTooLong {\n            max\n          }\n        }\n      }\n    }\n  }\n"): typeof import('./graphql').RegisterBoardDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Boards($filter: BoardFilter, $after: String) {\n    boards(filter: $filter, after: $after) {\n      __typename\n      ... on BoardsConnection {\n        edges {\n          node {\n            id\n            name\n            status\n            width\n            height\n            registeredAt\n            updatedAt\n          }\n        }\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n      }\n    }\n  }\n"): typeof import('./graphql').BoardsDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query BoardRevision($id: UUID!) {\n    board(id: $id) {\n      __typename\n      ... on Board {\n        revision\n      }\n    }\n  }\n"): typeof import('./graphql').BoardRevisionDocument;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
