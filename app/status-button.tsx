@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Notice } from "../../deck-form";
+import type { Notice } from "./deck-form";
 
 const initialState: Notice = {};
 

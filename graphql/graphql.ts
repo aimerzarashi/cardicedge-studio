@@ -4,6 +4,35 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+/** ボードの一覧の絞り込み */
+export type BoardFilter = {
+  /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
+  nameContains?: string | null | undefined;
+  /** 状態（指定が無ければすべて。空のリストは入力の誤り） */
+  statuses?: Array<BoardStatus> | null | undefined;
+};
+
+/**
+ * ボードの状態。準備中は名前・レイアウトを自由に変えられ、公開の条件を満たさなくてよい。公開中は公開の条件を満たす。
+ * 使用不可は新しい対戦に使わない
+ */
+export type BoardStatus =
+  /** 準備中（登録したときの状態） */
+  | 'DRAFT'
+  /** 公開中 */
+  | 'PUBLISHED'
+  /** 使用不可 */
+  | 'RETIRED';
+
+/** マスの種類 */
+export type BoardTileKind =
+  /** 拠点（公開するボードにちょうど 1 つ） */
+  | 'BASE'
+  /** チェックポイント（公開するボードに 1 つ以上） */
+  | 'CHECKPOINT'
+  /** 土地（ふつうのマス） */
+  | 'LAND';
+
 /** カードの一覧の絞り込み */
 export type CardFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
@@ -40,6 +69,14 @@ export type DeckCardCountInput = {
   count: number;
 };
 
+/** ボードを削除する入力 */
+export type DeleteBoardInput = {
+  /** ボードの公開用の ID */
+  id: string;
+  /** 画面が見ていたボードの revision */
+  revision: number;
+};
+
 /** プリセットデッキを削除する入力 */
 export type DeletePresetDeckInput = {
   /** プリセットデッキの公開用の ID */
@@ -62,6 +99,14 @@ export type PresetDeckFilter = {
   nameContains?: string | null | undefined;
 };
 
+/** ボードを公開する入力 */
+export type PublishBoardInput = {
+  /** ボードの公開用の ID */
+  id: string;
+  /** 画面が見ていたボードの revision */
+  revision: number;
+};
+
 /** カードを公開中にする入力 */
 export type PublishCardInput = {
   /** カード（Creature・Item・Spell）の公開用の ID */
@@ -76,6 +121,12 @@ export type PublishStarterDeckInput = {
   id: string;
   /** 画面が見ていたスターターデッキの revision */
   revision: number;
+};
+
+/** ボードを登録する入力 */
+export type RegisterBoardInput = {
+  /** 名前（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
 };
 
 /** クリーチャーを登録する入力 */
@@ -114,6 +165,16 @@ export type RegisterStarterDeckInput = {
   name: string;
 };
 
+/** ボードの名前を変える入力 */
+export type RenameBoardInput = {
+  /** ボードの公開用の ID */
+  id: string;
+  /** 新しい名前（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
+  /** 画面が見ていたボードの revision */
+  revision: number;
+};
+
 /** プリセットデッキの名前を変える入力 */
 export type RenamePresetDeckInput = {
   /** プリセットデッキの公開用の ID */
@@ -131,6 +192,14 @@ export type RenameStarterDeckInput = {
   /** 新しい名前（1〜50 文字。前後の空白は除いて保存する） */
   name: string;
   /** 画面が見ていたスターターデッキの revision */
+  revision: number;
+};
+
+/** ボードを使用不可にする入力 */
+export type RetireBoardInput = {
+  /** ボードの公開用の ID */
+  id: string;
+  /** 画面が見ていたボードの revision */
   revision: number;
 };
 
@@ -189,6 +258,128 @@ export type StarterDeckStatus =
   | 'PUBLISHED'
   /** 使用不可 */
   | 'RETIRED';
+
+export type RenameBoardMutationVariables = Exact<{
+  input: RenameBoardInput;
+}>;
+
+
+export type RenameBoardMutation = { renameBoard:
+    | { __typename: 'BoardNameAlreadyInUseError' }
+    | { __typename: 'BoardNotDraftError' }
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RenameBoardSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type DeleteBoardMutationVariables = Exact<{
+  input: DeleteBoardInput;
+}>;
+
+
+export type DeleteBoardMutation = { deleteBoard:
+    | { __typename: 'BoardNotDraftError' }
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'DeleteBoardSuccess' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type PublishBoardMutationVariables = Exact<{
+  input: PublishBoardInput;
+}>;
+
+
+export type PublishBoardMutation = { publishBoard:
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'BoardNotPublishableError', baseCount: number, checkpointCount: number, unreachableTiles: Array<{ x: number, y: number }> }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'PublishBoardSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type RetireBoardMutationVariables = Exact<{
+  input: RetireBoardInput;
+}>;
+
+
+export type RetireBoardMutation = { retireBoard:
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'InvalidBoardStatusTransitionError' }
+    | { __typename: 'RetireBoardSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type BoardQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type BoardQuery = { board:
+    | { __typename: 'Board', id: string, name: string, status: BoardStatus, width: number, height: number, revision: number, registeredAt: string, updatedAt: string, tiles: Array<{ kind: BoardTileKind }>, connections: Array<{ a: { x: number } }> }
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'ForbiddenError' }
+   };
+
+export type RegisterBoardMutationVariables = Exact<{
+  input: RegisterBoardInput;
+}>;
+
+
+export type RegisterBoardMutation = { registerBoard:
+    | { __typename: 'BoardNameAlreadyInUseError' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RegisterBoardSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type BoardsQueryVariables = Exact<{
+  filter?: BoardFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type BoardsQuery = { boards:
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type BoardRevisionQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type BoardRevisionQuery = { board:
+    | { __typename: 'Board', revision: number }
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'ForbiddenError' }
+   };
 
 export type PublishCardMutationVariables = Exact<{
   input: PublishCardInput;
@@ -259,6 +450,7 @@ export type RegisterCreatureMutation = { registerCreature:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -281,6 +473,7 @@ export type RegisterItemMutation = { registerItem:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -305,6 +498,7 @@ export type RenamePresetDeckMutation = { renamePresetDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -328,6 +522,7 @@ export type SetPresetDeckCardCountsMutation = { setPresetDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
         | { __typename: 'FieldRequired', field: string }
@@ -393,6 +588,7 @@ export type RegisterPresetDeckMutation = { registerPresetDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -438,6 +634,7 @@ export type RegisterSpellMutation = { registerSpell:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -463,6 +660,7 @@ export type RenameStarterDeckMutation = { renameStarterDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -487,6 +685,7 @@ export type SetStarterDeckCardCountsMutation = { setStarterDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
         | { __typename: 'FieldRequired', field: string }
@@ -524,6 +723,7 @@ export type PublishStarterDeckMutation = { publishStarterDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -590,6 +790,7 @@ export type RegisterStarterDeckMutation = { registerStarterDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
@@ -666,6 +867,140 @@ export class TypedDocumentString<TResult, TVariables>
   }
 }
 
+export const RenameBoardDocument = new TypedDocumentString(`
+    mutation RenameBoard($input: RenameBoardInput!) {
+  renameBoard(input: $input) {
+    __typename
+    ... on RenameBoardSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RenameBoardMutation, RenameBoardMutationVariables>;
+export const DeleteBoardDocument = new TypedDocumentString(`
+    mutation DeleteBoard($input: DeleteBoardInput!) {
+  deleteBoard(input: $input) {
+    __typename
+  }
+}
+    `) as unknown as TypedDocumentString<DeleteBoardMutation, DeleteBoardMutationVariables>;
+export const PublishBoardDocument = new TypedDocumentString(`
+    mutation PublishBoard($input: PublishBoardInput!) {
+  publishBoard(input: $input) {
+    __typename
+    ... on PublishBoardSuccess {
+      id
+      revision
+    }
+    ... on BoardNotPublishableError {
+      baseCount
+      checkpointCount
+      unreachableTiles {
+        x
+        y
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PublishBoardMutation, PublishBoardMutationVariables>;
+export const RetireBoardDocument = new TypedDocumentString(`
+    mutation RetireBoard($input: RetireBoardInput!) {
+  retireBoard(input: $input) {
+    __typename
+    ... on RetireBoardSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RetireBoardMutation, RetireBoardMutationVariables>;
+export const BoardDocument = new TypedDocumentString(`
+    query Board($id: UUID!) {
+  board(id: $id) {
+    __typename
+    ... on Board {
+      id
+      name
+      status
+      width
+      height
+      tiles {
+        kind
+      }
+      connections {
+        a {
+          x
+        }
+      }
+      revision
+      registeredAt
+      updatedAt
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<BoardQuery, BoardQueryVariables>;
+export const RegisterBoardDocument = new TypedDocumentString(`
+    mutation RegisterBoard($input: RegisterBoardInput!) {
+  registerBoard(input: $input) {
+    __typename
+    ... on RegisterBoardSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterBoardMutation, RegisterBoardMutationVariables>;
+export const BoardsDocument = new TypedDocumentString(`
+    query Boards($filter: BoardFilter, $after: String) {
+  boards(filter: $filter, after: $after) {
+    __typename
+    ... on BoardsConnection {
+      edges {
+        node {
+          id
+          name
+          status
+          width
+          height
+          registeredAt
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<BoardsQuery, BoardsQueryVariables>;
+export const BoardRevisionDocument = new TypedDocumentString(`
+    query BoardRevision($id: UUID!) {
+  board(id: $id) {
+    __typename
+    ... on Board {
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<BoardRevisionQuery, BoardRevisionQueryVariables>;
 export const PublishCardDocument = new TypedDocumentString(`
     mutation PublishCard($input: PublishCardInput!) {
   publishCard(input: $input) {
