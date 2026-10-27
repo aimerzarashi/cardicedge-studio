@@ -4,12 +4,28 @@ type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
 import type { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
+/** つなぐマスの入力（向きは無い。a と b を入れ替えても同じつながり） */
+export type BoardConnectionInput = {
+  /** 片方の端（マスが置いてある座標） */
+  a: BoardPositionInput;
+  /** もう片方の端（a の上下左右に隣り合う、マスが置いてある座標） */
+  b: BoardPositionInput;
+};
+
 /** ボードの一覧の絞り込み */
 export type BoardFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
   nameContains?: string | null | undefined;
   /** 状態（指定が無ければすべて。空のリストは入力の誤り） */
   statuses?: Array<BoardStatus> | null | undefined;
+};
+
+/** つながりの端の座標の入力 */
+export type BoardPositionInput = {
+  /** 列 */
+  x: number;
+  /** 行 */
+  y: number;
 };
 
 /**
@@ -23,6 +39,16 @@ export type BoardStatus =
   | 'PUBLISHED'
   /** 使用不可 */
   | 'RETIRED';
+
+/** 置くマスの入力 */
+export type BoardTileInput = {
+  /** 種類 */
+  kind: BoardTileKind;
+  /** 列（0 以上、幅 − 1 以下） */
+  x: number;
+  /** 行（0 以上、高さ − 1 以下） */
+  y: number;
+};
 
 /** マスの種類 */
 export type BoardTileKind =
@@ -60,6 +86,22 @@ export type CardType =
   | 'CREATURE'
   | 'ITEM'
   | 'SPELL';
+
+/** ボードのレイアウトを変える入力（変えた後の全体。前の内容は引き継がれず、ここに無いマス・つながりは消える） */
+export type ChangeBoardLayoutInput = {
+  /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
+  connections: Array<BoardConnectionInput>;
+  /** 高さ（studioRules.board の範囲の中。外なら入力の誤り） */
+  height: number;
+  /** ボードの公開用の ID */
+  id: string;
+  /** 画面が見ていたボードの revision */
+  revision: number;
+  /** 置くマスの全体（同じ座標を 2 回入れると入力の誤り） */
+  tiles: Array<BoardTileInput>;
+  /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
+  width: number;
+};
 
 /** 変えるカードと、その枚数 */
 export type DeckCardCountInput = {
@@ -285,6 +327,31 @@ export type RenameBoardMutation = { renameBoard:
       > }
    };
 
+export type ChangeBoardLayoutMutationVariables = Exact<{
+  input: ChangeBoardLayoutInput;
+}>;
+
+
+export type ChangeBoardLayoutMutation = { changeBoardLayout:
+    | { __typename: 'BoardNotDraftError' }
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'ChangeBoardLayoutSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
 export type DeleteBoardMutationVariables = Exact<{
   input: DeleteBoardInput;
 }>;
@@ -330,9 +397,12 @@ export type BoardQueryVariables = Exact<{
 
 
 export type BoardQuery = { board:
-    | { __typename: 'Board', id: string, name: string, status: BoardStatus, width: number, height: number, revision: number, registeredAt: string, updatedAt: string, tiles: Array<{ kind: BoardTileKind }>, connections: Array<{ a: { x: number } }> }
+    | { __typename: 'Board', id: string, name: string, status: BoardStatus, width: number, height: number, revision: number, registeredAt: string, updatedAt: string, tiles: Array<{ x: number, y: number, kind: BoardTileKind }>, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
     | { __typename: 'BoardNotFoundError' }
     | { __typename: 'ForbiddenError' }
+  , studioRules:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'StudioRules', board: { minSize: number, maxSize: number } }
    };
 
 export type RegisterBoardMutationVariables = Exact<{
@@ -886,6 +956,27 @@ export const RenameBoardDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RenameBoardMutation, RenameBoardMutationVariables>;
+export const ChangeBoardLayoutDocument = new TypedDocumentString(`
+    mutation ChangeBoardLayout($input: ChangeBoardLayoutInput!) {
+  changeBoardLayout(input: $input) {
+    __typename
+    ... on ChangeBoardLayoutSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldOutOfRange {
+          min
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeBoardLayoutMutation, ChangeBoardLayoutMutationVariables>;
 export const DeleteBoardDocument = new TypedDocumentString(`
     mutation DeleteBoard($input: DeleteBoardInput!) {
   deleteBoard(input: $input) {
@@ -934,16 +1025,32 @@ export const BoardDocument = new TypedDocumentString(`
       width
       height
       tiles {
+        x
+        y
         kind
       }
       connections {
         a {
           x
+          y
+        }
+        b {
+          x
+          y
         }
       }
       revision
       registeredAt
       updatedAt
+    }
+  }
+  studioRules {
+    __typename
+    ... on StudioRules {
+      board {
+        minSize
+        maxSize
+      }
     }
   }
 }

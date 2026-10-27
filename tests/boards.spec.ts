@@ -1,5 +1,13 @@
 import type { Page } from "@playwright/test";
-import { publishableLayout, registerBoard, setBoardLayout } from "./board";
+import {
+  connectionButton,
+  putTiles,
+  registerBoard,
+  saveLayout,
+  savePublishableLayout,
+  setBoardLayout,
+  tileButton,
+} from "./board";
 import { loginAsOperator, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
 import { section } from "./preset-deck";
@@ -144,17 +152,135 @@ test("拠点から行けないマスがあるボードを公開しようとす�
   await expect(detail(page, "状態")).toHaveText("準備中");
 });
 
-test("レイアウトを入れると、マスの数とつながりの数が詳細に出る", async ({
+test("道具を選んでマスを置くと、隣とつながり、保存すると詳細にマスの数とつながりの数が出る", async ({
   page,
 }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("一本道"));
 
-  await setBoardLayout(page, publishableLayout);
+  await putTiles(page, "拠点", [[0, 0]]);
+  await putTiles(page, "土地", [[1, 0]]);
+  await putTiles(page, "チェックポイント", [[2, 0]]);
 
-  await expect(detail(page, "大きさ")).toHaveText("3×1");
+  await expect(tileButton(page, 1, 0)).toHaveAccessibleName(
+    "(1, 0) のマス 土地",
+  );
+  await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(connectionButton(page, [1, 0], [2, 0])).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await saveLayout(page);
   await expect(detail(page, "マス")).toHaveText("3");
   await expect(detail(page, "つながり")).toHaveText("2");
+});
+
+test("マスを消すとそのマスのつながりも消え、マスの無い側のつながりは押せない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("一本道"));
+  await putTiles(page, "土地", [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+  ]);
+
+  await putTiles(page, "消す", [[1, 0]]);
+
+  await expect(tileButton(page, 1, 0)).toHaveAccessibleName("(1, 0) のマス");
+  await expect(connectionButton(page, [0, 0], [1, 0])).toBeDisabled();
+  await expect(connectionButton(page, [1, 0], [2, 0])).toBeDisabled();
+  await putTiles(page, "土地", [[1, 0]]);
+  await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("間の印を押すと、つながりを切る・つなぐができ、保存すると詳細のつながりの数に出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("二つの島"));
+  await putTiles(page, "土地", [
+    [0, 0],
+    [1, 0],
+  ]);
+  const between = connectionButton(page, [0, 0], [1, 0]);
+
+  await between.click();
+  await expect(between).toHaveAttribute("aria-pressed", "false");
+  await saveLayout(page);
+  await expect(detail(page, "マス")).toHaveText("2");
+  await expect(detail(page, "つながり")).toHaveText("0");
+
+  await between.click();
+  await expect(between).toHaveAttribute("aria-pressed", "true");
+  await saveLayout(page);
+  await expect(detail(page, "つながり")).toHaveText("1");
+});
+
+test("画面で作ったレイアウトを保存し、公開できる", async ({ page }) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("一本道"));
+  await savePublishableLayout(page);
+
+  const publish = section(page, "公開");
+  await publish.getByRole("button", { name: "公開する" }).click();
+
+  await expect(publish.getByText("公開しました")).toBeVisible();
+  await expect(detail(page, "状態")).toHaveText("公開中");
+});
+
+test("幅を小さくして保存すると、格子の外に出たマスの誤りが出て、置いたマスは残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("狭い"));
+  await putTiles(page, "土地", [[5, 0]]);
+
+  const editor = section(page, "レイアウト");
+  await editor.getByLabel("幅").fill("3");
+  await expect(tileButton(page, 5, 0)).toHaveCount(0);
+  await editor.getByRole("button", { name: "レイアウトを保存" }).click();
+
+  await expect(
+    editor.getByText(/\(5, 0\) のマスが格子の外です。列は 0〜2 の範囲/),
+  ).toBeVisible();
+  await editor.getByLabel("幅").fill("8");
+  await expect(tileButton(page, 5, 0)).toHaveAccessibleName(
+    "(5, 0) のマス 土地",
+  );
+});
+
+test("公開中は、同じ格子が表示だけで出て、編集の操作は出ない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("一本道"));
+  await savePublishableLayout(page);
+  const publish = section(page, "公開");
+  await publish.getByRole("button", { name: "公開する" }).click();
+  await expect(detail(page, "状態")).toHaveText("公開中");
+
+  const editor = section(page, "レイアウト");
+  await expect(tileButton(page, 1, 0)).toHaveAccessibleName(
+    "(1, 0) のマス 土地",
+  );
+  await expect(tileButton(page, 1, 0)).toBeDisabled();
+  await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(editor.getByLabel("土地", { exact: true })).toHaveCount(0);
+  await expect(editor.getByLabel("幅")).toHaveCount(0);
+  await expect(
+    editor.getByRole("button", { name: "レイアウトを保存" }),
+  ).toHaveCount(0);
 });
 
 test("公開すると変更と削除ができなくなり、使用不可にすると公開し直せる", async ({
@@ -162,7 +288,7 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
 }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("一本道"));
-  await setBoardLayout(page, publishableLayout);
+  await savePublishableLayout(page);
 
   const publish = section(page, "公開");
   await publish.getByRole("button", { name: "公開する" }).click();
@@ -233,7 +359,7 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
   await loginAsOperator(page);
   const name = uniqueName("一本道");
   await registerBoard(page, name);
-  await setBoardLayout(page, publishableLayout);
+  await savePublishableLayout(page);
   const other = await page.context().newPage();
   await other.goto(page.url());
   await expect(other.getByRole("heading", { level: 1 })).toHaveText(name);
@@ -249,4 +375,83 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
   await expect(detail(other, "状態")).toHaveText("公開中");
   await expect(stale).toHaveCount(0);
   await expect(other.getByRole("heading", { level: 1 })).toHaveText(name);
+});
+
+test("幅・高さに範囲の外の大きな数を入れても、格子は描き直されない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("巨大"));
+  const editor = section(page, "レイアウト");
+  const cells = editor
+    .getByRole("group", { name: "ボードの格子" })
+    .getByRole("button");
+  const before = await cells.count();
+
+  await editor.getByLabel("幅").fill("99999");
+  await editor.getByLabel("高さ").fill("99999");
+
+  await expect(cells).toHaveCount(before);
+});
+
+function viewport(page: Page) {
+  return section(page, "レイアウト").locator("[data-scale]");
+}
+
+async function scaleOf(page: Page) {
+  return Number(await viewport(page).getAttribute("data-scale"));
+}
+
+test("格子をドラッグしてもマスは置かれない", async ({ page }) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("ドラッグ"));
+  const box = await tileButton(page, 3, 3).boundingBox();
+  if (!box) throw new Error("マスの位置が取れません");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 40, y + 10, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(tileButton(page, 3, 3)).toHaveAccessibleName("(3, 3) のマス");
+  await expect(detail(page, "マス")).toHaveText("0");
+  await expect(
+    section(page, "レイアウト").getByRole("button", { name: /のマス 土地/ }),
+  ).toHaveCount(0);
+});
+
+test("拡大・縮小・全体を表示のボタンで、表示の倍率が変わる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("倍率"));
+  const editor = section(page, "レイアウト");
+  await expect(viewport(page)).toHaveAttribute("data-scale", /.+/);
+  const fitted = await scaleOf(page);
+
+  await editor.getByRole("button", { name: "拡大" }).click();
+  expect(await scaleOf(page)).toBeGreaterThan(fitted);
+  await editor.getByRole("button", { name: "縮小" }).click();
+  await editor.getByRole("button", { name: "縮小" }).click();
+  expect(await scaleOf(page)).toBeLessThan(fitted);
+  await editor.getByRole("button", { name: "全体を表示" }).click();
+  expect(await scaleOf(page)).toBeCloseTo(fitted, 3);
+});
+
+test("幅・高さが最大のボードでも、端のマスを押せる", async ({ page }) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("広い"));
+  const editor = section(page, "レイアウト");
+  const max = await editor.getByLabel("幅").getAttribute("max");
+  await editor.getByLabel("幅").fill(String(max));
+  await editor.getByLabel("高さ").fill(String(max));
+  const last = Number(max) - 1;
+
+  await putTiles(page, "拠点", [[last, last]]);
+
+  await expect(tileButton(page, last, last)).toHaveAccessibleName(
+    `(${last}, ${last}) のマス 拠点`,
+  );
 });
