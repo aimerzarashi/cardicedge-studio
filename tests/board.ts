@@ -10,11 +10,12 @@ export async function registerBoard(page: Page, name: string) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
 }
 
-export type Tile = {
-  x: number;
-  y: number;
-  kind: "LAND" | "BASE" | "CHECKPOINT";
-};
+export type Attribute = "火" | "地" | "水" | "風" | "無" | "複";
+// core の入力（@oneOf）と同じ形で、種類ごとに 1 つだけ書く
+export type Tile =
+  | { land: { x: number; y: number; attribute: string } }
+  | { base: { x: number; y: number } }
+  | { checkpoint: { x: number; y: number } };
 export type Connection = {
   a: { x: number; y: number };
   b: { x: number; y: number };
@@ -89,7 +90,7 @@ function layout(page: Page) {
 }
 
 export function tileButton(page: Page, x: number, y: number) {
-  // 置いてあるマスの名前は、種類が付く（「(2, 0) のマス 拠点」）
+  // 置いてあるマスの名前は、種類が付く（「(2, 0) のマス 拠点」。土地は「(1, 0) のマス 火属性の土地」）
   return layout(page).getByRole("button", {
     name: new RegExp(`^\\(${x}, ${y}\\) のマス`),
   });
@@ -109,7 +110,7 @@ export function connectionButton(
 // 道具を選んで、マスを順に押す
 export async function putTiles(
   page: Page,
-  tool: "土地" | "拠点" | "チェックポイント" | "消す",
+  tool: `${Attribute}属性の土地` | "拠点" | "チェックポイント" | "消す",
   positions: [number, number][],
 ) {
   await layout(page).getByLabel(tool, { exact: true }).check();
@@ -127,7 +128,7 @@ export async function saveLayout(page: Page) {
 // 拠点 1 つ・チェックポイント 1 つが、土地を通ってつながった横一列のレイアウト（公開できる）を画面で作って保存する
 export async function savePublishableLayout(page: Page) {
   await putTiles(page, "拠点", [[0, 0]]);
-  await putTiles(page, "土地", [[1, 0]]);
+  await putTiles(page, "火属性の土地", [[1, 0]]);
   await putTiles(page, "チェックポイント", [[2, 0]]);
   await saveLayout(page);
 }

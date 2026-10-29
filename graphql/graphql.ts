@@ -40,24 +40,32 @@ export type BoardStatus =
   /** 使用不可 */
   | 'RETIRED';
 
-/** 置くマスの入力 */
-export type BoardTileInput = {
-  /** 種類 */
-  kind: BoardTileKind;
-  /** 列（0 以上、幅 − 1 以下） */
-  x: number;
-  /** 行（0 以上、高さ − 1 以下） */
-  y: number;
-};
+/**
+ * 土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
+ * 効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
+ */
+export type BoardTileAttribute =
+  /** 地（地属性） */
+  | 'EARTH'
+  /** 火（火属性） */
+  | 'FIRE'
+  /** 複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ） */
+  | 'MULTI'
+  /** 無（無属性） */
+  | 'NEUTRAL'
+  /** 水（水属性） */
+  | 'WATER'
+  /** 風（風属性） */
+  | 'WIND';
 
-/** マスの種類 */
-export type BoardTileKind =
-  /** 拠点（公開するボードにちょうど 1 つ） */
-  | 'BASE'
-  /** チェックポイント（公開するボードに 1 つ以上） */
-  | 'CHECKPOINT'
-  /** 土地（ふつうのマス） */
-  | 'LAND';
+/** 置くマスの入力。land・base・checkpoint のうち、ちょうど 1 つだけを書く（書いた項目が種類になる） */
+export type BoardTileInput =
+  {   /** 拠点 */
+  base: TilePositionInput; checkpoint?: never; land?: never; }
+  |  { base?: never;   /** チェックポイント */
+  checkpoint: TilePositionInput; land?: never; }
+  |  { base?: never; checkpoint?: never;   /** 土地 */
+  land: LandTileInput; };
 
 /** カードの一覧の絞り込み */
 export type CardFilter = {
@@ -133,6 +141,16 @@ export type DeleteStarterDeckInput = {
   id: string;
   /** 画面が見ていたスターターデッキの revision */
   revision: number;
+};
+
+/** 置く土地の入力 */
+export type LandTileInput = {
+  /** 属性 */
+  attribute: BoardTileAttribute;
+  /** 列（0 以上、幅 − 1 以下） */
+  x: number;
+  /** 行（0 以上、高さ − 1 以下） */
+  y: number;
 };
 
 /** プリセットデッキの一覧の絞り込み */
@@ -301,6 +319,14 @@ export type StarterDeckStatus =
   /** 使用不可 */
   | 'RETIRED';
 
+/** 置く拠点・チェックポイントの座標の入力 */
+export type TilePositionInput = {
+  /** 列（0 以上、幅 − 1 以下） */
+  x: number;
+  /** 行（0 以上、高さ − 1 以下） */
+  y: number;
+};
+
 export type RenameBoardMutationVariables = Exact<{
   input: RenameBoardInput;
 }>;
@@ -397,7 +423,11 @@ export type BoardQueryVariables = Exact<{
 
 
 export type BoardQuery = { board:
-    | { __typename: 'Board', id: string, name: string, status: BoardStatus, width: number, height: number, revision: number, registeredAt: string, updatedAt: string, tiles: Array<{ x: number, y: number, kind: BoardTileKind }>, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
+    | { __typename: 'Board', id: string, name: string, status: BoardStatus, width: number, height: number, revision: number, registeredAt: string, updatedAt: string, tiles: Array<
+        | { __typename: 'BaseTile', x: number, y: number }
+        | { __typename: 'CheckpointTile', x: number, y: number }
+        | { __typename: 'LandTile', attribute: BoardTileAttribute, x: number, y: number }
+      >, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
     | { __typename: 'BoardNotFoundError' }
     | { __typename: 'ForbiddenError' }
   , studioRules:
@@ -1025,9 +1055,12 @@ export const BoardDocument = new TypedDocumentString(`
       width
       height
       tiles {
+        __typename
         x
         y
-        kind
+        ... on LandTile {
+          attribute
+        }
       }
       connections {
         a {

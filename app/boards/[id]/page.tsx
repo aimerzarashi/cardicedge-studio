@@ -27,9 +27,12 @@ const boardQuery = graphql(`
         width
         height
         tiles {
+          __typename
           x
           y
-          kind
+          ... on LandTile {
+            attribute
+          }
         }
         connections {
           a {

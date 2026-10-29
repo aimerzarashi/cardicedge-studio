@@ -1,20 +1,46 @@
-import type { BoardTileKind } from "@/graphql/graphql";
+import type { BoardTileAttribute } from "@/graphql/graphql";
 
 // ボードの格子の形（座標は core と同じ 0 始まりの (列, 行)）。表示（board-grid.tsx）と編集（[id]/layout-editor.tsx）で共通
 
 export type Position = { x: number; y: number };
-export type Tile = Position & { kind: BoardTileKind };
+// core の出力（LandTile・BaseTile・CheckpointTile）と同じ形で、種類は __typename で見分ける。属性は土地だけが必ず持つ
+export type Placement =
+  | { __typename: "LandTile"; attribute: BoardTileAttribute }
+  | { __typename: "BaseTile" }
+  | { __typename: "CheckpointTile" };
+export type Tile = Position & Placement;
 // a は座標が小さい側（行 → 列の順に比べる）。core が返す向きと、画面で作る向きをそろえるため、a と b を入れ替えた同じつながりは作らない
 export type Connection = { a: Position; b: Position };
 export type Cells = { tiles: Tile[]; connections: Connection[] };
 
-export const TILE_KIND_LABELS: Record<BoardTileKind, string> = {
-  LAND: "土地",
-  BASE: "拠点",
-  CHECKPOINT: "チェックポイント",
+export const TILE_KIND_LABELS: Record<Placement["__typename"], string> = {
+  LandTile: "土地",
+  BaseTile: "拠点",
+  CheckpointTile: "チェックポイント",
 };
 
-export function isTileKind(value: string): value is BoardTileKind {
+// 並びは道具・凡例の並び（火・地・水・風・無・複）
+export const ATTRIBUTE_LABELS: Record<BoardTileAttribute, string> = {
+  FIRE: "火",
+  EARTH: "地",
+  WATER: "水",
+  WIND: "風",
+  NEUTRAL: "無",
+  MULTI: "複",
+};
+
+export function isTileAttribute(value: string): value is BoardTileAttribute {
+  return Object.hasOwn(ATTRIBUTE_LABELS, value);
+}
+
+// 土地は属性つきの名前（「火属性の土地」）で呼ぶ
+export function tileLabel(placement: Placement): string {
+  return placement.__typename === "LandTile"
+    ? `${ATTRIBUTE_LABELS[placement.attribute]}属性の${TILE_KIND_LABELS.LandTile}`
+    : TILE_KIND_LABELS[placement.__typename];
+}
+
+export function isTileKind(value: string): value is Placement["__typename"] {
   return Object.hasOwn(TILE_KIND_LABELS, value);
 }
 
@@ -43,16 +69,16 @@ export function hasConnection(
   return connections.some((c) => sameConnection(c, connection));
 }
 
-// 新しく置いたマスだけ、隣に置いてあるマスと自動でつなぐ。置き直し（種類の変更）で再びつなぐと、切ったつながりが戻ってしまう
+// 新しく置いたマスだけ、隣に置いてあるマスと自動でつなぐ。置き直し（種類・属性の変更）で再びつなぐと、切ったつながりが戻ってしまう
 export function placeTile(
   { tiles, connections }: Cells,
   position: Position,
-  kind: BoardTileKind,
+  placement: Placement,
 ): Cells {
   if (tileAt(tiles, position)) {
     return {
       tiles: tiles.map((tile) =>
-        samePosition(tile, position) ? { ...position, kind } : tile,
+        samePosition(tile, position) ? { ...position, ...placement } : tile,
       ),
       connections,
     };
@@ -64,7 +90,7 @@ export function placeTile(
     { x: position.x, y: position.y + 1 },
   ].filter((neighbor) => tileAt(tiles, neighbor));
   return {
-    tiles: [...tiles, { ...position, kind }],
+    tiles: [...tiles, { ...position, ...placement }],
     connections: [
       ...connections,
       ...neighbors.map((neighbor) => connectionBetween(position, neighbor)),

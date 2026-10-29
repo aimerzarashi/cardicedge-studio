@@ -1,15 +1,17 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import type { BoardTileKind } from "@/graphql/graphql";
 import { BoardGrid } from "../board-grid";
 import {
+  ATTRIBUTE_LABELS,
   type Cells,
   type Connection,
+  type Placement,
   type Position,
   placeTile,
   removeTile,
   TILE_KIND_LABELS,
+  tileLabel,
   toggleConnection,
 } from "../board-layout";
 import {
@@ -18,12 +20,26 @@ import {
   tileField,
 } from "./layout-form";
 
-type Tool = BoardTileKind | "ERASE";
+// 置く道具は置くマスの種類・属性を持ち、消す道具は持たない
+type Tool = { value: string; label: string; placement?: Placement };
 
-const TOOLS: { value: Tool; label: string }[] = [
-  { value: "LAND", label: TILE_KIND_LABELS.LAND },
-  { value: "BASE", label: TILE_KIND_LABELS.BASE },
-  { value: "CHECKPOINT", label: TILE_KIND_LABELS.CHECKPOINT },
+const TOOLS: Tool[] = [
+  ...(Object.keys(ATTRIBUTE_LABELS) as (keyof typeof ATTRIBUTE_LABELS)[]).map(
+    (attribute) => {
+      const placement = { __typename: "LandTile" as const, attribute };
+      return { value: attribute, label: tileLabel(placement), placement };
+    },
+  ),
+  {
+    value: "BASE",
+    label: TILE_KIND_LABELS.BaseTile,
+    placement: { __typename: "BaseTile" },
+  },
+  {
+    value: "CHECKPOINT",
+    label: TILE_KIND_LABELS.CheckpointTile,
+    placement: { __typename: "CheckpointTile" },
+  },
   { value: "ERASE", label: "消す" },
 ];
 
@@ -110,7 +126,7 @@ function LayoutForm({
     width: initial.width,
     height: initial.height,
   });
-  const [tool, setTool] = useState<Tool>("LAND");
+  const [tool, setTool] = useState<Tool>(TOOLS[0]);
 
   function inRange(text: string, current: number): number {
     const value = Number(text);
@@ -132,9 +148,9 @@ function LayoutForm({
 
   function pressTile(position: Position) {
     setCells(
-      tool === "ERASE"
-        ? removeTile(cells, position)
-        : placeTile(cells, position, tool),
+      tool.placement
+        ? placeTile(cells, position, tool.placement)
+        : removeTile(cells, position),
     );
   }
 
@@ -196,8 +212,8 @@ function LayoutForm({
               type="radio"
               name="tool"
               value={option.value}
-              checked={tool === option.value}
-              onChange={() => setTool(option.value)}
+              checked={tool.value === option.value}
+              onChange={() => setTool(option)}
             />
             {option.label}
           </label>

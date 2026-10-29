@@ -134,10 +134,10 @@ test("拠点から行けないマスがあるボードを公開しようとす�
     width: 8,
     height: 8,
     tiles: [
-      { x: 0, y: 0, kind: "BASE" },
-      { x: 1, y: 0, kind: "CHECKPOINT" },
-      { x: 2, y: 3, kind: "LAND" },
-      { x: 4, y: 5, kind: "LAND" },
+      { base: { x: 0, y: 0 } },
+      { checkpoint: { x: 1, y: 0 } },
+      { land: { x: 2, y: 3, attribute: "FIRE" } },
+      { land: { x: 4, y: 5, attribute: "FIRE" } },
     ],
     connections: [{ a: { x: 0, y: 0 }, b: { x: 1, y: 0 } }],
   });
@@ -159,11 +159,11 @@ test("道具を選んでマスを置くと、隣とつながり、保存する�
   await registerBoard(page, uniqueName("一本道"));
 
   await putTiles(page, "拠点", [[0, 0]]);
-  await putTiles(page, "土地", [[1, 0]]);
+  await putTiles(page, "火属性の土地", [[1, 0]]);
   await putTiles(page, "チェックポイント", [[2, 0]]);
 
   await expect(tileButton(page, 1, 0)).toHaveAccessibleName(
-    "(1, 0) のマス 土地",
+    "(1, 0) のマス 火属性の土地",
   );
   await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
     "aria-pressed",
@@ -178,12 +178,67 @@ test("道具を選んでマスを置くと、隣とつながり、保存する�
   await expect(detail(page, "つながり")).toHaveText("2");
 });
 
+test("属性ごとの土地を置いて保存すると、詳細を開き直しても、その属性で出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("六属性"));
+
+  const attributes = ["火", "地", "水", "風", "無", "複"] as const;
+  for (const [x, attribute] of attributes.entries()) {
+    await putTiles(page, `${attribute}属性の土地`, [[x, 0]]);
+  }
+  await putTiles(page, "拠点", [[0, 1]]);
+  await putTiles(page, "チェックポイント", [[1, 1]]);
+  await saveLayout(page);
+  await page.reload();
+
+  for (const [x, attribute] of attributes.entries()) {
+    await expect(tileButton(page, x, 0)).toHaveAccessibleName(
+      `(${x}, 0) のマス ${attribute}属性の土地`,
+    );
+  }
+  await expect(tileButton(page, 0, 1)).toHaveAccessibleName(
+    "(0, 1) のマス 拠点",
+  );
+  await expect(tileButton(page, 1, 1)).toHaveAccessibleName(
+    "(1, 1) のマス チェックポイント",
+  );
+  await expect(section(page, "レイアウト").getByLabel("凡例")).toHaveText(
+    "火属性の土地地属性の土地水属性の土地風属性の土地無属性の土地複属性の土地拠点チェックポイント",
+  );
+});
+
+test("属性だけが違う道具でマスを上書きすると、属性が変わり、つながりは残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("塗り替え"));
+  await putTiles(page, "火属性の土地", [
+    [0, 0],
+    [1, 0],
+  ]);
+
+  await putTiles(page, "水属性の土地", [[1, 0]]);
+
+  await expect(tileButton(page, 1, 0)).toHaveAccessibleName(
+    "(1, 0) のマス 水属性の土地",
+  );
+  await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await saveLayout(page);
+  await expect(detail(page, "マス")).toHaveText("2");
+  await expect(detail(page, "つながり")).toHaveText("1");
+});
+
 test("マスを消すとそのマスのつながりも消え、マスの無い側のつながりは押せない", async ({
   page,
 }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("一本道"));
-  await putTiles(page, "土地", [
+  await putTiles(page, "火属性の土地", [
     [0, 0],
     [1, 0],
     [2, 0],
@@ -194,7 +249,7 @@ test("マスを消すとそのマスのつながりも消え、マスの無い�
   await expect(tileButton(page, 1, 0)).toHaveAccessibleName("(1, 0) のマス");
   await expect(connectionButton(page, [0, 0], [1, 0])).toBeDisabled();
   await expect(connectionButton(page, [1, 0], [2, 0])).toBeDisabled();
-  await putTiles(page, "土地", [[1, 0]]);
+  await putTiles(page, "火属性の土地", [[1, 0]]);
   await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -206,7 +261,7 @@ test("間の印を押すと、つながりを切る・つなぐができ、保�
 }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("二つの島"));
-  await putTiles(page, "土地", [
+  await putTiles(page, "火属性の土地", [
     [0, 0],
     [1, 0],
   ]);
@@ -241,7 +296,7 @@ test("幅を小さくして保存すると、格子の外に出たマスの誤�
 }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("狭い"));
-  await putTiles(page, "土地", [[5, 0]]);
+  await putTiles(page, "火属性の土地", [[5, 0]]);
 
   const editor = section(page, "レイアウト");
   await editor.getByLabel("幅").fill("3");
@@ -253,7 +308,7 @@ test("幅を小さくして保存すると、格子の外に出たマスの誤�
   ).toBeVisible();
   await editor.getByLabel("幅").fill("8");
   await expect(tileButton(page, 5, 0)).toHaveAccessibleName(
-    "(5, 0) のマス 土地",
+    "(5, 0) のマス 火属性の土地",
   );
 });
 
@@ -269,14 +324,16 @@ test("公開中は、同じ格子が表示だけで出て、編集の操作は�
 
   const editor = section(page, "レイアウト");
   await expect(tileButton(page, 1, 0)).toHaveAccessibleName(
-    "(1, 0) のマス 土地",
+    "(1, 0) のマス 火属性の土地",
   );
   await expect(tileButton(page, 1, 0)).toBeDisabled();
   await expect(connectionButton(page, [0, 0], [1, 0])).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(editor.getByLabel("土地", { exact: true })).toHaveCount(0);
+  await expect(editor.getByLabel("火属性の土地", { exact: true })).toHaveCount(
+    0,
+  );
   await expect(editor.getByLabel("幅")).toHaveCount(0);
   await expect(
     editor.getByRole("button", { name: "レイアウトを保存" }),
@@ -418,7 +475,9 @@ test("格子をドラッグしてもマスは置かれない", async ({ page }) 
   await expect(tileButton(page, 3, 3)).toHaveAccessibleName("(3, 3) のマス");
   await expect(detail(page, "マス")).toHaveText("0");
   await expect(
-    section(page, "レイアウト").getByRole("button", { name: /のマス 土地/ }),
+    section(page, "レイアウト").getByRole("button", {
+      name: /のマス 火属性の土地/,
+    }),
   ).toHaveCount(0);
 });
 
