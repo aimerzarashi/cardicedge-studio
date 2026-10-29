@@ -58,8 +58,24 @@ const boardQuery = graphql(`
               y
             }
           }
+          ... on UnpairedTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
         }
         connections {
+          a {
+            x
+            y
+          }
+          b {
+            x
+            y
+          }
+        }
+        pairs {
           a {
             x
             y
@@ -198,6 +214,7 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
             }}
             tiles={board.tiles}
             connections={board.connections}
+            pairs={board.pairs}
             problems={board.publishProblems}
           />
         ) : (
@@ -206,6 +223,7 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
             height={board.height}
             tiles={board.tiles}
             connections={board.connections}
+            pairs={board.pairs}
           />
         )}
       </section>

@@ -119,6 +119,12 @@ const checkBoardLayoutQuery = graphql(`
               y
             }
           }
+          ... on UnpairedTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
         }
       }
       ... on ValidationErrors {
@@ -161,6 +167,12 @@ const publishBoardMutation = graphql(`
             }
           }
           ... on UnreachableTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
+          ... on UnpairedTilesProblem {
             positions {
               x
               y

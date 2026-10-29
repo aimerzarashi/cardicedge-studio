@@ -4,14 +4,15 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { BOARD_CHECK_FAILED } from "../../messages";
 import { BoardGrid } from "../board-grid";
 import {
-  ATTRIBUTE_LABELS,
   type Cells,
   type Connection,
+  isPairableKind,
+  PLACEMENTS,
   type Placement,
   type Position,
   placeTile,
+  pressPairable,
   removeTile,
-  TILE_KIND_LABELS,
   tileLabel,
   toggleConnection,
 } from "../board-layout";
@@ -36,23 +37,12 @@ const CHECK_DELAY_MS = 300;
 type Tool = { value: string; label: string; placement?: Placement };
 
 const TOOLS: Tool[] = [
-  ...(Object.keys(ATTRIBUTE_LABELS) as (keyof typeof ATTRIBUTE_LABELS)[]).map(
-    (attribute) => {
-      const placement = { __typename: "LandTile" as const, attribute };
-      return { value: attribute, label: tileLabel(placement), placement };
-    },
-  ),
-  {
-    value: "BASE",
-    label: TILE_KIND_LABELS.BaseTile,
-    placement: { __typename: "BaseTile" },
-  },
-  {
-    value: "CHECKPOINT",
-    label: TILE_KIND_LABELS.CheckpointTile,
-    placement: { __typename: "CheckpointTile" },
-  },
-  { value: "ERASE", label: "消す" },
+  ...PLACEMENTS.map((placement) => ({
+    value: tileLabel(placement),
+    label: tileLabel(placement),
+    placement,
+  })),
+  { value: "消す", label: "消す" },
 ];
 
 const initialState: ChangeLayoutState = {};
@@ -68,6 +58,7 @@ export function LayoutEditor({
   sizeRange,
   tiles,
   connections,
+  pairs,
   problems,
 }: {
   action: (
@@ -82,6 +73,7 @@ export function LayoutEditor({
   sizeRange: { min: number; max: number };
   tiles: Cells["tiles"];
   connections: Cells["connections"];
+  pairs: Cells["pairs"];
   // 保存した形での、公開できない理由（core が返したもの）
   problems: PublishProblem[];
 }) {
@@ -107,7 +99,7 @@ export function LayoutEditor({
         id={id}
         revision={revision}
         sizeRange={sizeRange}
-        initial={{ width, height, tiles, connections }}
+        initial={{ width, height, tiles, connections, pairs }}
         problems={problems}
       />
     </>
@@ -134,7 +126,10 @@ function LayoutForm({
   const [cells, setCells] = useState<Cells>({
     tiles: initial.tiles,
     connections: initial.connections,
+    pairs: initial.pairs,
   });
+  // 転送円・橋の道具で、対にする相手を待っているマス。画面の中だけの状態で、開いた直後と道具を変えたときは無い
+  const [pending, setPending] = useState<Position>();
   // 幅・高さは入力中の文字のまま持つ。整数で範囲の中になるまでは、格子を直前の大きさのままにする（範囲の外の値で描くと、桁違いの数のボタンで固まる）
   const [size, setSize] = useState({
     width: String(initial.width),
@@ -206,9 +201,21 @@ function LayoutForm({
   }
 
   function pressTile(position: Position) {
-    const next = tool.placement
-      ? placeTile(cells, position, tool.placement)
-      : removeTile(cells, position);
+    let next: Cells;
+    if (tool.placement && isPairableKind(tool.placement.__typename)) {
+      const pressed = pressPairable(
+        cells,
+        position,
+        tool.placement.__typename,
+        pending,
+      );
+      next = pressed.cells;
+      setPending(pressed.pending);
+    } else {
+      next = tool.placement
+        ? placeTile(cells, position, tool.placement)
+        : removeTile(cells, position);
+    }
     setCells(next);
     scheduleCheck(size, next);
   }
@@ -237,6 +244,14 @@ function LayoutForm({
           type="hidden"
           name="connection"
           value={connectionField(connection)}
+        />
+      ))}
+      {cells.pairs.map((pair) => (
+        <input
+          key={connectionField(pair)}
+          type="hidden"
+          name="pair"
+          value={connectionField(pair)}
         />
       ))}
       <label>
@@ -274,7 +289,10 @@ function LayoutForm({
               name="tool"
               value={option.value}
               checked={tool.value === option.value}
-              onChange={() => setTool(option)}
+              onChange={() => {
+                setTool(option);
+                setPending(undefined);
+              }}
             />
             {option.label}
           </label>
@@ -299,6 +317,8 @@ function LayoutForm({
         height={grid.height}
         tiles={cells.tiles}
         connections={cells.connections}
+        pairs={cells.pairs}
+        pending={pending}
         marks={problemMarks(check.problems)}
         focus={focus}
         onTile={pressTile}

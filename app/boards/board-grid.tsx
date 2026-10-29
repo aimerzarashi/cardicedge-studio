@@ -8,13 +8,17 @@ import {
   useState,
 } from "react";
 import {
-  ATTRIBUTE_LABELS,
   type Connection,
   connectionBetween,
   hasConnection,
+  isPairableKind,
   type Mark,
   type MarkKind,
+  type Pair,
+  type PairLabel,
+  PLACEMENTS,
   type Position,
+  pairLabel,
   samePosition,
   type Tile,
   tileAt,
@@ -25,10 +29,12 @@ import {
 //
 // 並べ方: 幅 W・高さ H のボードを (2W−1) 列 × (2H−1) 行の CSS grid にし、偶数の位置をマス、奇数の位置を隣どうしの間の印
 // （つながり）にする（奇数 × 奇数は空き）。この grid 全体を `scaleY(0.5) rotate(45deg)` で回してつぶし、マスを ◇ に見せる。
-//   マス: 名前「(x, y) のマス」＋置いてあれば種類（土地は属性つき。例: 「(2, 0) のマス 拠点」「(1, 0) のマス 火属性の土地」）。種類・属性は色で見せ、マスの中に文字は書かない
+//   マス: 名前「(x, y) のマス」＋置いてあれば種類（土地は属性つき。例: 「(2, 0) のマス 拠点」「(1, 0) のマス 火属性の土地」）。種類・属性は色で見せる。
+//     マスの中に文字を書くのは特殊なマスだけ（転送円・橋は対の番号「1-1」「1-2」、相手のいないものは「?」。施設は 1 文字）。名前にも番号が付く（「転送円 1-1」「橋 相手なし」）
 //   横の間: 「(x, y) と (x+1, y) のつながり」、縦の間: 「(x, y) と (x, y+1) のつながり」（つながっているかは aria-pressed）
 // 見方: はみ出した分はスクロールバーではなく、枠の中で表示を動かして見る（ドラッグで動かす・ホイールとボタンで拡大縮小）。
 // 編集の操作はこの部品に持たせず、押されたときの処理（onTile・onConnection）だけを外から受ける。渡さなければ表示だけになる。
+// 対: pairs で転送円・橋の番号を決める（番号の振り方は board-layout.ts の pairLabel）。pending は編集で相手待ちのマス（白い点線の枠）。
 // 印: marks のマスに、種類ごとの枠（色と線の形）を付ける。マスの色（属性・拠点・チェックポイント）とぶつからないよう、枠で見せる。
 //   focus に渡した位置は枠を太くして光らせ、渡されるたびに先頭のマスが枠の中央に来るよう表示を動かす（倍率は変えない）。
 //   どの理由の印か・どのマスへ動くかは外が決める（この部品は理由を知らない）。game に写すときは marks・focus を渡さなければ何も変わらない
@@ -96,6 +102,8 @@ export function BoardGrid({
   height,
   tiles,
   connections,
+  pairs,
+  pending,
   marks = [],
   focus,
   onTile,
@@ -105,6 +113,8 @@ export function BoardGrid({
   height: number;
   tiles: Tile[];
   connections: Connection[];
+  pairs: Pair[];
+  pending?: Position;
   marks?: Mark[];
   // 渡し直すたびに（中身が同じでも）、先頭の位置へ動いて目立たせる
   focus?: Position[];
@@ -239,12 +249,15 @@ export function BoardGrid({
       const x = Math.floor(column / 2);
       const y = Math.floor(row / 2);
       if (column % 2 === 0 && row % 2 === 0) {
+        const tile = tileAt(tiles, { x, y });
         cells.push(
           <TileButton
             key={key}
             position={{ x, y }}
-            tile={tileAt(tiles, { x, y })}
-            mark={marks.find((mark) => samePosition(mark, { x, y }))}
+            tile={tile}
+            pair={tile && pairLabel({ tiles, pairs }, tile)}
+            waiting={pending !== undefined && samePosition(pending, { x, y })}
+            marks={marks.filter((mark) => samePosition(mark, { x, y }))}
             focused={focus?.some((p) => samePosition(p, { x, y })) ?? false}
             onTile={onTile}
           />,
@@ -374,7 +387,7 @@ export function BoardGrid({
           </li>
         ))}
       </ul>
-      {marks.length > 0 && (
+      {(marks.length > 0 || pending !== undefined) && (
         <ul
           aria-label="印"
           style={{
@@ -404,6 +417,24 @@ export function BoardGrid({
                 {MARK_STYLES[kind].legend}
               </li>
             ))}
+          {pending !== undefined && (
+            <li>
+              <span
+                aria-hidden
+                style={{
+                  border: "3px dotted #ffffff",
+                  background: BOARD_BACKGROUND,
+                  display: "inline-block",
+                  boxSizing: "border-box",
+                  width: "1em",
+                  height: "1em",
+                  marginRight: "0.25em",
+                  verticalAlign: "middle",
+                }}
+              />
+              相手待ちの枠
+            </li>
+          )}
         </ul>
       )}
     </fieldset>
@@ -421,9 +452,9 @@ function tracks(count: number, tile: number): string {
 // 枠の模様（二重の枠・斜線）で分ける案は、斜め見下ろしでつぶすと見分けにくいため採らなかった。
 // 白はつながりの印に使うので、マスには使わない
 const FIRE = "#d9534f";
-const EARTH = "#c8a24a";
+const EARTH = "#5fae5f";
 const WATER = "#4a7fd4";
-const WIND = "#5fae5f";
+const WIND = "#c8a24a";
 const LAND_COLORS = {
   FIRE,
   EARTH,
@@ -435,18 +466,26 @@ const LAND_COLORS = {
 };
 const BASE_COLOR = "#8e4ec6";
 const CHECKPOINT_COLOR = "#f7a8c8";
+const WARP_COLOR = "#20b2aa";
+const BRIDGE_COLOR = "#8b5a2b";
+const FACILITY_COLOR = "#3a3f55";
+// 施設のマスに書く 1 文字
+const FACILITY_GLYPHS = {
+  SanctuaryTile: "聖",
+  ShrineTile: "祠",
+  ProphecyShopTile: "占",
+  CardShopTile: "店",
+};
 const BOARD_BACKGROUND = "#1b2440";
 const CONNECTED = "#ffffff";
 const DISCONNECTED = "#4a5470";
 
-// 凡例は、属性ごとの土地・拠点・チェックポイントの見本
-const LEGEND: Tile[] = [
-  ...(Object.keys(ATTRIBUTE_LABELS) as (keyof typeof ATTRIBUTE_LABELS)[]).map(
-    (attribute) => ({ x: 0, y: 0, __typename: "LandTile" as const, attribute }),
-  ),
-  { x: 0, y: 0, __typename: "BaseTile" },
-  { x: 0, y: 0, __typename: "CheckpointTile" },
-];
+// 凡例は、道具と同じ並びのマスの見本（置く道具と同じ PLACEMENTS から作る）
+const LEGEND: Tile[] = PLACEMENTS.map((placement) => ({
+  x: 0,
+  y: 0,
+  ...placement,
+}));
 
 function paint(tile: Tile | undefined): CSSProperties {
   if (!tile) {
@@ -462,19 +501,50 @@ function paint(tile: Tile | undefined): CSSProperties {
         border: "1px solid #555",
         background: LAND_COLORS[tile.attribute],
       };
+    case "WarpTile":
+      return { border: "1px solid #555", background: WARP_COLOR };
+    case "BridgeTile":
+      return { border: "1px solid #555", background: BRIDGE_COLOR };
+    case "SanctuaryTile":
+    case "ShrineTile":
+    case "ProphecyShopTile":
+    case "CardShopTile":
+      return { border: "1px solid #555", background: FACILITY_COLOR };
+  }
+}
+
+// マスの中に書く文字（特殊なマスだけ）。転送円・橋は対の番号で、相手のいないものは「?」
+function tileText(tile: Tile, pair: PairLabel | undefined): string | undefined {
+  switch (tile.__typename) {
+    case "WarpTile":
+    case "BridgeTile":
+      return pair ? `${pair.number}-${pair.end}` : "?";
+    case "SanctuaryTile":
+    case "ShrineTile":
+    case "ProphecyShopTile":
+    case "CardShopTile":
+      return FACILITY_GLYPHS[tile.__typename];
+    default:
+      return undefined;
   }
 }
 
 // 印は枠で見せる（マスの色は塗りなので重ならない）。種類は色と線の形の両方で分ける
 const MARK_STYLES: Record<
   MarkKind,
-  { color: string; line: "solid" | "dashed"; legend: string }
+  { color: string; line: "solid" | "dashed" | "dotted"; legend: string }
 > = {
   base: { color: "#ffe600", line: "solid", legend: "拠点の数の印" },
   unreachable: {
     color: "#00e5ff",
     line: "dashed",
     legend: "拠点から行けないマスの印",
+  },
+  // 相手待ちの枠（白い点線の border）とは色と置き場所（outline）で分ける
+  unpaired: {
+    color: "#ff8c00",
+    line: "dotted",
+    legend: "相手のいない転送円・橋の印",
   },
 };
 
@@ -487,34 +557,85 @@ function markOutline(kind: MarkKind, focused: boolean): CSSProperties {
   };
 }
 
+// 1 つのマスに理由が重なる（相手のいない転送円がつながっておらず、行けないマスでもある等）ときは、
+// 2 つめからを outline の外側の輪（box-shadow）で重ねる。outline は 1 本しか引けず、先頭だけだと残りの理由が見えないため
+function markStyle(marks: Mark[], focused: boolean): CSSProperties {
+  const [first, ...rest] = marks;
+  if (first === undefined) {
+    return {};
+  }
+  const style = markOutline(first.kind, focused);
+  const rings = rest.map(
+    (mark, i) => `0 0 0 ${10 + i * 4}px ${MARK_STYLES[mark.kind].color}`,
+  );
+  const shadows = [...rings, style.boxShadow].filter(Boolean).join(", ");
+  return { ...style, boxShadow: shadows || undefined };
+}
+
 function TileButton({
   position,
   tile,
-  mark,
+  pair,
+  waiting,
+  marks,
   focused,
   onTile,
 }: {
   position: Position;
   tile: Tile | undefined;
-  mark: Mark | undefined;
+  // 転送円・橋の対の番号（対になっていなければ無い）
+  pair: PairLabel | undefined;
+  // 編集で相手待ちに選んでいるマス
+  waiting: boolean;
+  marks: Mark[];
   focused: boolean;
   onTile?: (position: Position) => void;
 }) {
   const name = `(${position.x}, ${position.y}) のマス`;
+  const text = tile && tileText(tile, pair);
+  // 転送円・橋の名前には対の番号（なければ「相手なし」）を添える
+  const pairName =
+    tile && isPairableKind(tile.__typename)
+      ? ` ${pair ? `${pair.number}-${pair.end}` : "相手なし"}`
+      : "";
   return (
     <button
       type="button"
-      aria-label={`${tile ? `${name} ${tileLabel(tile)}` : name}${mark ? `（${mark.label}）` : ""}`}
-      data-mark={mark?.kind}
+      aria-label={`${tile ? `${name} ${tileLabel(tile)}${pairName}` : name}${waiting ? "（相手待ち）" : ""}${marks.map((mark) => `（${mark.label}）`).join("")}`}
+      data-mark={marks.map((mark) => mark.kind).join(" ") || undefined}
       data-focused={focused || undefined}
+      data-waiting={waiting || undefined}
       disabled={onTile === undefined}
       onClick={() => onTile?.(position)}
       style={{
         ...paint(tile),
-        ...(mark && markOutline(mark.kind, focused)),
+        // 相手待ちは白い点線の枠。印は outline なので重ねて出せる
+        ...(waiting && { border: "3px dotted #ffffff" }),
+        ...markStyle(marks, focused),
         padding: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
-    />
+    >
+      {text !== undefined && (
+        // 盤面の回転（scaleY(0.5) rotate(45deg)）を打ち消して、文字を正面に向ける
+        <span
+          aria-hidden
+          style={{
+            transform: "rotate(-45deg) scaleY(2)",
+            color: "#ffffff",
+            fontSize: 16,
+            fontWeight: "bold",
+            lineHeight: 1,
+            textShadow: "0 0 2px #000, 0 0 2px #000",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {text}
+        </span>
+      )}
+    </button>
   );
 }
 

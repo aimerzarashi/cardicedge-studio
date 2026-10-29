@@ -385,7 +385,52 @@ test("属性ごとの土地を置いて保存すると、詳細を開き直し�
     "(1, 1) のマス チェックポイント",
   );
   await expect(section(page, "レイアウト").getByLabel("凡例")).toHaveText(
-    "火属性の土地地属性の土地水属性の土地風属性の土地無属性の土地複属性の土地拠点チェックポイント",
+    "拠点チェックポイント火属性の土地地属性の土地水属性の土地風属性の土地無属性の土地複属性の土地転送円橋聖堂ほこら占い館カード屋",
+  );
+});
+
+test("道具は拠点・チェックポイント・土地 6 つ・転送円・橋・施設 4 つ・消すの順に並ぶ", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("道具の並び"));
+
+  await expect(
+    section(page, "レイアウト")
+      .getByRole("group", { name: "道具" })
+      .locator("label"),
+  ).toHaveText([
+    "拠点",
+    "チェックポイント",
+    "火属性の土地",
+    "地属性の土地",
+    "水属性の土地",
+    "風属性の土地",
+    "無属性の土地",
+    "複属性の土地",
+    "転送円",
+    "橋",
+    "聖堂",
+    "ほこら",
+    "占い館",
+    "カード屋",
+    "消す",
+  ]);
+});
+
+test("地属性は緑、風属性は黄土色で出る", async ({ page }) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("色"));
+  await putTiles(page, "地属性の土地", [[0, 0]]);
+  await putTiles(page, "風属性の土地", [[1, 0]]);
+
+  await expect(tileButton(page, 0, 0)).toHaveCSS(
+    "background-color",
+    "rgb(95, 174, 95)",
+  );
+  await expect(tileButton(page, 1, 0)).toHaveCSS(
+    "background-color",
+    "rgb(200, 162, 74)",
   );
 });
 
@@ -829,4 +874,366 @@ test("一覧の 2 段目に、準備中のボードだけ、公開できない�
   await expect(publishedRow).toContainText("目標の魔力");
   await expect(publishedRow).not.toContainText("公開できない理由");
   await expect(publishedRow).not.toContainText("公開できます");
+});
+
+// 拠点・火・チェックポイントを一本道に置いたうえで、(3, 0) に転送円を置ける、公開できる土台
+async function putRoad(page: Page) {
+  await putTiles(page, "拠点", [[0, 0]]);
+  await putTiles(page, "火属性の土地", [[1, 0]]);
+  await putTiles(page, "チェックポイント", [[2, 0]]);
+}
+
+const reasons = (page: Page) => problemList(page);
+
+test("施設 4 つを置いて保存すると、詳細を開き直しても出て、一文字が書かれ、一覧の数に出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("施設");
+  await registerBoard(page, name);
+  const facilities = [
+    ["聖堂", "聖"],
+    ["ほこら", "祠"],
+    ["占い館", "占"],
+    ["カード屋", "店"],
+  ] as const;
+  for (const [x, [tool]] of facilities.entries()) {
+    await putTiles(page, tool, [[x, 0]]);
+  }
+  await saveLayout(page);
+  await page.reload();
+
+  for (const [x, [tool, glyph]] of facilities.entries()) {
+    await expect(tileButton(page, x, 0)).toHaveAccessibleName(
+      `(${x}, 0) のマス ${tool}`,
+    );
+    await expect(tileButton(page, x, 0)).toHaveText(glyph);
+    await expect(tileButton(page, x, 0)).toHaveCSS(
+      "background-color",
+      "rgb(58, 63, 85)",
+    );
+  }
+
+  await expect(async () => {
+    await page.goto(`/boards?name=${encodeURIComponent(name)}`);
+    await expect(boardRows(page)).toHaveCount(1, { timeout: 1_000 });
+  }).toPass();
+  await expect(boardRows(page)).toContainText(
+    "土地 0（火 0・地 0・水 0・風 0・無 0・複 0）・転送円 0・橋 0・聖堂 1・ほこら 1・占い館 1・カード屋 1",
+  );
+});
+
+test("転送円を 2 つ押すと対になり、「1-1」「1-2」の番号が出て、保存して開き直しても対が残る。一覧の数にも出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("転送円の対");
+  await registerBoard(page, name);
+
+  await putTiles(page, "転送円", [[0, 0]]);
+  // 1 つ目は相手待ち。相手のいない印の「?」が出る
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    /^\(0, 0\) のマス 転送円 相手なし（相手待ち）/,
+  );
+  await expect(tileButton(page, 0, 0)).toHaveText("?");
+  await expect(tileButton(page, 0, 0)).toHaveAttribute("data-waiting", "true");
+
+  await putTiles(page, "転送円", [[3, 3]]);
+
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    "(0, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 3, 3)).toHaveAccessibleName(
+    "(3, 3) のマス 転送円 1-2",
+  );
+  await expect(tileButton(page, 0, 0)).toHaveText("1-1");
+  await expect(tileButton(page, 3, 3)).toHaveText("1-2");
+  await expect(page.locator("[data-waiting]")).toHaveCount(0);
+  await expect(tileButton(page, 0, 0)).toHaveCSS(
+    "background-color",
+    "rgb(32, 178, 170)",
+  );
+
+  await saveLayout(page);
+  await page.reload();
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    "(0, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 3, 3)).toHaveAccessibleName(
+    "(3, 3) のマス 転送円 1-2",
+  );
+
+  await expect(async () => {
+    await page.goto(`/boards?name=${encodeURIComponent(name)}`);
+    await expect(boardRows(page)).toHaveCount(1, { timeout: 1_000 });
+  }).toPass();
+  await expect(boardRows(page)).toContainText("転送円 2・橋 0・聖堂 0");
+});
+
+test("橋も転送円と同じように対になり、番号は転送円と橋で別に、対ごとに 1 から振る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("番号"));
+
+  await putTiles(page, "転送円", [
+    [0, 0],
+    [2, 0],
+    [4, 0],
+    [6, 0],
+  ]);
+  await putTiles(page, "橋", [
+    [0, 2],
+    [2, 2],
+  ]);
+
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    "(0, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 2, 0)).toHaveAccessibleName(
+    "(2, 0) のマス 転送円 1-2",
+  );
+  await expect(tileButton(page, 4, 0)).toHaveAccessibleName(
+    "(4, 0) のマス 転送円 2-1",
+  );
+  await expect(tileButton(page, 6, 0)).toHaveAccessibleName(
+    "(6, 0) のマス 転送円 2-2",
+  );
+  await expect(tileButton(page, 0, 2)).toHaveAccessibleName(
+    "(0, 2) のマス 橋 1-1",
+  );
+  await expect(tileButton(page, 2, 2)).toHaveAccessibleName(
+    "(2, 2) のマス 橋 1-2",
+  );
+  await expect(tileButton(page, 0, 2)).toHaveCSS(
+    "background-color",
+    "rgb(139, 90, 43)",
+  );
+});
+
+test("相手待ちのまま同じものをもう一度押すとやめ、相手のいない転送円を押すと相手待ちに選び直せる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("相手待ち"));
+  await putTiles(page, "転送円", [[0, 0]]);
+  await expect(tileButton(page, 0, 0)).toHaveAttribute("data-waiting", "true");
+
+  await tileButton(page, 0, 0).click();
+  await expect(page.locator("[data-waiting]")).toHaveCount(0);
+
+  await tileButton(page, 0, 0).click();
+  await expect(tileButton(page, 0, 0)).toHaveAttribute("data-waiting", "true");
+  // 相手待ちが無いまま置くと、また新しい相手待ちになる
+  await tileButton(page, 0, 0).click();
+  await putTiles(page, "転送円", [[2, 0]]);
+  await expect(tileButton(page, 2, 0)).toHaveAttribute("data-waiting", "true");
+  await expect(tileButton(page, 0, 0)).not.toHaveAttribute("data-waiting");
+});
+
+test("相手のいない転送円を 2 つ置いたあと、片方を相手待ちに選んでもう一方を押すと、その 2 つが対になる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("あとから対"));
+  await putTiles(page, "転送円", [[0, 0]]);
+  await tileButton(page, 0, 0).click(); // 相手待ちをやめる
+  await putTiles(page, "転送円", [[2, 0]]);
+  await tileButton(page, 2, 0).click(); // 相手待ちをやめる
+  await expect(tileButton(page, 0, 0)).toHaveText("?");
+  await expect(tileButton(page, 2, 0)).toHaveText("?");
+
+  await tileButton(page, 0, 0).click();
+  await tileButton(page, 2, 0).click();
+
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    "(0, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 2, 0)).toHaveAccessibleName(
+    "(2, 0) のマス 転送円 1-2",
+  );
+});
+
+test("対になっている転送円を押しても何も起きず、相手待ちも変わらない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("組み替えない"));
+  await putTiles(page, "転送円", [
+    [0, 0],
+    [2, 0],
+  ]);
+  await putTiles(page, "転送円", [[4, 0]]); // 3 つ目は相手待ち
+
+  await tileButton(page, 0, 0).click();
+
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    "(0, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 2, 0)).toHaveAccessibleName(
+    "(2, 0) のマス 転送円 1-2",
+  );
+  await expect(tileButton(page, 4, 0)).toHaveAttribute("data-waiting", "true");
+});
+
+test("道具を変えると相手待ちが外れ、転送円の道具に戻しても相手待ちは無い", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("道具を変える"));
+  await putTiles(page, "転送円", [[0, 0]]);
+  await expect(tileButton(page, 0, 0)).toHaveAttribute("data-waiting", "true");
+
+  await section(page, "レイアウト").getByLabel("拠点", { exact: true }).check();
+  await expect(page.locator("[data-waiting]")).toHaveCount(0);
+  await section(page, "レイアウト")
+    .getByLabel("転送円", { exact: true })
+    .check();
+  await expect(page.locator("[data-waiting]")).toHaveCount(0);
+});
+
+test("対の片方を消すか別の種類で上書きすると、もう一方は相手のいない転送円として残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("片方を消す"));
+  await putTiles(page, "転送円", [
+    [0, 0],
+    [2, 0],
+    [4, 0],
+    [6, 0],
+  ]);
+
+  await putTiles(page, "消す", [[0, 0]]);
+  await putTiles(page, "水属性の土地", [[4, 0]]);
+
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName("(0, 0) のマス");
+  await expect(tileButton(page, 2, 0)).toHaveAccessibleName(
+    /^\(2, 0\) のマス 転送円 相手なし/,
+  );
+  await expect(tileButton(page, 2, 0)).toHaveText("?");
+  await expect(tileButton(page, 4, 0)).toHaveAccessibleName(
+    "(4, 0) のマス 水属性の土地",
+  );
+  await expect(tileButton(page, 6, 0)).toHaveText("?");
+  // 番号は対が残っているものだけ。残った 2 つは対ではない
+  await expect(section(page, "レイアウト").getByText("1-1")).toHaveCount(0);
+});
+
+test("転送円と橋は組めない。橋の上に転送円を置くと橋が転送円に替わって対の相手になり、橋の対は切れる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("組めない"));
+  await putTiles(page, "橋", [
+    [0, 0],
+    [2, 0],
+  ]);
+  await putTiles(page, "転送円", [[4, 0]]);
+
+  // 相手待ちの転送円で橋を押しても、橋とは対にならない（橋は転送円に替わり、その転送円と対になる。座標が小さい側が 1）
+  await tileButton(page, 0, 0).click();
+
+  await expect(tileButton(page, 0, 0)).toHaveAccessibleName(
+    "(0, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 4, 0)).toHaveAccessibleName(
+    "(4, 0) のマス 転送円 1-2",
+  );
+  // 橋の対の片方が替わったので、残った橋は相手のいない橋になる
+  await expect(tileButton(page, 2, 0)).toHaveAccessibleName(
+    /^\(2, 0\) のマス 橋 相手なし/,
+  );
+});
+
+test("つながっていない相手のいない転送円には、行けないマスと相手のいない転送円・橋の両方の印が付く", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("重なる印"));
+  await putRoad(page);
+  await putTiles(page, "転送円", [[5, 5]]);
+
+  await expect(tileButton(page, 5, 5)).toHaveAttribute(
+    "data-mark",
+    "unreachable unpaired",
+  );
+  await expect(tileButton(page, 5, 5)).toHaveAccessibleName(
+    /（拠点から行けないマスが 1 つあります）（相手のいない転送円・橋が 1 つあります。対にするか、消してください）$/,
+  );
+});
+
+test("転送円を 1 つだけ置いたレイアウトは、相手のいない転送円の理由が一覧に出て印が付き、項目を押すとそのマスへ動く。対にすると公開できる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("相手のいない転送円"));
+  await putRoad(page);
+  await putTiles(page, "転送円", [[3, 0]]);
+
+  const item = reasons(page).getByRole("button", {
+    name: "相手のいない転送円・橋が 1 つあります。対にするか、消してください",
+  });
+  await expect(item).toBeVisible();
+  await expect(tileButton(page, 3, 0)).toHaveAttribute("data-mark", "unpaired");
+  await expect(
+    section(page, "レイアウト").getByRole("list", { name: "印" }),
+  ).toContainText("相手のいない転送円・橋の印");
+  await item.click();
+  await expect(tileButton(page, 3, 0)).toHaveAttribute("data-focused", "true");
+
+  // 相手のいない転送円は保存でき、公開で止まる（保存すると編集の状態は作り直され、道具も相手待ちも最初に戻る）
+  await saveLayout(page);
+  await expect(item).toBeVisible();
+
+  // 相手のいない転送円を相手待ちに選び、離れた (6, 0) に転送円を置いて対にすると、対も道として数えられ、公開できる
+  await putTiles(page, "転送円", [
+    [3, 0],
+    [6, 0],
+  ]);
+  await expect(
+    section(page, "レイアウト").getByText("公開できます", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("[data-mark]")).toHaveCount(0);
+  await saveLayout(page);
+
+  await section(page, "公開").getByRole("button", { name: "公開する" }).click();
+  await expect(detail(page, "状態")).toHaveText("公開中");
+  // 公開中の盤面は表示だけで、番号も見える
+  await expect(tileButton(page, 3, 0)).toHaveAccessibleName(
+    "(3, 0) のマス 転送円 1-1",
+  );
+  await expect(tileButton(page, 6, 0)).toHaveAccessibleName(
+    "(6, 0) のマス 転送円 1-2",
+  );
+  await expect(tileButton(page, 6, 0)).toBeDisabled();
+});
+
+test("公開しようとして相手のいない橋が残っていると、公開の節にも理由が出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("相手のいない橋"));
+  await putRoad(page);
+  await putTiles(page, "橋", [[3, 0]]);
+  await saveLayout(page);
+
+  await section(page, "公開").getByRole("button", { name: "公開する" }).click();
+
+  await expect(
+    section(page, "公開").getByText("相手のいない転送円・橋が 1 つあります"),
+  ).toBeVisible();
+  await expect(detail(page, "状態")).toHaveText("準備中");
+});
+
+test("相手待ちの印があるとき、凡例の印の欄に相手待ちの枠が出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("印の凡例"));
+  await putTiles(page, "転送円", [[0, 0]]);
+
+  await expect(
+    section(page, "レイアウト").getByRole("list", { name: "印" }),
+  ).toContainText("相手待ちの枠");
 });
