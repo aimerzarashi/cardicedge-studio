@@ -1,3 +1,4 @@
+import type { BoardTileInput } from "@/graphql/graphql";
 import type { Notice } from "../../deck-form";
 import {
   BOARD_LAYOUT_INVALID,
@@ -8,6 +9,7 @@ import {
 import {
   type Cells,
   type Connection,
+  isTileAttribute,
   isTileKind,
   type Tile,
 } from "../board-layout";
@@ -25,9 +27,11 @@ export type ChangeLayoutState = Notice & {
   layoutErrors?: LayoutError[];
 };
 
-// フォームの値の組み立て。マスは `x,y,種類`、つながりは `ax,ay,bx,by` の文字列にして同じ名前で並べる（順番が core の誤りの位置になる）
+// フォームの値の組み立て。マスは `x,y,種類` で、土地だけ `x,y,種類,属性`（種類は core の出力の型の名前）、つながりは `ax,ay,bx,by` の文字列にして同じ名前で並べる（順番が core の誤りの位置になる）
 export function tileField(tile: Tile): string {
-  return `${tile.x},${tile.y},${tile.kind}`;
+  return tile.__typename === "LandTile"
+    ? `${tile.x},${tile.y},${tile.__typename},${tile.attribute}`
+    : `${tile.x},${tile.y},${tile.__typename}`;
 }
 
 export function connectionField({ a, b }: Connection): string {
@@ -51,16 +55,24 @@ export function parseLayout(form: FormData): Layout | undefined {
   }
   const tiles: Tile[] = [];
   for (const value of form.getAll("tile")) {
-    const separator = typeof value === "string" ? value.lastIndexOf(",") : -1;
-    const xy =
-      typeof value === "string"
-        ? integers(value.slice(0, separator), 2)
-        : undefined;
-    const kind = typeof value === "string" ? value.slice(separator + 1) : "";
-    if (xy === undefined || !isTileKind(kind)) {
+    const parts = typeof value === "string" ? value.split(",") : [];
+    const xy = integers(parts.slice(0, 2).join(","), 2);
+    const [, , kind, attribute] = parts;
+    if (xy === undefined || kind === undefined || !isTileKind(kind)) {
       return undefined;
     }
-    tiles.push({ x: xy[0], y: xy[1], kind });
+    const position = { x: xy[0], y: xy[1] };
+    // 属性があるのは土地だけ
+    if (kind === "LandTile") {
+      if (parts.length !== 4 || !isTileAttribute(attribute)) {
+        return undefined;
+      }
+      tiles.push({ ...position, __typename: kind, attribute });
+    } else if (parts.length === 3) {
+      tiles.push({ ...position, __typename: kind });
+    } else {
+      return undefined;
+    }
   }
   const connections: Connection[] = [];
   for (const value of form.getAll("connection")) {
@@ -71,6 +83,19 @@ export function parseLayout(form: FormData): Layout | undefined {
     connections.push({ a: { x: n[0], y: n[1] }, b: { x: n[2], y: n[3] } });
   }
   return { width, height, tiles, connections };
+}
+
+// core の入力は種類ごとに 1 つだけ書く（@oneOf）
+export function tileInput(tile: Tile): BoardTileInput {
+  const { x, y } = tile;
+  switch (tile.__typename) {
+    case "LandTile":
+      return { land: { x, y, attribute: tile.attribute } };
+    case "BaseTile":
+      return { base: { x, y } };
+    case "CheckpointTile":
+      return { checkpoint: { x, y } };
+  }
 }
 
 type FieldError = {

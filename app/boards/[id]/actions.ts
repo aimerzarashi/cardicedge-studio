@@ -22,6 +22,7 @@ import {
   type ChangeLayoutState,
   layoutErrors,
   parseLayout,
+  tileInput,
 } from "./layout-form";
 
 const renameBoardMutation = graphql(`
@@ -176,7 +177,7 @@ export async function changeBoardLayout(
   }
 
   const result = await callCore(changeBoardLayoutMutation, {
-    input: { ...board, ...layout },
+    input: { ...board, ...layout, tiles: layout.tiles.map(tileInput) },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };

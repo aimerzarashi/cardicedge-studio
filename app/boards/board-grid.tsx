@@ -1,21 +1,28 @@
 "use client";
 
-import { type PointerEvent, useEffect, useRef, useState } from "react";
 import {
+  type CSSProperties,
+  type PointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  ATTRIBUTE_LABELS,
   type Connection,
   connectionBetween,
   hasConnection,
   type Position,
-  TILE_KIND_LABELS,
   type Tile,
   tileAt,
+  tileLabel,
 } from "./board-layout";
 
 // ボードを斜め見下ろしで見せる格子。studio（表示・編集）と game#9 で共通の土台で、game#9 にそのまま写す。
 //
 // 並べ方: 幅 W・高さ H のボードを (2W−1) 列 × (2H−1) 行の CSS grid にし、偶数の位置をマス、奇数の位置を隣どうしの間の印
 // （つながり）にする（奇数 × 奇数は空き）。この grid 全体を `scaleY(0.5) rotate(45deg)` で回してつぶし、マスを ◇ に見せる。
-//   マス: 名前「(x, y) のマス」＋置いてあれば種類（例: 「(2, 0) のマス 拠点」）。種類は色で見せ、マスの中に文字は書かない
+//   マス: 名前「(x, y) のマス」＋置いてあれば種類（土地は属性つき。例: 「(2, 0) のマス 拠点」「(1, 0) のマス 火属性の土地」）。種類・属性は色で見せ、マスの中に文字は書かない
 //   横の間: 「(x, y) と (x+1, y) のつながり」、縦の間: 「(x, y) と (x, y+1) のつながり」（つながっているかは aria-pressed）
 // 見方: はみ出した分はスクロールバーではなく、枠の中で表示を動かして見る（ドラッグで動かす・ホイールとボタンで拡大縮小）。
 // 編集の操作はこの部品に持たせず、押されたときの処理（onTile・onConnection）だけを外から受ける。渡さなければ表示だけになる。
@@ -277,6 +284,8 @@ export function BoardGrid({
           touchAction: "none",
           userSelect: "none",
           border: "1px solid #999",
+          // 画面のモード（ダーク・通常）によらず暗い色に固定する。ボードはゲームの画面と同じ見え方にし、白いつながりの印を目立たせるため
+          background: BOARD_BACKGROUND,
           // 枠の大きさが分かるまでは、収め方が決まらないため出さない
           visibility: shown ? "visible" : "hidden",
         }}
@@ -306,27 +315,31 @@ export function BoardGrid({
       </div>
       <ul
         aria-label="凡例"
-        style={{ display: "flex", gap: "1rem", listStyle: "none", padding: 0 }}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "1rem",
+          listStyle: "none",
+          padding: 0,
+        }}
       >
-        {(Object.keys(KIND_COLORS) as (keyof typeof KIND_COLORS)[]).map(
-          (kind) => (
-            <li key={kind}>
-              <span
-                aria-hidden
-                style={{
-                  display: "inline-block",
-                  width: "1em",
-                  height: "1em",
-                  marginRight: "0.25em",
-                  verticalAlign: "middle",
-                  border: "1px solid #555",
-                  background: KIND_COLORS[kind],
-                }}
-              />
-              {TILE_KIND_LABELS[kind]}
-            </li>
-          ),
-        )}
+        {LEGEND.map((sample) => (
+          <li key={tileLabel(sample)}>
+            <span
+              aria-hidden
+              style={{
+                ...paint(sample),
+                display: "inline-block",
+                boxSizing: "border-box",
+                width: "1em",
+                height: "1em",
+                marginRight: "0.25em",
+                verticalAlign: "middle",
+              }}
+            />
+            {tileLabel(sample)}
+          </li>
+        ))}
       </ul>
     </fieldset>
   );
@@ -339,11 +352,53 @@ function tracks(count: number, tile: number): string {
   ).join(" ");
 }
 
-const KIND_COLORS = {
-  LAND: "#cfe8c4",
-  BASE: "#f4a6a6",
-  CHECKPOINT: "#a9bff4",
+// 属性の色。拠点・チェックポイントは属性に使わない色（紫・明るめの桃色）にして、土地と見分ける。
+// 枠の模様（二重の枠・斜線）で分ける案は、斜め見下ろしでつぶすと見分けにくいため採らなかった。
+// 白はつながりの印に使うので、マスには使わない
+const FIRE = "#d9534f";
+const EARTH = "#c8a24a";
+const WATER = "#4a7fd4";
+const WIND = "#5fae5f";
+const LAND_COLORS = {
+  FIRE,
+  EARTH,
+  WATER,
+  WIND,
+  NEUTRAL: "#9e9e9e",
+  // 4 色を 4 つに分けて塗る
+  MULTI: `conic-gradient(${FIRE} 0 25%, ${EARTH} 0 50%, ${WATER} 0 75%, ${WIND} 0)`,
 };
+const BASE_COLOR = "#8e4ec6";
+const CHECKPOINT_COLOR = "#f7a8c8";
+const BOARD_BACKGROUND = "#1b2440";
+const CONNECTED = "#ffffff";
+const DISCONNECTED = "#4a5470";
+
+// 凡例は、属性ごとの土地・拠点・チェックポイントの見本
+const LEGEND: Tile[] = [
+  ...(Object.keys(ATTRIBUTE_LABELS) as (keyof typeof ATTRIBUTE_LABELS)[]).map(
+    (attribute) => ({ x: 0, y: 0, __typename: "LandTile" as const, attribute }),
+  ),
+  { x: 0, y: 0, __typename: "BaseTile" },
+  { x: 0, y: 0, __typename: "CheckpointTile" },
+];
+
+function paint(tile: Tile | undefined): CSSProperties {
+  if (!tile) {
+    return { border: "1px dashed #5a6480", background: "transparent" };
+  }
+  switch (tile.__typename) {
+    case "BaseTile":
+      return { border: "1px solid #555", background: BASE_COLOR };
+    case "CheckpointTile":
+      return { border: "1px solid #555", background: CHECKPOINT_COLOR };
+    case "LandTile":
+      return {
+        border: "1px solid #555",
+        background: LAND_COLORS[tile.attribute],
+      };
+  }
+}
 
 function TileButton({
   position,
@@ -358,14 +413,10 @@ function TileButton({
   return (
     <button
       type="button"
-      aria-label={tile ? `${name} ${TILE_KIND_LABELS[tile.kind]}` : name}
+      aria-label={tile ? `${name} ${tileLabel(tile)}` : name}
       disabled={onTile === undefined}
       onClick={() => onTile?.(position)}
-      style={{
-        padding: 0,
-        border: tile ? "1px solid #555" : "1px dashed #999",
-        background: tile ? KIND_COLORS[tile.kind] : "transparent",
-      }}
+      style={{ ...paint(tile), padding: 0 }}
     />
   );
 }
@@ -395,8 +446,8 @@ function ConnectionButton({
       style={{
         padding: 0,
         border: "none",
-        // 細い棒で、つながっているときだけ塗る（間のマスが無い印は薄くして押せないことを示す）
-        background: connected ? "#555" : "#ddd",
+        // 細い棒で、つながっているときは白で目立たせる（間のマスが無い印は薄くして押せないことを示す）
+        background: connected ? CONNECTED : DISCONNECTED,
         opacity: bothEnds ? 1 : 0.2,
         margin: vertical ? `0 ${(TILE - 16) / 2}px` : `${(TILE - 16) / 2}px 0`,
       }}

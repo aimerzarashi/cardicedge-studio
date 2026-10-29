@@ -1,4 +1,17 @@
 """
+拠点（公開するボードにちょうど 1 つ）
+"""
+type BaseTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
 ボード
 """
 type Board {
@@ -192,9 +205,9 @@ enum BoardStatus {
 	RETIRED
 }
 """
-置いてあるマス
+置いてあるマス（LandTile・BaseTile・CheckpointTile）。種類は __typename で見分け、種類ごとの項目は断片（... on LandTile 等）で取る
 """
-type BoardTile {
+interface BoardTile {
 	"""
 	列
 	"""
@@ -203,44 +216,53 @@ type BoardTile {
 	行
 	"""
 	y: Int!
-	"""
-	種類
-	"""
-	kind: BoardTileKind!
 }
 """
-置くマスの入力
+土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
+効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
 """
-input BoardTileInput {
+enum BoardTileAttribute {
 	"""
-	列（0 以上、幅 − 1 以下）
+	火（火属性）
 	"""
-	x: Int!
+	FIRE
 	"""
-	行（0 以上、高さ − 1 以下）
+	地（地属性）
 	"""
-	y: Int!
+	EARTH
 	"""
-	種類
+	水（水属性）
 	"""
-	kind: BoardTileKind!
+	WATER
+	"""
+	風（風属性）
+	"""
+	WIND
+	"""
+	無（無属性）
+	"""
+	NEUTRAL
+	"""
+	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
+	"""
+	MULTI
 }
 """
-マスの種類
+置くマスの入力。land・base・checkpoint のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
 """
-enum BoardTileKind {
+input BoardTileInput @oneOf {
 	"""
-	土地（ふつうのマス）
+	土地
 	"""
-	LAND
+	land: LandTileInput
 	"""
-	拠点（公開するボードにちょうど 1 つ）
+	拠点
 	"""
-	BASE
+	base: TilePositionInput
 	"""
-	チェックポイント（公開するボードに 1 つ以上）
+	チェックポイント
 	"""
-	CHECKPOINT
+	checkpoint: TilePositionInput
 }
 """
 ボードの一覧の 1 ページ（名前の順）
@@ -437,6 +459,19 @@ type ChangeBoardLayoutSuccess {
 	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
+}
+"""
+チェックポイント（公開するボードに 1 つ以上）
+"""
+type CheckpointTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
 }
 """
 クリーチャー（カードの種類の 1 つ）
@@ -758,6 +793,40 @@ type Item implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+土地（ふつうのマス。公開するボードの、拠点・チェックポイント以外のマス）
+"""
+type LandTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+	"""
+	属性
+	"""
+	attribute: BoardTileAttribute!
+}
+"""
+置く土地の入力
+"""
+input LandTileInput {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+	"""
+	属性
+	"""
+	attribute: BoardTileAttribute!
 }
 type Mutation {
 	"""
@@ -1921,6 +1990,19 @@ type StudioRules {
 studio の決まりの結果
 """
 union StudioRulesResult = StudioRules | ForbiddenError
+"""
+置く拠点・チェックポイントの座標の入力
+"""
+input TilePositionInput {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+}
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
 """
