@@ -8,6 +8,7 @@ import { type Notice, type RenameDeckState, target } from "../../deck-form";
 import {
   BOARD_NOT_DRAFT,
   boardPublishErrorMessage,
+  boardRuleErrorMessage,
   CORE_UNAVAILABLE,
   FORBIDDEN,
   INVALID_STATUS_TRANSITION,
@@ -24,6 +25,7 @@ import {
   parseLayout,
   tileInput,
 } from "./layout-form";
+import { type ChangeRulesState, parseRules } from "./rules-form";
 
 const renameBoardMutation = graphql(`
   mutation RenameBoard($input: RenameBoardInput!) {
@@ -38,6 +40,30 @@ const renameBoardMutation = graphql(`
           __typename
           ... on FieldTooLong {
             max
+          }
+        }
+      }
+    }
+  }
+`);
+
+const changeBoardDefaultRulesMutation = graphql(`
+  mutation ChangeBoardDefaultRules($input: ChangeBoardDefaultRulesInput!) {
+    changeBoardDefaultRules(input: $input) {
+      __typename
+      ... on ChangeBoardDefaultRulesSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldTooSmall {
+            min
+          }
+          ... on FieldNotGreaterThan {
+            than
           }
         }
       }
@@ -163,6 +189,52 @@ export async function renameBoard(
       return {};
     case "ForbiddenError":
       return { revision: board.revision, value: name, error: FORBIDDEN };
+  }
+}
+
+export async function changeBoardDefaultRules(
+  _previous: ChangeRulesState,
+  form: FormData,
+): Promise<ChangeRulesState> {
+  const parsed = parseRules(form);
+  if (parsed === undefined) {
+    return { error: INVALID_TARGET };
+  }
+  if (parsed.kind === "invalid") {
+    return parsed.state;
+  }
+  const { board, rules } = parsed;
+
+  const result = await callCore(changeBoardDefaultRulesMutation, {
+    input: { ...board, ...rules },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+
+  const changed = result.data.changeBoardDefaultRules;
+  switch (changed.__typename) {
+    case "ChangeBoardDefaultRulesSuccess":
+      return showChanged(changed.id, changed.revision, "ルールを保存しました");
+    case "ValidationErrors":
+      return {
+        revision: board.revision,
+        values: Object.fromEntries(
+          Object.entries(rules).map(([field, value]) => [field, String(value)]),
+        ) as ChangeRulesState["values"],
+        ruleErrors: changed.errors.map(boardRuleErrorMessage),
+      };
+    case "BoardNotDraftError":
+      refresh();
+      return { error: BOARD_NOT_DRAFT };
+    case "RevisionConflictError":
+      refresh();
+      return { error: REVISION_CONFLICT };
+    case "BoardNotFoundError":
+      refresh();
+      return {};
+    case "ForbiddenError":
+      return { error: FORBIDDEN };
   }
 }
 

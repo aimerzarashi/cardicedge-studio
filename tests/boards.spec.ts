@@ -13,7 +13,8 @@ import { expect, test } from "./fixtures";
 import { section } from "./preset-deck";
 
 function boardRows(page: Page) {
-  return page.locator("tbody tr");
+  // 1 つのボードは tbody 1 つ（2 行）
+  return page.locator("tbody");
 }
 
 // 詳細の「用語 → 説明」の説明を返す
@@ -512,5 +513,109 @@ test("幅・高さが最大のボードでも、端のマスを押せる", async
 
   await expect(tileButton(page, last, last)).toHaveAccessibleName(
     `(${last}, ${last}) のマス 拠点`,
+  );
+});
+
+test("準備中のボードの既定のルールを変えて保存すると、開き直しても変えた値が出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("ルール"));
+  const rules = section(page, "既定のルール");
+  await expect(rules.getByLabel("目標の魔力")).toHaveValue("8000");
+
+  await rules.getByLabel("目標の魔力").fill("12000");
+  await rules.getByLabel("開始時の魔力").fill("0");
+  await rules.getByLabel("周回のボーナス").fill("500");
+  await rules.getByLabel("チェックポイントのボーナス").fill("100");
+  await rules.getByRole("button", { name: "ルールを保存" }).click();
+
+  await expect(rules.getByText("ルールを保存しました")).toBeVisible();
+  await page.reload();
+  await expect(rules.getByLabel("目標の魔力")).toHaveValue("12000");
+  await expect(rules.getByLabel("開始時の魔力")).toHaveValue("0");
+  await expect(rules.getByLabel("周回のボーナス")).toHaveValue("500");
+  await expect(rules.getByLabel("チェックポイントのボーナス")).toHaveValue(
+    "100",
+  );
+});
+
+test("決まりに反する既定のルールを保存すると誤りが出て、入力した値が残り、保存した値は変わらない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("ルール"));
+  const rules = section(page, "既定のルール");
+  const save = rules.getByRole("button", { name: "ルールを保存" });
+
+  await rules.getByLabel("目標の魔力").fill("0");
+  await save.click();
+  await expect(
+    rules.getByText("目標の魔力は 1 以上にしてください"),
+  ).toBeVisible();
+  await expect(rules.getByLabel("目標の魔力")).toHaveValue("0");
+
+  await rules.getByLabel("目標の魔力").fill("600");
+  await save.click();
+  await expect(
+    rules.getByText("目標の魔力は開始時の魔力より大きくしてください"),
+  ).toBeVisible();
+
+  await rules.getByLabel("目標の魔力").fill("8000");
+  await rules.getByLabel("周回のボーナス").fill("-100");
+  await save.click();
+  await expect(
+    rules.getByText("周回のボーナスは 0 以上にしてください"),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(rules.getByLabel("目標の魔力")).toHaveValue("8000");
+  await expect(rules.getByLabel("周回のボーナス")).toHaveValue("300");
+});
+
+test("公開中は、既定のルールが表示だけで出て、入力欄は出ない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("ルール"));
+  await savePublishableLayout(page);
+  await section(page, "公開").getByRole("button", { name: "公開する" }).click();
+  await expect(detail(page, "状態")).toHaveText("公開中");
+
+  const rules = section(page, "既定のルール");
+  await expect(detail(page, "目標の魔力")).toHaveText("8000");
+  await expect(detail(page, "開始時の魔力")).toHaveText("600");
+  await expect(detail(page, "周回のボーナス")).toHaveText("300");
+  await expect(detail(page, "チェックポイントのボーナス")).toHaveText("100");
+  await expect(rules.getByLabel("目標の魔力")).toHaveCount(0);
+  await expect(rules.getByRole("button", { name: "ルールを保存" })).toHaveCount(
+    0,
+  );
+});
+
+test("一覧に、マスの数（土地・拠点・チェックポイントと属性ごと）と既定のルールが出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("一覧");
+  await registerBoard(page, name);
+  await putTiles(page, "火属性の土地", [
+    [0, 0],
+    [1, 0],
+  ]);
+  await putTiles(page, "水属性の土地", [[2, 0]]);
+  await putTiles(page, "拠点", [[3, 0]]);
+  await putTiles(page, "チェックポイント", [[4, 0]]);
+  await saveLayout(page);
+
+  await expect(async () => {
+    await page.goto(`/boards?name=${encodeURIComponent(name)}`);
+    await expect(boardRows(page)).toHaveCount(1, { timeout: 1_000 });
+  }).toPass();
+  await expect(boardRows(page)).toContainText(
+    "拠点 1・チェックポイント 1・土地 3（火 2・地 0・水 1・風 0・無 0・複 0）",
+  );
+  await expect(boardRows(page)).toContainText(
+    "目標の魔力 8000・開始時の魔力 600・周回のボーナス 300・チェックポイントのボーナス 100",
   );
 });

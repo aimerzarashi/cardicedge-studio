@@ -95,6 +95,22 @@ export type CardType =
   | 'ITEM'
   | 'SPELL';
 
+/** ボードの既定のルールを変える入力（変えた後の 4 つの値の全体） */
+export type ChangeBoardDefaultRulesInput = {
+  /** チェックポイントのボーナス（0 以上） */
+  checkpointBonus: number;
+  /** ボードの公開用の ID */
+  id: string;
+  /** 周回のボーナス（0 以上） */
+  lapBonus: number;
+  /** 画面が見ていたボードの revision */
+  revision: number;
+  /** 開始時の魔力（0 以上） */
+  startingMagic: number;
+  /** 目標の魔力（1 以上。開始時の魔力より大きくなければ入力の誤り） */
+  targetMagic: number;
+};
+
 /** ボードのレイアウトを変える入力（変えた後の全体。前の内容は引き継がれず、ここに無いマス・つながりは消える） */
 export type ChangeBoardLayoutInput = {
   /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
@@ -344,12 +360,41 @@ export type RenameBoardMutation = { renameBoard:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type ChangeBoardDefaultRulesMutationVariables = Exact<{
+  input: ChangeBoardDefaultRulesInput;
+}>;
+
+
+export type ChangeBoardDefaultRulesMutation = { changeBoardDefaultRules:
+    | { __typename: 'BoardNotDraftError' }
+    | { __typename: 'BoardNotFoundError' }
+    | { __typename: 'ChangeBoardDefaultRulesSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', than: string, field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
       > }
    };
 
@@ -369,9 +414,11 @@ export type ChangeBoardLayoutMutation = { changeBoardLayout:
         | { __typename: 'FieldInvalidFormat', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
         | { __typename: 'FieldTotalMismatch', field: string }
         | { __typename: 'FieldTotalTooLarge', field: string }
         | { __typename: 'FieldUnavailable', field: string }
@@ -427,7 +474,7 @@ export type BoardQuery = { board:
         | { __typename: 'BaseTile', x: number, y: number }
         | { __typename: 'CheckpointTile', x: number, y: number }
         | { __typename: 'LandTile', attribute: BoardTileAttribute, x: number, y: number }
-      >, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
+      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
     | { __typename: 'BoardNotFoundError' }
     | { __typename: 'ForbiddenError' }
   , studioRules:
@@ -449,9 +496,11 @@ export type RegisterBoardMutation = { registerBoard:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -465,7 +514,7 @@ export type BoardsQueryVariables = Exact<{
 
 
 export type BoardsQuery = { boards:
-    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
    };
@@ -552,9 +601,11 @@ export type RegisterCreatureMutation = { registerCreature:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -575,9 +626,11 @@ export type RegisterItemMutation = { registerItem:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -600,9 +653,11 @@ export type RenamePresetDeckMutation = { renamePresetDeck:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -624,9 +679,11 @@ export type SetPresetDeckCardCountsMutation = { setPresetDeckCardCounts:
         | { __typename: 'FieldInvalidFormat', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
         | { __typename: 'FieldTotalMismatch', field: string }
         | { __typename: 'FieldTotalTooLarge', max: number, field: string }
         | { __typename: 'FieldUnavailable', field: string }
@@ -690,9 +747,11 @@ export type RegisterPresetDeckMutation = { registerPresetDeck:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -736,9 +795,11 @@ export type RegisterSpellMutation = { registerSpell:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -762,9 +823,11 @@ export type RenameStarterDeckMutation = { renameStarterDeck:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -787,9 +850,11 @@ export type SetStarterDeckCardCountsMutation = { setStarterDeckCardCounts:
         | { __typename: 'FieldInvalidFormat', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
         | { __typename: 'FieldTotalMismatch', field: string }
         | { __typename: 'FieldTotalTooLarge', max: number, field: string }
         | { __typename: 'FieldUnavailable', field: string }
@@ -825,9 +890,11 @@ export type PublishStarterDeckMutation = { publishStarterDeck:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong' }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch', required: number }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -892,9 +959,11 @@ export type RegisterStarterDeckMutation = { registerStarterDeck:
         | { __typename: 'FieldInvalidFormat' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
         | { __typename: 'FieldOutOfRange' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
         | { __typename: 'FieldTotalMismatch' }
         | { __typename: 'FieldTotalTooLarge' }
         | { __typename: 'FieldUnavailable' }
@@ -986,6 +1055,29 @@ export const RenameBoardDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RenameBoardMutation, RenameBoardMutationVariables>;
+export const ChangeBoardDefaultRulesDocument = new TypedDocumentString(`
+    mutation ChangeBoardDefaultRules($input: ChangeBoardDefaultRulesInput!) {
+  changeBoardDefaultRules(input: $input) {
+    __typename
+    ... on ChangeBoardDefaultRulesSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+        ... on FieldNotGreaterThan {
+          than
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeBoardDefaultRulesMutation, ChangeBoardDefaultRulesMutationVariables>;
 export const ChangeBoardLayoutDocument = new TypedDocumentString(`
     mutation ChangeBoardLayout($input: ChangeBoardLayoutInput!) {
   changeBoardLayout(input: $input) {
@@ -1062,6 +1154,12 @@ export const BoardDocument = new TypedDocumentString(`
           attribute
         }
       }
+      defaultRules {
+        targetMagic
+        startingMagic
+        lapBonus
+        checkpointBonus
+      }
       connections {
         a {
           x
@@ -1119,6 +1217,23 @@ export const BoardsDocument = new TypedDocumentString(`
           status
           width
           height
+          tileCounts {
+            land
+            base
+            checkpoint
+            fire
+            earth
+            water
+            wind
+            neutral
+            multi
+          }
+          defaultRules {
+            targetMagic
+            startingMagic
+            lapBonus
+            checkpointBonus
+          }
           registeredAt
           updatedAt
         }
