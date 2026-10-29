@@ -36,6 +36,14 @@ type Board {
 	"""
 	height: Int!
 	"""
+	既定のルール（対戦を始めるときの既定の値。始めるときにここから変えられる前提）
+	"""
+	defaultRules: BoardDefaultRules!
+	"""
+	マスの数（種類ごと・土地の属性ごと。置いてあるマスから数えた値）
+	"""
+	tileCounts: BoardTileCounts!
+	"""
 	置いてあるマス（置いていない座標は含まない。行 → 列の順: y の小さい順、同じ y では x の小さい順）
 	"""
 	tiles: [BoardTile!]!
@@ -83,6 +91,28 @@ input BoardConnectionInput {
 	b: BoardPositionInput!
 }
 """
+ボードの既定のルール。対戦を始めるときはこの値から変えられる前提の、既定の値。
+効き方は対戦の決まりで、ここでは値の形だけを決める
+"""
+type BoardDefaultRules {
+	"""
+	目標の魔力（魔力がこの値に届いて拠点に戻ると勝ち。1 以上、開始時の魔力より大きい。登録した直後は 8000）
+	"""
+	targetMagic: Int!
+	"""
+	開始時の魔力（対戦を始めるときの魔力。0 以上。登録した直後は 600）
+	"""
+	startingMagic: Int!
+	"""
+	周回のボーナス（拠点に戻ったときに増える魔力。0 以上。登録した直後は 300）
+	"""
+	lapBonus: Int!
+	"""
+	チェックポイントのボーナス（チェックポイントを通ったときに増える魔力。0 以上。登録した直後は 100）
+	"""
+	checkpointBonus: Int!
+}
+"""
 ボードの一覧の絞り込み
 """
 input BoardFilter {
@@ -105,7 +135,7 @@ type BoardNameAlreadyInUseError {
 	message: String!
 }
 """
-準備中でないボードの名前・レイアウトを変える、または削除しようとした（準備中のものだけ変えられる）
+準備中でないボードの名前・レイアウト・既定のルールを変える、または削除しようとした（準備中のものだけ変えられる）
 """
 type BoardNotDraftError {
 	"""
@@ -246,6 +276,47 @@ enum BoardTileAttribute {
 	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
 	"""
 	MULTI
+}
+"""
+ボードのマスの数（read model の投影のときに数える）。土地だけが属性を持つので、属性ごとの数の和が土地の数になる
+"""
+type BoardTileCounts {
+	"""
+	土地の数（属性ごとの数の和）
+	"""
+	land: Int!
+	"""
+	拠点の数
+	"""
+	base: Int!
+	"""
+	チェックポイントの数
+	"""
+	checkpoint: Int!
+	"""
+	火属性の土地の数
+	"""
+	fire: Int!
+	"""
+	地属性の土地の数
+	"""
+	earth: Int!
+	"""
+	水属性の土地の数
+	"""
+	water: Int!
+	"""
+	風属性の土地の数
+	"""
+	wind: Int!
+	"""
+	無属性の土地の数
+	"""
+	neutral: Int!
+	"""
+	複属性の土地の数
+	"""
+	multi: Int!
 }
 """
 置くマスの入力。land・base・checkpoint のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
@@ -414,6 +485,52 @@ enum CardType {
 カードの一覧の結果
 """
 union CardsResult = CardConnection | ValidationErrors | ForbiddenError
+"""
+ボードの既定のルールを変える入力（変えた後の 4 つの値の全体）
+"""
+input ChangeBoardDefaultRulesInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+	"""
+	目標の魔力（1 以上。開始時の魔力より大きくなければ入力の誤り）
+	"""
+	targetMagic: Int!
+	"""
+	開始時の魔力（0 以上）
+	"""
+	startingMagic: Int!
+	"""
+	周回のボーナス（0 以上）
+	"""
+	lapBonus: Int!
+	"""
+	チェックポイントのボーナス（0 以上）
+	"""
+	checkpointBonus: Int!
+}
+"""
+ボードの既定のルールの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
+"""
+union ChangeBoardDefaultRulesResult = ChangeBoardDefaultRulesSuccess | ValidationErrors | BoardNotFoundError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードの既定のルールを変えた（前と同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeBoardDefaultRulesSuccess {
+	"""
+	変えたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
 """
 ボードのレイアウトを変える入力（変えた後の全体。前の内容は引き継がれず、ここに無いマス・つながりは消える）
 """
@@ -656,6 +773,19 @@ type FieldNotFound implements FieldError {
 	field: String!
 }
 """
+入力が、別の入力の項目の値より大きくない（等しいのも含む。例: 目標の魔力が開始時の魔力以下）
+"""
+type FieldNotGreaterThan implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	大きくなければならない相手の入力の項目（例: startingMagic）
+	"""
+	than: String!
+}
+"""
 入力が範囲の外
 """
 type FieldOutOfRange implements FieldError {
@@ -693,6 +823,19 @@ type FieldTooLong implements FieldError {
 	上限の文字数
 	"""
 	max: Int!
+}
+"""
+入力が下限より小さい（上限は無い）
+"""
+type FieldTooSmall implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	下限（この値を含む）
+	"""
+	min: Int!
 }
 """
 合計がちょうど決まった値でない（公開するスターターデッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
@@ -856,6 +999,15 @@ type Mutation {
 		"""
 		input: ChangeBoardLayoutInput!
 	): ChangeBoardLayoutResult!
+	"""
+	ボードの既定のルールを変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	changeBoardDefaultRules(
+		"""
+		変える内容
+		"""
+		input: ChangeBoardDefaultRulesInput!
+	): ChangeBoardDefaultRulesResult!
 	"""
 	ボードを削除する（準備中のものだけ。紐づいたオペレーターだけ）
 	"""

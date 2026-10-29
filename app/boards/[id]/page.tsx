@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import { dateTimeFormat } from "@/lib/format";
 import { STATUS_LABELS } from "@/lib/status";
 import { DeleteDeck } from "../../delete-deck";
+import { RULE_LABELS, type RuleField } from "../../messages";
 import { RenameDeckForm } from "../../rename-deck-form";
 import { StatusButton } from "../../status-button";
 import { BoardGrid } from "../board-grid";
 import {
+  changeBoardDefaultRules,
   changeBoardLayout,
   deleteBoard,
   publishBoard,
@@ -15,6 +18,7 @@ import {
   retireBoard,
 } from "./actions";
 import { LayoutEditor } from "./layout-editor";
+import { RulesEditor } from "./rules-editor";
 
 const boardQuery = graphql(`
   query Board($id: UUID!) {
@@ -33,6 +37,12 @@ const boardQuery = graphql(`
           ... on LandTile {
             attribute
           }
+        }
+        defaultRules {
+          targetMagic
+          startingMagic
+          lapBonus
+          checkpointBonus
         }
         connections {
           a {
@@ -181,6 +191,28 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
             tiles={board.tiles}
             connections={board.connections}
           />
+        )}
+      </section>
+
+      <section aria-labelledby="rules-heading">
+        <h2 id="rules-heading">既定のルール</h2>
+        <p>対戦を始めるときに変えられる、既定の値です。</p>
+        {board.status === "DRAFT" ? (
+          <RulesEditor
+            action={changeBoardDefaultRules}
+            id={board.id}
+            revision={board.revision}
+            rules={board.defaultRules}
+          />
+        ) : (
+          <dl>
+            {(Object.keys(RULE_LABELS) as RuleField[]).map((field) => (
+              <Fragment key={field}>
+                <dt>{RULE_LABELS[field]}</dt>
+                <dd>{board.defaultRules[field]}</dd>
+              </Fragment>
+            ))}
+          </dl>
         )}
       </section>
 

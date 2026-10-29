@@ -161,3 +161,38 @@ export function boardConnectionErrorMessage(
 }
 
 export const BOARD_LAYOUT_INVALID = "レイアウトの入力が正しくありません";
+
+// ボードの既定のルールの項目の呼び方（core の項目名から）
+export const RULE_LABELS = {
+  targetMagic: "目標の魔力",
+  startingMagic: "開始時の魔力",
+  lapBonus: "周回のボーナス",
+  checkpointBonus: "チェックポイントのボーナス",
+} as const;
+export type RuleField = keyof typeof RULE_LABELS;
+
+export function isRuleField(value: string): value is RuleField {
+  return Object.hasOwn(RULE_LABELS, value);
+}
+
+function ruleLabel(field: string): string {
+  return isRuleField(field) ? RULE_LABELS[field] : field;
+}
+
+// 下限・比べる相手は core が返した値を使う（決まりの値を studio に書き写さない）
+export function boardRuleErrorMessage(error: {
+  __typename: string;
+  field: string;
+  min?: number;
+  than?: string;
+}): string {
+  const label = ruleLabel(error.field);
+  switch (error.__typename) {
+    case "FieldTooSmall":
+      return `${label}は ${error.min} 以上にしてください`;
+    case "FieldNotGreaterThan":
+      return `${label}は${ruleLabel(error.than ?? "")}より大きくしてください`;
+    default:
+      return `${label}の入力が正しくありません`;
+  }
+}
