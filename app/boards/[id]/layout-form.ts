@@ -3,6 +3,7 @@ import type { Notice } from "../../deck-form";
 import {
   BOARD_LAYOUT_INVALID,
   boardConnectionErrorMessage,
+  boardPairErrorMessage,
   boardSizeErrorMessage,
   boardTileErrorMessage,
 } from "../../messages";
@@ -11,6 +12,7 @@ import {
   type Connection,
   isTileAttribute,
   isTileKind,
+  type Pair,
   type Tile,
 } from "../board-layout";
 import type { PublishProblem } from "../publish-problems";
@@ -36,14 +38,14 @@ export type CheckLayoutResult =
   | { kind: "failed"; message: string }
   | { kind: "ignored" };
 
-// フォームの値の組み立て。マスは `x,y,種類` で、土地だけ `x,y,種類,属性`（種類は core の出力の型の名前）、つながりは `ax,ay,bx,by` の文字列にして同じ名前で並べる（順番が core の誤りの位置になる）
+// フォームの値の組み立て。マスは `x,y,種類` で、土地だけ `x,y,種類,属性`（種類は core の出力の型の名前）、つながり（`connection`）と対（`pair`）は `ax,ay,bx,by` の文字列にして同じ名前で並べる（順番が core の誤りの位置になる）
 export function tileField(tile: Tile): string {
   return tile.__typename === "LandTile"
     ? `${tile.x},${tile.y},${tile.__typename},${tile.attribute}`
     : `${tile.x},${tile.y},${tile.__typename}`;
 }
 
-export function connectionField({ a, b }: Connection): string {
+export function connectionField({ a, b }: Connection | Pair): string {
   return `${a.x},${a.y},${b.x},${b.y}`;
 }
 
@@ -91,10 +93,18 @@ export function parseLayout(form: FormData): Layout | undefined {
     }
     connections.push({ a: { x: n[0], y: n[1] }, b: { x: n[2], y: n[3] } });
   }
-  return { width, height, tiles, connections };
+  const pairs: Pair[] = [];
+  for (const value of form.getAll("pair")) {
+    const n = typeof value === "string" ? integers(value, 4) : undefined;
+    if (n === undefined) {
+      return undefined;
+    }
+    pairs.push({ a: { x: n[0], y: n[1] }, b: { x: n[2], y: n[3] } });
+  }
+  return { width, height, tiles, connections, pairs };
 }
 
-// 保存（changeBoardLayout）と判定（checkBoardLayout）の入力に共通の、幅・高さ・マス・つながり
+// 保存（changeBoardLayout）と判定（checkBoardLayout）の入力に共通の、幅・高さ・マス・つながり・対
 export function layoutInput(layout: Layout) {
   return { ...layout, tiles: layout.tiles.map(tileInput) };
 }
@@ -113,6 +123,9 @@ export function layoutFormData(
   for (const connection of cells.connections) {
     form.append("connection", connectionField(connection));
   }
+  for (const pair of cells.pairs) {
+    form.append("pair", connectionField(pair));
+  }
   return form;
 }
 
@@ -126,6 +139,18 @@ export function tileInput(tile: Tile): BoardTileInput {
       return { base: { x, y } };
     case "CheckpointTile":
       return { checkpoint: { x, y } };
+    case "WarpTile":
+      return { warp: { x, y } };
+    case "BridgeTile":
+      return { bridge: { x, y } };
+    case "SanctuaryTile":
+      return { sanctuary: { x, y } };
+    case "ShrineTile":
+      return { shrine: { x, y } };
+    case "ProphecyShopTile":
+      return { prophecyShop: { x, y } };
+    case "CardShopTile":
+      return { cardShop: { x, y } };
   }
 }
 
@@ -136,14 +161,14 @@ type FieldError = {
   max?: number;
 };
 
-// core の項目名は送った一覧の位置（tiles.N.x・connections.N 等）で返るため、位置から送ったマス・つながりに戻す
+// core の項目名は送った一覧の位置（tiles.N.x・connections.N・pairs.N.a 等）で返るため、位置から送ったマス・つながりに戻す
 export function layoutErrors(
   errors: FieldError[],
   sent: Layout,
 ): LayoutError[] {
   return errors.map((error) => {
     const [, kind, index] =
-      /^(tiles|connections)\.(\d+)/.exec(error.field) ?? [];
+      /^(tiles|connections|pairs)\.(\d+)/.exec(error.field) ?? [];
     if (error.field === "width") {
       return { message: boardSizeErrorMessage("幅", error) };
     }
@@ -158,6 +183,10 @@ export function layoutErrors(
       kind === "connections" ? sent.connections[Number(index)] : undefined;
     if (connection !== undefined) {
       return { message: boardConnectionErrorMessage(connection, error) };
+    }
+    const pair = kind === "pairs" ? sent.pairs[Number(index)] : undefined;
+    if (pair !== undefined) {
+      return { message: boardPairErrorMessage(pair, error) };
     }
     return { message: BOARD_LAYOUT_INVALID };
   });

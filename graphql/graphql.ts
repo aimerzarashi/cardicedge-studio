@@ -58,14 +58,34 @@ export type BoardTileAttribute =
   /** 風（風属性） */
   | 'WIND';
 
-/** 置くマスの入力。land・base・checkpoint のうち、ちょうど 1 つだけを書く（書いた項目が種類になる） */
+/** 置くマスの入力。land・base・checkpoint・warp・bridge・sanctuary・shrine・prophecyShop・cardShop のうち、ちょうど 1 つだけを書く（書いた項目が種類になる） */
 export type BoardTileInput =
   {   /** 拠点 */
-  base: TilePositionInput; checkpoint?: never; land?: never; }
-  |  { base?: never;   /** チェックポイント */
-  checkpoint: TilePositionInput; land?: never; }
-  |  { base?: never; checkpoint?: never;   /** 土地 */
-  land: LandTileInput; };
+  base: TilePositionInput; bridge?: never; cardShop?: never; checkpoint?: never; land?: never; prophecyShop?: never; sanctuary?: never; shrine?: never; warp?: never; }
+  |  { base?: never;   /** 橋（属性は持たない。対は pairs で指す） */
+  bridge: TilePositionInput; cardShop?: never; checkpoint?: never; land?: never; prophecyShop?: never; sanctuary?: never; shrine?: never; warp?: never; }
+  |  { base?: never; bridge?: never;   /** カード屋（属性は持たない） */
+  cardShop: TilePositionInput; checkpoint?: never; land?: never; prophecyShop?: never; sanctuary?: never; shrine?: never; warp?: never; }
+  |  { base?: never; bridge?: never; cardShop?: never;   /** チェックポイント */
+  checkpoint: TilePositionInput; land?: never; prophecyShop?: never; sanctuary?: never; shrine?: never; warp?: never; }
+  |  { base?: never; bridge?: never; cardShop?: never; checkpoint?: never;   /** 土地 */
+  land: LandTileInput; prophecyShop?: never; sanctuary?: never; shrine?: never; warp?: never; }
+  |  { base?: never; bridge?: never; cardShop?: never; checkpoint?: never; land?: never;   /** 占い館（属性は持たない） */
+  prophecyShop: TilePositionInput; sanctuary?: never; shrine?: never; warp?: never; }
+  |  { base?: never; bridge?: never; cardShop?: never; checkpoint?: never; land?: never; prophecyShop?: never;   /** 聖堂（属性は持たない） */
+  sanctuary: TilePositionInput; shrine?: never; warp?: never; }
+  |  { base?: never; bridge?: never; cardShop?: never; checkpoint?: never; land?: never; prophecyShop?: never; sanctuary?: never;   /** ほこら（属性は持たない） */
+  shrine: TilePositionInput; warp?: never; }
+  |  { base?: never; bridge?: never; cardShop?: never; checkpoint?: never; land?: never; prophecyShop?: never; sanctuary?: never; shrine?: never;   /** 転送円（属性は持たない。対は pairs で指す） */
+  warp: TilePositionInput; };
+
+/** 対にするマスの入力（転送円どうし・橋どうし。向きは無い。a と b を入れ替えても同じ対で、離れていてよい） */
+export type BoardTilePairInput = {
+  /** 片方の端（転送円または橋が置いてある座標） */
+  a: BoardPositionInput;
+  /** もう片方の端（a と同じ種類のマスが置いてある、a と違う座標） */
+  b: BoardPositionInput;
+};
 
 /** カードの一覧の絞り込み */
 export type CardFilter = {
@@ -119,6 +139,8 @@ export type ChangeBoardLayoutInput = {
   height: number;
   /** ボードの公開用の ID */
   id: string;
+  /** 対の全体（転送円どうし・橋どうし。端にマスが置いてあり、同じ種類で、別の座標であること。同じマスを 2 つの対に入れる、同じ対を 2 回入れると入力の誤り。相手のいない転送円・橋は保存できる）。対が無ければ空のリスト */
+  pairs: Array<BoardTilePairInput>;
   /** 画面が見ていたボードの revision */
   revision: number;
   /** 置くマスの全体（同じ座標を 2 回入れると入力の誤り） */
@@ -133,6 +155,8 @@ export type CheckBoardLayoutInput = {
   connections: Array<BoardConnectionInput>;
   /** 高さ（studioRules.board の範囲の中。外なら入力の誤り） */
   height: number;
+  /** 対の全体（転送円どうし・橋どうし。changeBoardLayout と同じ決まり）。対が無ければ空のリスト */
+  pairs: Array<BoardTilePairInput>;
   /** 置くマスの全体（同じ座標を 2 回入れると入力の誤り） */
   tiles: Array<BoardTileInput>;
   /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
@@ -347,7 +371,7 @@ export type StarterDeckStatus =
   /** 使用不可 */
   | 'RETIRED';
 
-/** 置く拠点・チェックポイントの座標の入力 */
+/** 置く拠点・チェックポイント・転送円・橋・施設の座標の入力 */
 export type TilePositionInput = {
   /** 列（0 以上、幅 − 1 以下） */
   x: number;
@@ -373,7 +397,10 @@ export type RenameBoardMutation = { renameBoard:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -400,7 +427,10 @@ export type ChangeBoardDefaultRulesMutation = { changeBoardDefaultRules:
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', than: string, field: string }
+        | { __typename: 'FieldNotPairable', field: string }
         | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
         | { __typename: 'FieldTooSmall', min: number, field: string }
@@ -427,7 +457,10 @@ export type ChangeBoardLayoutMutation = { changeBoardLayout:
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
         | { __typename: 'FieldTooSmall', field: string }
@@ -446,6 +479,7 @@ export type CheckBoardLayoutQuery = { checkBoardLayout:
     | { __typename: 'CheckBoardLayoutSuccess', publishProblems: Array<
         | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'NoCheckpointProblem' }
+        | { __typename: 'UnpairedTilesProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'UnreachableTilesProblem', positions: Array<{ x: number, y: number }> }
       > }
     | { __typename: 'ForbiddenError' }
@@ -455,7 +489,10 @@ export type CheckBoardLayoutQuery = { checkBoardLayout:
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
         | { __typename: 'FieldTooSmall', field: string }
@@ -488,6 +525,7 @@ export type PublishBoardMutation = { publishBoard:
     | { __typename: 'BoardNotPublishableError', problems: Array<
         | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'NoCheckpointProblem' }
+        | { __typename: 'UnpairedTilesProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'UnreachableTilesProblem', positions: Array<{ x: number, y: number }> }
       > }
     | { __typename: 'ForbiddenError' }
@@ -516,13 +554,20 @@ export type BoardQueryVariables = Exact<{
 export type BoardQuery = { board:
     | { __typename: 'Board', id: string, name: string, status: BoardStatus, width: number, height: number, revision: number, registeredAt: string, updatedAt: string, tiles: Array<
         | { __typename: 'BaseTile', x: number, y: number }
+        | { __typename: 'BridgeTile', x: number, y: number }
+        | { __typename: 'CardShopTile', x: number, y: number }
         | { __typename: 'CheckpointTile', x: number, y: number }
         | { __typename: 'LandTile', attribute: BoardTileAttribute, x: number, y: number }
+        | { __typename: 'ProphecyShopTile', x: number, y: number }
+        | { __typename: 'SanctuaryTile', x: number, y: number }
+        | { __typename: 'ShrineTile', x: number, y: number }
+        | { __typename: 'WarpTile', x: number, y: number }
       >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
         | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'NoCheckpointProblem' }
+        | { __typename: 'UnpairedTilesProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'UnreachableTilesProblem', positions: Array<{ x: number, y: number }> }
-      >, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
+      >, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }>, pairs: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
     | { __typename: 'BoardNotFoundError' }
     | { __typename: 'ForbiddenError' }
   , studioRules:
@@ -545,7 +590,10 @@ export type RegisterBoardMutation = { registerBoard:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -562,9 +610,10 @@ export type BoardsQueryVariables = Exact<{
 
 
 export type BoardsQuery = { boards:
-    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
             | { __typename: 'BaseCountProblem' }
             | { __typename: 'NoCheckpointProblem' }
+            | { __typename: 'UnpairedTilesProblem' }
             | { __typename: 'UnreachableTilesProblem' }
           > } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
@@ -654,7 +703,10 @@ export type RegisterCreatureMutation = { registerCreature:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -679,7 +731,10 @@ export type RegisterItemMutation = { registerItem:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -706,7 +761,10 @@ export type RenamePresetDeckMutation = { renamePresetDeck:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -732,7 +790,10 @@ export type SetPresetDeckCardCountsMutation = { setPresetDeckCardCounts:
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
         | { __typename: 'FieldTooSmall', field: string }
@@ -800,7 +861,10 @@ export type RegisterPresetDeckMutation = { registerPresetDeck:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -848,7 +912,10 @@ export type RegisterSpellMutation = { registerSpell:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -876,7 +943,10 @@ export type RenameStarterDeckMutation = { renameStarterDeck:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -903,7 +973,10 @@ export type SetStarterDeckCardCountsMutation = { setStarterDeckCardCounts:
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
         | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
         | { __typename: 'FieldRequired', field: string }
         | { __typename: 'FieldTooLong', field: string }
         | { __typename: 'FieldTooSmall', field: string }
@@ -943,7 +1016,10 @@ export type PublishStarterDeckMutation = { publishStarterDeck:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong' }
         | { __typename: 'FieldTooSmall' }
@@ -1012,7 +1088,10 @@ export type RegisterStarterDeckMutation = { registerStarterDeck:
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
         | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
         | { __typename: 'FieldRequired' }
         | { __typename: 'FieldTooLong', max: number }
         | { __typename: 'FieldTooSmall' }
@@ -1170,6 +1249,12 @@ export const CheckBoardLayoutDocument = new TypedDocumentString(`
             y
           }
         }
+        ... on UnpairedTilesProblem {
+          positions {
+            x
+            y
+          }
+        }
       }
     }
     ... on ValidationErrors {
@@ -1210,6 +1295,12 @@ export const PublishBoardDocument = new TypedDocumentString(`
           }
         }
         ... on UnreachableTilesProblem {
+          positions {
+            x
+            y
+          }
+        }
+        ... on UnpairedTilesProblem {
           positions {
             x
             y
@@ -1269,8 +1360,24 @@ export const BoardDocument = new TypedDocumentString(`
             y
           }
         }
+        ... on UnpairedTilesProblem {
+          positions {
+            x
+            y
+          }
+        }
       }
       connections {
+        a {
+          x
+          y
+        }
+        b {
+          x
+          y
+        }
+      }
+      pairs {
         a {
           x
           y
@@ -1337,6 +1444,12 @@ export const BoardsDocument = new TypedDocumentString(`
             wind
             neutral
             multi
+            warp
+            bridge
+            sanctuary
+            shrine
+            prophecyShop
+            cardShop
           }
           defaultRules {
             targetMagic

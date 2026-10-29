@@ -6,7 +6,8 @@ import type { Mark, Position } from "./board-layout";
 export type PublishProblem =
   | { __typename: "BaseCountProblem"; positions: Position[] }
   | { __typename: "NoCheckpointProblem" }
-  | { __typename: "UnreachableTilesProblem"; positions: Position[] };
+  | { __typename: "UnreachableTilesProblem"; positions: Position[] }
+  | { __typename: "UnpairedTilesProblem"; positions: Position[] };
 
 function positionsOf(problem: PublishProblem): Position[] {
   return "positions" in problem ? problem.positions : [];
@@ -30,6 +31,14 @@ export function problemMarks(problems: PublishProblem[]): Mark[] {
         ...problem.positions.map((p) => ({
           ...p,
           kind: "unreachable" as const,
+          label,
+        })),
+      );
+    } else if (problem.__typename === "UnpairedTilesProblem") {
+      marks.push(
+        ...problem.positions.map((p) => ({
+          ...p,
+          kind: "unpaired" as const,
           label,
         })),
       );

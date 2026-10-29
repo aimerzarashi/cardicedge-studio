@@ -105,6 +105,8 @@ export function boardPublishProblemMessage(problem: PublishProblem): string {
       return "チェックポイントがありません。1 つ以上置いてください";
     case "UnreachableTilesProblem":
       return `拠点から行けないマスが ${problem.positions.length} つあります`;
+    case "UnpairedTilesProblem":
+      return `相手のいない転送円・橋が ${problem.positions.length} つあります。対にするか、消してください`;
   }
 }
 
@@ -145,6 +147,28 @@ export function boardConnectionErrorMessage(
       return `${ends}は、上下左右に隣り合うマスどうしではありません`;
     case "FieldDuplicated":
       return `${ends}が重複しています`;
+    default:
+      return `${ends}の入力が正しくありません`;
+  }
+}
+
+// 画面は対の端を転送円・橋のマスから作るため、起こるのは画面とのずれがあったときだけ
+export function boardPairErrorMessage(
+  pair: { a: { x: number; y: number }; b: { x: number; y: number } },
+  error: { __typename: string },
+): string {
+  const ends = `(${pair.a.x}, ${pair.a.y}) と (${pair.b.x}, ${pair.b.y}) の対`;
+  switch (error.__typename) {
+    case "FieldNotFound":
+      return `${ends}の端にマスがありません`;
+    case "FieldNotPairable":
+      return `${ends}の端が、転送円でも橋でもありません`;
+    case "FieldPairKindMismatch":
+      return `${ends}が、転送円と橋の組み合わせです。同じ種類どうしにしてください`;
+    case "FieldPairedWithSelf":
+      return `${ends}が、同じマスどうしです`;
+    case "FieldDuplicated":
+      return `${ends}が重複しています（同じマスは 1 つの対にだけ入れられます）`;
     default:
       return `${ends}の入力が正しくありません`;
   }

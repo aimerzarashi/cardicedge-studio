@@ -69,6 +69,10 @@ type Board {
 	"""
 	connections: [BoardConnection!]!
 	"""
+	転送円どうし・橋どうしの対（向きは無い。a の座標が小さい側になり、a → b の順に並べる）。相手のいない転送円・橋は含まれない（公開できない理由 UnpairedTilesProblem になる）
+	"""
+	pairs: [BoardTilePair!]!
+	"""
 	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -170,7 +174,7 @@ type BoardNotFoundError {
 	message: String!
 }
 """
-公開の条件を満たしていない（拠点がちょうど 1 つ、チェックポイントが 1 つ以上、すべてのマスに拠点からつながりをたどって行ける）
+公開の条件を満たしていない（拠点がちょうど 1 つ、チェックポイントが 1 つ以上、すべてのマスに拠点からつながりと対をたどって行ける、すべての転送円・橋に対の相手がいる）
 """
 type BoardNotPublishableError {
 	"""
@@ -209,7 +213,7 @@ input BoardPositionInput {
 	y: Int!
 }
 """
-公開できない理由（BaseCountProblem・NoCheckpointProblem・UnreachableTilesProblem）。理由は __typename で見分け、
+公開できない理由（BaseCountProblem・NoCheckpointProblem・UnreachableTilesProblem・UnpairedTilesProblem）。理由は __typename で見分け、
 座標を持つ理由は断片（... on BaseCountProblem 等）で取る
 """
 interface BoardPublishProblem {
@@ -254,7 +258,7 @@ enum BoardStatus {
 	RETIRED
 }
 """
-置いてあるマス（LandTile・BaseTile・CheckpointTile）。種類は __typename で見分け、種類ごとの項目は断片（... on LandTile 等）で取る
+置いてあるマス（LandTile・BaseTile・CheckpointTile・WarpTile・BridgeTile・SanctuaryTile・ShrineTile・ProphecyShopTile・CardShopTile）。種類は __typename で見分け、種類ごとの項目は断片（... on LandTile 等）で取る
 """
 interface BoardTile {
 	"""
@@ -336,9 +340,33 @@ type BoardTileCounts {
 	複属性の土地の数
 	"""
 	multi: Int!
+	"""
+	転送円の数
+	"""
+	warp: Int!
+	"""
+	橋の数
+	"""
+	bridge: Int!
+	"""
+	聖堂の数
+	"""
+	sanctuary: Int!
+	"""
+	ほこらの数
+	"""
+	shrine: Int!
+	"""
+	占い館の数
+	"""
+	prophecyShop: Int!
+	"""
+	カード屋の数
+	"""
+	cardShop: Int!
 }
 """
-置くマスの入力。land・base・checkpoint のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
+置くマスの入力。land・base・checkpoint・warp・bridge・sanctuary・shrine・prophecyShop・cardShop のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
 """
 input BoardTileInput @oneOf {
 	"""
@@ -353,6 +381,56 @@ input BoardTileInput @oneOf {
 	チェックポイント
 	"""
 	checkpoint: TilePositionInput
+	"""
+	転送円（属性は持たない。対は pairs で指す）
+	"""
+	warp: TilePositionInput
+	"""
+	橋（属性は持たない。対は pairs で指す）
+	"""
+	bridge: TilePositionInput
+	"""
+	聖堂（属性は持たない）
+	"""
+	sanctuary: TilePositionInput
+	"""
+	ほこら（属性は持たない）
+	"""
+	shrine: TilePositionInput
+	"""
+	占い館（属性は持たない）
+	"""
+	prophecyShop: TilePositionInput
+	"""
+	カード屋（属性は持たない）
+	"""
+	cardShop: TilePositionInput
+}
+"""
+転送円どうし・橋どうしの対（向きは無い。離れていてよい）
+"""
+type BoardTilePair {
+	"""
+	片方の端（座標が小さい側。行 → 列の順に比べる）
+	"""
+	a: BoardPosition!
+	"""
+	もう片方の端
+	"""
+	b: BoardPosition!
+}
+"""
+対にするマスの入力（転送円どうし・橋どうし。向きは無い。a と b を入れ替えても同じ対で、離れていてよい）
+"""
+input BoardTilePairInput {
+	"""
+	片方の端（転送円または橋が置いてある座標）
+	"""
+	a: BoardPositionInput!
+	"""
+	もう片方の端（a と同じ種類のマスが置いてある、a と違う座標）
+	"""
+	b: BoardPositionInput!
 }
 """
 ボードの一覧の 1 ページ（名前の順）
@@ -384,6 +462,20 @@ type BoardsEdge {
 ボードの一覧の結果
 """
 union BoardsResult = BoardsConnection | ValidationErrors | ForbiddenError
+"""
+橋（通ると、歩数を使わずに対の相手の橋から出る。2 つで 1 マスの両端で、止まるのは入った方と反対側の端）。属性は持たない。
+対は Board.pairs で持つ（相手のいない橋は保存できるが、公開できない）
+"""
+type BridgeTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
 """
 カード（Creature・Item・Spell）。種類は __typename で見分け、種類ごとの項目は断片（... on Creature 等）で取る
 """
@@ -473,6 +565,19 @@ type CardNotFoundError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
+}
+"""
+カード屋（止まると、用意されたカードから 1 枚買える）。属性は持たない
+"""
+type CardShopTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
 }
 """
 カードの状態。準備中は自由に変えられ、デッキに入れられず、game に写さない。公開中はデッキに入れられ、game に写す。
@@ -578,6 +683,10 @@ input ChangeBoardLayoutInput {
 	つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り）
 	"""
 	connections: [BoardConnectionInput!]!
+	"""
+	対の全体（転送円どうし・橋どうし。端にマスが置いてあり、同じ種類で、別の座標であること。同じマスを 2 つの対に入れる、同じ対を 2 回入れると入力の誤り。相手のいない転送円・橋は保存できる）。対が無ければ空のリスト
+	"""
+	pairs: [BoardTilePairInput!]!
 }
 """
 ボードのレイアウトの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
@@ -616,6 +725,10 @@ input CheckBoardLayoutInput {
 	つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り）
 	"""
 	connections: [BoardConnectionInput!]!
+	"""
+	対の全体（転送円どうし・橋どうし。changeBoardLayout と同じ決まり）。対が無ければ空のリスト
+	"""
+	pairs: [BoardTilePairInput!]!
 }
 """
 ボードのレイアウトの判定の結果
@@ -839,6 +952,15 @@ type FieldNotGreaterThan implements FieldError {
 	than: String!
 }
 """
+対の端のマスが、転送円でも橋でもない
+"""
+type FieldNotPairable implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置と端を含む。例: pairs.2.a）
+	"""
+	field: String!
+}
+"""
 入力が範囲の外
 """
 type FieldOutOfRange implements FieldError {
@@ -854,6 +976,24 @@ type FieldOutOfRange implements FieldError {
 	範囲の上限（この値を含む）
 	"""
 	max: Int!
+}
+"""
+対の両端が、転送円と橋（組めるのは同じ種類どうしだけ）
+"""
+type FieldPairKindMismatch implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: pairs.2）
+	"""
+	field: String!
+}
+"""
+対の両端が同じ座標（自分自身と組んでいる）
+"""
+type FieldPairedWithSelf implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: pairs.2）
+	"""
+	field: String!
 }
 """
 入力が空（前後の空白だけの場合を含む）
@@ -1357,6 +1497,19 @@ union PresetDeckResult = PresetDeck | PresetDeckNotFoundError | ForbiddenError
 プリセットデッキの一覧の結果
 """
 union PresetDecksResult = PresetDeckConnection | ValidationErrors | ForbiddenError
+"""
+占い館（止まると、選んだ種類のカードを自分の山札から 1 枚引ける）。属性は持たない
+"""
+type ProphecyShopTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
 """
 ボードを公開する入力
 """
@@ -1937,6 +2090,19 @@ type RevisionConflictError {
 	message: String!
 }
 """
+聖堂（通る・止まると、属性ごとの品物を売り買いできる）。属性は持たない
+"""
+type SanctuaryTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
 プリセットデッキのカードの枚数を変える入力
 """
 input SetPresetDeckCardCountsInput {
@@ -2003,6 +2169,19 @@ type SetStarterDeckCardCountsSuccess {
 	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
+}
+"""
+ほこら（止まると、ランダムで特別なことが起きる）。属性は持たない
+"""
+type ShrineTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
 }
 """
 スペル（カードの種類の 1 つ）
@@ -2214,7 +2393,7 @@ studio の決まりの結果
 """
 union StudioRulesResult = StudioRules | ForbiddenError
 """
-置く拠点・チェックポイントの座標の入力
+置く拠点・チェックポイント・転送円・橋・施設の座標の入力
 """
 input TilePositionInput {
 	"""
@@ -2231,7 +2410,20 @@ input TilePositionInput {
 """
 scalar UUID
 """
-拠点からつながりをたどって行けないマスがある（拠点がちょうど 1 つのときだけ判定する）
+対の相手のいない転送円・橋がある（公開するボードのすべての転送円・橋に、対の相手がいる）。拠点の数によらず判定する
+"""
+type UnpairedTilesProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	相手のいない転送円・橋の座標（行 → 列の順）
+	"""
+	positions: [BoardPosition!]!
+}
+"""
+拠点からつながりと対をたどって行けないマスがある（拠点がちょうど 1 つのときだけ判定する。対の 2 マスは隣どうしと同じに道として数える）
 """
 type UnreachableTilesProblem implements BoardPublishProblem {
 	"""
@@ -2251,4 +2443,18 @@ type ValidationErrors {
 	項目ごとの誤り（1 件以上）
 	"""
 	errors: [FieldError!]!
+}
+"""
+転送円（ぴったり止まると、対の相手の転送円へ移る。通り過ぎるだけなら移らない）。属性は持たない。
+対は Board.pairs で持つ（相手のいない転送円は保存できるが、公開できない）
+"""
+type WarpTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
 }

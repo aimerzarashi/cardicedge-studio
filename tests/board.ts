@@ -11,15 +11,34 @@ export async function registerBoard(page: Page, name: string) {
 }
 
 export type Attribute = "火" | "地" | "水" | "風" | "無" | "複";
+export type Tool =
+  | `${Attribute}属性の土地`
+  | "拠点"
+  | "チェックポイント"
+  | "転送円"
+  | "橋"
+  | "聖堂"
+  | "ほこら"
+  | "占い館"
+  | "カード屋"
+  | "消す";
 // core の入力（@oneOf）と同じ形で、種類ごとに 1 つだけ書く
 export type Tile =
   | { land: { x: number; y: number; attribute: string } }
   | { base: { x: number; y: number } }
-  | { checkpoint: { x: number; y: number } };
+  | { checkpoint: { x: number; y: number } }
+  | { warp: { x: number; y: number } }
+  | { bridge: { x: number; y: number } }
+  | { sanctuary: { x: number; y: number } }
+  | { shrine: { x: number; y: number } }
+  | { prophecyShop: { x: number; y: number } }
+  | { cardShop: { x: number; y: number } };
 export type Connection = {
   a: { x: number; y: number };
   b: { x: number; y: number };
 };
+// 転送円どうし・橋どうしの対（つながりと同じ形）
+export type Pair = Connection;
 
 // 画面で作るのが重いレイアウト（拠点から行けないマスの座標の確かめ等）は、ログイン中のオペレーターの JWT で core を直接呼んで入れる。
 // 公開の入口（envoy の 10000）を使うのは、中継役用の入口には core への経路が無いため
@@ -54,6 +73,8 @@ export async function setBoardLayout(
     height: number;
     tiles: Tile[];
     connections: Connection[];
+    // 無ければ空（core は必須なので、送るときに足す）
+    pairs?: Pair[];
   },
 ) {
   const id = new URL(page.url()).pathname.split("/").pop();
@@ -68,7 +89,7 @@ export async function setBoardLayout(
     `mutation($input: ChangeBoardLayoutInput!) {
       changeBoardLayout(input: $input) { __typename }
     }`,
-    { input: { id, revision: read.board.revision, ...layout } },
+    { input: { id, revision: read.board.revision, pairs: [], ...layout } },
   );
   expect(changed.changeBoardLayout.__typename).toBe("ChangeBoardLayoutSuccess");
   // 詳細は投影から読むため、入れたレイアウトが出るまで開き直す
@@ -110,7 +131,7 @@ export function connectionButton(
 // 道具を選んで、マスを順に押す
 export async function putTiles(
   page: Page,
-  tool: `${Attribute}属性の土地` | "拠点" | "チェックポイント" | "消す",
+  tool: Tool,
   positions: [number, number][],
 ) {
   await layout(page).getByLabel(tool, { exact: true }).check();

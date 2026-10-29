@@ -11,7 +11,7 @@ import { dateTimeFormat } from "@/lib/format";
 import { all, first } from "@/lib/search-params";
 import { isStatus, STATUS_LABELS, STATUSES } from "@/lib/status";
 import { RULE_LABELS, type RuleField } from "../messages";
-import { ATTRIBUTE_LABELS } from "./board-layout";
+import { ATTRIBUTE_LABELS, TILE_KIND_LABELS } from "./board-layout";
 
 // 属性ごとの数の項目名（core の tileCounts）。0 の属性も出して、ボードどうしで並びをそろえる
 const ATTRIBUTE_COUNTS = [
@@ -21,6 +21,16 @@ const ATTRIBUTE_COUNTS = [
   ["WIND", "wind"],
   ["NEUTRAL", "neutral"],
   ["MULTI", "multi"],
+] as const;
+
+// 土地の後ろに並べる特殊なマスの数（道具の並びと同じ。0 も出す）
+const SPECIAL_COUNTS = [
+  ["WarpTile", "warp"],
+  ["BridgeTile", "bridge"],
+  ["SanctuaryTile", "sanctuary"],
+  ["ShrineTile", "shrine"],
+  ["ProphecyShopTile", "prophecyShop"],
+  ["CardShopTile", "cardShop"],
 ] as const;
 
 const boardsQuery = graphql(`
@@ -45,6 +55,12 @@ const boardsQuery = graphql(`
               wind
               neutral
               multi
+              warp
+              bridge
+              sanctuary
+              shrine
+              prophecyShop
+              cardShop
             }
             defaultRules {
               targetMagic
@@ -200,6 +216,10 @@ function BoardsResult({
                           `${ATTRIBUTE_LABELS[attribute]} ${node.tileCounts[key]}`,
                       ).join("・")}
                       ）
+                      {SPECIAL_COUNTS.map(
+                        ([kind, key]) =>
+                          `・${TILE_KIND_LABELS[kind]} ${node.tileCounts[key]}`,
+                      ).join("")}
                     </td>
                     <td>
                       {dateTimeFormat.format(new Date(node.registeredAt))}
