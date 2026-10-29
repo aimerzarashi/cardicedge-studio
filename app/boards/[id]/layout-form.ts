@@ -13,6 +13,7 @@ import {
   isTileKind,
   type Tile,
 } from "../board-layout";
+import type { PublishProblem } from "../publish-problems";
 
 export type Layout = Cells & { width: number; height: number };
 
@@ -26,6 +27,14 @@ export type ChangeLayoutState = Notice & {
   revision?: number;
   layoutErrors?: LayoutError[];
 };
+
+// 保存を待たない判定（checkBoardLayout）の結果。誤りの文言は保存のときと同じ layoutErrors で作る。
+// ignored は、幅・高さが整数でないなど、問い合わせても意味がない入力（今の表示を残す）
+export type CheckLayoutResult =
+  | { kind: "problems"; problems: PublishProblem[] }
+  | { kind: "invalid"; errors: LayoutError[] }
+  | { kind: "failed"; message: string }
+  | { kind: "ignored" };
 
 // フォームの値の組み立て。マスは `x,y,種類` で、土地だけ `x,y,種類,属性`（種類は core の出力の型の名前）、つながりは `ax,ay,bx,by` の文字列にして同じ名前で並べる（順番が core の誤りの位置になる）
 export function tileField(tile: Tile): string {
@@ -83,6 +92,28 @@ export function parseLayout(form: FormData): Layout | undefined {
     connections.push({ a: { x: n[0], y: n[1] }, b: { x: n[2], y: n[3] } });
   }
   return { width, height, tiles, connections };
+}
+
+// 保存（changeBoardLayout）と判定（checkBoardLayout）の入力に共通の、幅・高さ・マス・つながり
+export function layoutInput(layout: Layout) {
+  return { ...layout, tiles: layout.tiles.map(tileInput) };
+}
+
+// 編集中の値（幅・高さは入力中の文字のまま）を、フォームの送信と同じ名前の FormData にする。保存と同じ parseLayout で読めるようにするため
+export function layoutFormData(
+  size: { width: string; height: string },
+  cells: Cells,
+): FormData {
+  const form = new FormData();
+  form.set("width", size.width);
+  form.set("height", size.height);
+  for (const tile of cells.tiles) {
+    form.append("tile", tileField(tile));
+  }
+  for (const connection of cells.connections) {
+    form.append("connection", connectionField(connection));
+  }
+  return form;
 }
 
 // core の入力は種類ごとに 1 つだけ書く（@oneOf）

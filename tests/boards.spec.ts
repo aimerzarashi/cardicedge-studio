@@ -17,6 +17,17 @@ function boardRows(page: Page) {
   return page.locator("tbody");
 }
 
+// マスの中心と、格子の枠の中心の距離（px）
+async function centerOffset(page: Page, x: number, y: number) {
+  const tile = await tileButton(page, x, y).boundingBox();
+  const frame = await page.locator("[data-scale]").boundingBox();
+  if (!tile || !frame) throw new Error("位置が取れません");
+  return Math.hypot(
+    tile.x + tile.width / 2 - (frame.x + frame.width / 2),
+    tile.y + tile.height / 2 - (frame.y + frame.height / 2),
+  );
+}
+
 // 詳細の「用語 → 説明」の説明を返す
 function detail(page: Page, term: string) {
   return page
@@ -107,49 +118,217 @@ test("使われている名前に変えようとすると名前の重複が表�
   await expect(rename.getByLabel("名前")).toHaveValue(taken);
 });
 
-test("空のボードを公開しようとすると、拠点とチェックポイントの誤りが出て準備中のまま", async ({
+// 公開できない理由の一覧（レイアウトの節。保存したレイアウトを core が判定したもの）
+function problemList(page: Page) {
+  return section(page, "レイアウト").getByRole("list", {
+    name: "公開できない理由",
+  });
+}
+
+// 座標のある理由を試すための、拠点から行けないマスが 2 つあるレイアウト
+const unreachableLayout = {
+  width: 8,
+  height: 8,
+  tiles: [
+    { base: { x: 0, y: 0 } },
+    { checkpoint: { x: 1, y: 0 } },
+    { land: { x: 2, y: 3, attribute: "FIRE" } },
+    { land: { x: 4, y: 5, attribute: "FIRE" } },
+  ],
+  connections: [{ a: { x: 0, y: 0 }, b: { x: 1, y: 0 } }],
+};
+
+test("空のボードでは、拠点とチェックポイントの理由が一覧に出て、印は付かない", async ({
   page,
 }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("作りかけ"));
 
-  const publish = section(page, "公開");
-  await publish.getByRole("button", { name: "公開する" }).click();
-
-  // 「ちょうど 1 つ」「1 つ以上」は公開の条件そのもので、数は core が返したものを表示する
+  const list = problemList(page);
   await expect(
-    publish.getByText("拠点が 0 個です。ちょうど 1 つ置いてください"),
+    list.getByText("拠点がありません。ちょうど 1 つ置いてください"),
   ).toBeVisible();
   await expect(
-    publish.getByText("チェックポイントがありません。1 つ以上置いてください"),
+    list.getByText("チェックポイントがありません。1 つ以上置いてください"),
   ).toBeVisible();
-  await expect(detail(page, "状態")).toHaveText("準備中");
+  // 座標のある理由が無いので、押せる項目も印も無い
+  await expect(list.getByRole("button")).toHaveCount(0);
+  await expect(page.locator("[data-mark]")).toHaveCount(0);
 });
 
-test("拠点から行けないマスがあるボードを公開しようとすると、その座標が出る", async ({
+test("公開できるレイアウトを置くと、一覧が「公開できます」に変わる", async ({
   page,
 }) => {
   await loginAsOperator(page);
-  await registerBoard(page, uniqueName("離れ小島"));
+  await registerBoard(page, uniqueName("一本道の理由"));
+  await expect(problemList(page)).toBeVisible();
+
+  await savePublishableLayout(page);
+
+  await expect(problemList(page)).toHaveCount(0);
+  await expect(
+    section(page, "レイアウト").getByText("公開できます", { exact: true }),
+  ).toBeVisible();
+});
+
+test("拠点が 2 つのレイアウトでは、数が一覧に出て、2 つの拠点に印が付き、項目を押すと拠点へ動いて目立つ", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("二つの拠点"));
   await setBoardLayout(page, {
     width: 8,
     height: 8,
     tiles: [
       { base: { x: 0, y: 0 } },
+      { base: { x: 7, y: 7 } },
       { checkpoint: { x: 1, y: 0 } },
-      { land: { x: 2, y: 3, attribute: "FIRE" } },
-      { land: { x: 4, y: 5, attribute: "FIRE" } },
     ],
-    connections: [{ a: { x: 0, y: 0 }, b: { x: 1, y: 0 } }],
+    connections: [],
   });
-  await expect(detail(page, "マス")).toHaveText("4");
+
+  const item = problemList(page).getByRole("button", {
+    name: "拠点が 2 つあります。ちょうど 1 つにしてください",
+  });
+  await expect(item).toBeVisible();
+  await expect(tileButton(page, 0, 0)).toHaveAttribute("data-mark", "base");
+  await expect(tileButton(page, 7, 7)).toHaveAttribute("data-mark", "base");
+  await expect(tileButton(page, 1, 0)).not.toHaveAttribute("data-mark");
+  await expect(tileButton(page, 7, 7)).not.toHaveAttribute("data-focused");
+
+  await item.click();
+
+  // 先頭の拠点が枠の中央へ動き、座標の全部が目立つ
+  await expect(tileButton(page, 0, 0)).toHaveAttribute("data-focused", "true");
+  await expect(tileButton(page, 7, 7)).toHaveAttribute("data-focused", "true");
+  await expect
+    .poll(() => centerOffset(page, 0, 0), { message: "枠の中央に動く" })
+    .toBeLessThan(3);
+});
+
+test("行けないマスは水色の破線の印が付き、項目を押すと最初のマスへ動く。マスを置くと保存せずに一覧と印が変わる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("離れ小島"));
+  await setBoardLayout(page, unreachableLayout);
+
+  const item = problemList(page).getByRole("button", {
+    name: "拠点から行けないマスが 2 つあります",
+  });
+  await expect(item).toBeVisible();
+  await expect(tileButton(page, 2, 3)).toHaveAttribute(
+    "data-mark",
+    "unreachable",
+  );
+  await expect(tileButton(page, 4, 5)).toHaveAttribute(
+    "data-mark",
+    "unreachable",
+  );
+  await expect(tileButton(page, 0, 0)).not.toHaveAttribute("data-mark");
+
+  await item.click();
+
+  await expect.poll(() => centerOffset(page, 2, 3)).toBeLessThan(3);
+  await expect(tileButton(page, 4, 5)).toHaveAttribute("data-focused", "true");
+
+  // (2, 3) まで土地を並べると、保存しないまま (2, 3) の印は消え、行けないマスは (4, 5) だけになる
+  await putTiles(page, "火属性の土地", [
+    [2, 2],
+    [2, 1],
+    [2, 0],
+  ]);
+  await expect(
+    problemList(page).getByText("拠点から行けないマスが 1 つあります"),
+  ).toBeVisible();
+  await expect(tileButton(page, 2, 3)).not.toHaveAttribute("data-mark");
+  await expect(tileButton(page, 4, 5)).toHaveAttribute(
+    "data-mark",
+    "unreachable",
+  );
+  await expect(
+    section(page, "レイアウト").getByText("保存していない変更があります"),
+  ).toHaveCount(0);
+});
+
+test("拠点を 2 つ置くと保存せずに数が一覧に出て、つながりを切ると行けないマスが一覧と印に出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("置きながら確かめる"));
+  await savePublishableLayout(page);
+  await expect(
+    section(page, "レイアウト").getByText("公開できます", { exact: true }),
+  ).toBeVisible();
+
+  // 拠点をもう 1 つ置く
+  await putTiles(page, "拠点", [[3, 0]]);
+  await expect(
+    problemList(page).getByRole("button", {
+      name: "拠点が 2 つあります。ちょうど 1 つにしてください",
+    }),
+  ).toBeVisible();
+  await expect(tileButton(page, 3, 0)).toHaveAttribute("data-mark", "base");
+
+  // 消すと「公開できます」に戻る
+  await putTiles(page, "消す", [[3, 0]]);
+  await expect(
+    section(page, "レイアウト").getByText("公開できます", { exact: true }),
+  ).toBeVisible();
+
+  // つながりを切ると、チェックポイントに行けなくなる
+  await connectionButton(page, [1, 0], [2, 0]).click();
+  await expect(
+    problemList(page).getByText("拠点から行けないマスが 1 つあります"),
+  ).toBeVisible();
+  await expect(tileButton(page, 2, 0)).toHaveAttribute(
+    "data-mark",
+    "unreachable",
+  );
+});
+
+test("幅を範囲の外にして格子の外にマスができると、レイアウトの誤りが一覧の場所に出て、公開できない理由は出ない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("はみ出す"));
+  await savePublishableLayout(page);
+
+  const layout = section(page, "レイアウト");
+  // 幅を 2 にすると、(2, 0) のチェックポイントが格子の外になる
+  const width = await layout.getByLabel("幅").inputValue();
+  await layout.getByLabel("幅").fill("2");
+
+  const errors = layout.getByRole("list", { name: "レイアウトの誤り" });
+  await expect(errors).toBeVisible();
+  await expect(problemList(page)).toHaveCount(0);
+  await expect(layout.getByText("公開できます", { exact: true })).toHaveCount(
+    0,
+  );
+
+  // 戻すと誤りは消え、公開できない理由の判定に戻る
+  await layout.getByLabel("幅").fill(width);
+  await expect(errors).toHaveCount(0);
+  await expect(layout.getByText("公開できます", { exact: true })).toBeVisible();
+});
+
+test("公開しようとして理由が残っていると、公開の節にも同じ一覧が出て準備中のまま", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("公開の失敗"));
+  await setBoardLayout(page, unreachableLayout);
 
   const publish = section(page, "公開");
   await publish.getByRole("button", { name: "公開する" }).click();
 
+  const list = publish.getByRole("list", { name: "公開できない理由" });
   await expect(
-    publish.getByText("拠点から行けないマスがあります: (2, 3)・(4, 5)"),
+    list.getByText("拠点から行けないマスが 2 つあります"),
   ).toBeVisible();
+  // 公開の節の一覧は文言だけで、座標の文字の羅列は出さない
+  await expect(list.getByRole("button")).toHaveCount(0);
+  await expect(list).not.toContainText("(2, 3)");
   await expect(detail(page, "状態")).toHaveText("準備中");
 });
 
@@ -618,4 +797,36 @@ test("一覧に、マスの数（土地・拠点・チェックポイントと�
   await expect(boardRows(page)).toContainText(
     "目標の魔力 8000・開始時の魔力 600・周回のボーナス 300・チェックポイントのボーナス 100",
   );
+});
+
+test("一覧の 2 段目に、準備中のボードだけ、公開できない理由の数か「公開できます」が出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const problem = uniqueName("理由あり");
+  await registerBoard(page, problem);
+  const ready = uniqueName("公開可");
+  await registerBoard(page, ready);
+  await savePublishableLayout(page);
+  const published = uniqueName("公開済");
+  await registerBoard(page, published);
+  await savePublishableLayout(page);
+  await section(page, "公開").getByRole("button", { name: "公開する" }).click();
+  await expect(detail(page, "状態")).toHaveText("公開中");
+
+  async function row(name: string) {
+    await expect(async () => {
+      await page.goto(`/boards?name=${encodeURIComponent(name)}`);
+      await expect(boardRows(page)).toHaveCount(1, { timeout: 1_000 });
+    }).toPass();
+    return boardRows(page);
+  }
+
+  // 空のボードの理由は、拠点の数とチェックポイントの 2 件
+  await expect(await row(problem)).toContainText("公開できない理由 2 件");
+  await expect(await row(ready)).toContainText("公開できます");
+  const publishedRow = await row(published);
+  await expect(publishedRow).toContainText("目標の魔力");
+  await expect(publishedRow).not.toContainText("公開できない理由");
+  await expect(publishedRow).not.toContainText("公開できます");
 });

@@ -127,6 +127,18 @@ export type ChangeBoardLayoutInput = {
   width: number;
 };
 
+/** ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの） */
+export type CheckBoardLayoutInput = {
+  /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
+  connections: Array<BoardConnectionInput>;
+  /** 高さ（studioRules.board の範囲の中。外なら入力の誤り） */
+  height: number;
+  /** 置くマスの全体（同じ座標を 2 回入れると入力の誤り） */
+  tiles: Array<BoardTileInput>;
+  /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
+  width: number;
+};
+
 /** 変えるカードと、その枚数 */
 export type DeckCardCountInput = {
   /** カード（Creature・Item・Spell）の公開用の ID */
@@ -425,6 +437,34 @@ export type ChangeBoardLayoutMutation = { changeBoardLayout:
       > }
    };
 
+export type CheckBoardLayoutQueryVariables = Exact<{
+  input: CheckBoardLayoutInput;
+}>;
+
+
+export type CheckBoardLayoutQuery = { checkBoardLayout:
+    | { __typename: 'CheckBoardLayoutSuccess', publishProblems: Array<
+        | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
+        | { __typename: 'NoCheckpointProblem' }
+        | { __typename: 'UnreachableTilesProblem', positions: Array<{ x: number, y: number }> }
+      > }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
 export type DeleteBoardMutationVariables = Exact<{
   input: DeleteBoardInput;
 }>;
@@ -445,7 +485,11 @@ export type PublishBoardMutationVariables = Exact<{
 
 export type PublishBoardMutation = { publishBoard:
     | { __typename: 'BoardNotFoundError' }
-    | { __typename: 'BoardNotPublishableError', baseCount: number, checkpointCount: number, unreachableTiles: Array<{ x: number, y: number }> }
+    | { __typename: 'BoardNotPublishableError', problems: Array<
+        | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
+        | { __typename: 'NoCheckpointProblem' }
+        | { __typename: 'UnreachableTilesProblem', positions: Array<{ x: number, y: number }> }
+      > }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'PublishBoardSuccess', id: string, revision: number }
     | { __typename: 'RevisionConflictError' }
@@ -474,7 +518,11 @@ export type BoardQuery = { board:
         | { __typename: 'BaseTile', x: number, y: number }
         | { __typename: 'CheckpointTile', x: number, y: number }
         | { __typename: 'LandTile', attribute: BoardTileAttribute, x: number, y: number }
-      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
+      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
+        | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
+        | { __typename: 'NoCheckpointProblem' }
+        | { __typename: 'UnreachableTilesProblem', positions: Array<{ x: number, y: number }> }
+      >, connections: Array<{ a: { x: number, y: number }, b: { x: number, y: number } }> }
     | { __typename: 'BoardNotFoundError' }
     | { __typename: 'ForbiddenError' }
   , studioRules:
@@ -514,7 +562,11 @@ export type BoardsQueryVariables = Exact<{
 
 
 export type BoardsQuery = { boards:
-    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number } } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
+            | { __typename: 'BaseCountProblem' }
+            | { __typename: 'NoCheckpointProblem' }
+            | { __typename: 'UnreachableTilesProblem' }
+          > } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
    };
@@ -1099,6 +1151,40 @@ export const ChangeBoardLayoutDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeBoardLayoutMutation, ChangeBoardLayoutMutationVariables>;
+export const CheckBoardLayoutDocument = new TypedDocumentString(`
+    query CheckBoardLayout($input: CheckBoardLayoutInput!) {
+  checkBoardLayout(input: $input) {
+    __typename
+    ... on CheckBoardLayoutSuccess {
+      publishProblems {
+        __typename
+        ... on BaseCountProblem {
+          positions {
+            x
+            y
+          }
+        }
+        ... on UnreachableTilesProblem {
+          positions {
+            x
+            y
+          }
+        }
+      }
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldOutOfRange {
+          min
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CheckBoardLayoutQuery, CheckBoardLayoutQueryVariables>;
 export const DeleteBoardDocument = new TypedDocumentString(`
     mutation DeleteBoard($input: DeleteBoardInput!) {
   deleteBoard(input: $input) {
@@ -1115,11 +1201,20 @@ export const PublishBoardDocument = new TypedDocumentString(`
       revision
     }
     ... on BoardNotPublishableError {
-      baseCount
-      checkpointCount
-      unreachableTiles {
-        x
-        y
+      problems {
+        __typename
+        ... on BaseCountProblem {
+          positions {
+            x
+            y
+          }
+        }
+        ... on UnreachableTilesProblem {
+          positions {
+            x
+            y
+          }
+        }
       }
     }
   }
@@ -1159,6 +1254,21 @@ export const BoardDocument = new TypedDocumentString(`
         startingMagic
         lapBonus
         checkpointBonus
+      }
+      publishProblems {
+        __typename
+        ... on BaseCountProblem {
+          positions {
+            x
+            y
+          }
+        }
+        ... on UnreachableTilesProblem {
+          positions {
+            x
+            y
+          }
+        }
       }
       connections {
         a {
@@ -1233,6 +1343,9 @@ export const BoardsDocument = new TypedDocumentString(`
             startingMagic
             lapBonus
             checkpointBonus
+          }
+          publishProblems {
+            __typename
           }
           registeredAt
           updatedAt

@@ -1,4 +1,17 @@
 """
+拠点がちょうど 1 つでない（公開するボードの拠点はちょうど 1 つ）
+"""
+type BaseCountProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	置いてある拠点の座標（行 → 列の順。拠点が無ければ空）
+	"""
+	positions: [BoardPosition!]!
+}
+"""
 拠点（公開するボードにちょうど 1 つ）
 """
 type BaseTile implements BoardTile {
@@ -43,6 +56,10 @@ type Board {
 	マスの数（種類ごと・土地の属性ごと。置いてあるマスから数えた値）
 	"""
 	tileCounts: BoardTileCounts!
+	"""
+	公開できない理由（空なら公開できる）。保存のたびに、置いてあるマスから投影が計算する。状態によらず計算した結果を返す（公開中のボードは条件を満たしているので空）
+	"""
+	publishProblems: [BoardPublishProblem!]!
 	"""
 	置いてあるマス（置いていない座標は含まない。行 → 列の順: y の小さい順、同じ y では x の小さい順）
 	"""
@@ -161,17 +178,9 @@ type BoardNotPublishableError {
 	"""
 	message: String!
 	"""
-	拠点の数（ちょうど 1 つでなければ公開できない）
+	公開できない理由の一覧（Board.publishProblems と同じ形と順）
 	"""
-	baseCount: Int!
-	"""
-	チェックポイントの数（1 つ以上でなければ公開できない）
-	"""
-	checkpointCount: Int!
-	"""
-	拠点からつながりをたどって行けないマス（行 → 列の順）。拠点がちょうど 1 つのときだけ計算し、0 個・2 個以上のときは空
-	"""
-	unreachableTiles: [BoardPosition!]!
+	problems: [BoardPublishProblem!]!
 }
 """
 格子の座標。x が列、y が行（どちらも 0 始まり）
@@ -198,6 +207,16 @@ input BoardPositionInput {
 	行
 	"""
 	y: Int!
+}
+"""
+公開できない理由（BaseCountProblem・NoCheckpointProblem・UnreachableTilesProblem）。理由は __typename で見分け、
+座標を持つ理由は断片（... on BaseCountProblem 等）で取る
+"""
+interface BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
 }
 """
 ボードの詳細の結果
@@ -576,6 +595,40 @@ type ChangeBoardLayoutSuccess {
 	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
+}
+"""
+ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの）
+"""
+input CheckBoardLayoutInput {
+	"""
+	幅（studioRules.board の範囲の中。外なら入力の誤り）
+	"""
+	width: Int!
+	"""
+	高さ（studioRules.board の範囲の中。外なら入力の誤り）
+	"""
+	height: Int!
+	"""
+	置くマスの全体（同じ座標を 2 回入れると入力の誤り）
+	"""
+	tiles: [BoardTileInput!]!
+	"""
+	つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り）
+	"""
+	connections: [BoardConnectionInput!]!
+}
+"""
+ボードのレイアウトの判定の結果
+"""
+union CheckBoardLayoutResult = CheckBoardLayoutSuccess | ValidationErrors | ForbiddenError
+"""
+レイアウトの判定の結果（保存していない）。公開できる条件を満たしていれば publishProblems は空
+"""
+type CheckBoardLayoutSuccess {
+	"""
+	公開できない理由（公開するときの BoardNotPublishableError.problems と同じ型・順。空なら公開できる）
+	"""
+	publishProblems: [BoardPublishProblem!]!
 }
 """
 チェックポイント（公開するボードに 1 つ以上）
@@ -1181,6 +1234,15 @@ type Mutation {
 	): RetireStarterDeckResult!
 }
 """
+チェックポイントが 1 つも無い（公開するボードのチェックポイントは 1 つ以上）
+"""
+type NoCheckpointProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 ページの情報
 """
 type PageInfo {
@@ -1414,6 +1476,15 @@ type Query {
 		"""
 		id: UUID!
 	): BoardResult!
+	"""
+	ボードのレイアウトを保存せずに判定する（紐づいたオペレーターだけ。ボードを指さず、何も保存せず、イベントも作らない。入力の誤りは changeBoardLayout と同じ決まりと項目で ValidationErrors になり、誤りが無ければ公開できない理由を、公開するときと同じ判定で返す。保存と違い、準備中でなくても、どのボードにも関わらず呼べる）
+	"""
+	checkBoardLayout(
+		"""
+		判定するレイアウトの全体
+		"""
+		input: CheckBoardLayoutInput!
+	): CheckBoardLayoutResult!
 	"""
 	カードの一覧（紐づいたオペレーターだけ）
 	"""
@@ -2159,6 +2230,19 @@ input TilePositionInput {
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
 """
 scalar UUID
+"""
+拠点からつながりをたどって行けないマスがある（拠点がちょうど 1 つのときだけ判定する）
+"""
+type UnreachableTilesProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	行けないマスの座標（行 → 列の順）
+	"""
+	positions: [BoardPosition!]!
+}
 """
 入力の誤り（操作は行われていない）
 """

@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { BOARD_CHECK_FAILED } from "../../messages";
 import { BoardGrid } from "../board-grid";
 import {
   ATTRIBUTE_LABELS,
@@ -15,10 +16,21 @@ import {
   toggleConnection,
 } from "../board-layout";
 import {
+  type PublishProblem,
+  PublishProblemList,
+  problemMarks,
+} from "../publish-problems";
+import { checkBoardLayout } from "./actions";
+import {
   type ChangeLayoutState,
   connectionField,
+  type LayoutError,
+  layoutFormData,
   tileField,
 } from "./layout-form";
+
+// 操作が止まってから問い合わせるまでの待ち。1 クリックごとに core を呼ばないため
+const CHECK_DELAY_MS = 300;
 
 // 置く道具は置くマスの種類・属性を持ち、消す道具は持たない
 type Tool = { value: string; label: string; placement?: Placement };
@@ -56,6 +68,7 @@ export function LayoutEditor({
   sizeRange,
   tiles,
   connections,
+  problems,
 }: {
   action: (
     previous: ChangeLayoutState,
@@ -69,6 +82,8 @@ export function LayoutEditor({
   sizeRange: { min: number; max: number };
   tiles: Cells["tiles"];
   connections: Cells["connections"];
+  // 保存した形での、公開できない理由（core が返したもの）
+  problems: PublishProblem[];
 }) {
   const [state, formAction, isPending] = useActionState(action, initialState);
   const kept = state.revision === revision ? state : {};
@@ -93,6 +108,7 @@ export function LayoutEditor({
         revision={revision}
         sizeRange={sizeRange}
         initial={{ width, height, tiles, connections }}
+        problems={problems}
       />
     </>
   );
@@ -105,6 +121,7 @@ function LayoutForm({
   revision,
   sizeRange,
   initial,
+  problems: initialProblems,
 }: {
   formAction: (form: FormData) => void;
   isPending: boolean;
@@ -112,6 +129,7 @@ function LayoutForm({
   revision: number;
   sizeRange: { min: number; max: number };
   initial: Cells & { width: number; height: number };
+  problems: PublishProblem[];
 }) {
   const [cells, setCells] = useState<Cells>({
     tiles: initial.tiles,
@@ -127,6 +145,46 @@ function LayoutForm({
     height: initial.height,
   });
   const [tool, setTool] = useState<Tool>(TOOLS[0]);
+  const [focus, setFocus] = useState<Position[]>();
+
+  // 一覧と印は、開いた直後と保存した直後は core が返した保存済みの形のもの。編集すると、止まってから core に問い合わせた結果に変わる。
+  // 判定は core の 1 か所のまま（studio に書き写さない）。useEffect でなく操作の中で予約するのは、データの読み込みではなく操作への反応のため
+  const [check, setCheck] = useState<{
+    problems: PublishProblem[];
+    errors: LayoutError[];
+    failed?: string;
+  }>({ problems: initialProblems, errors: [] });
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // 古い問い合わせの結果が後から届いても、新しい結果を上書きしないための番号
+  const latest = useRef(0);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  function scheduleCheck(nextSize: typeof size, nextCells: Cells) {
+    clearTimeout(timer.current);
+    latest.current += 1;
+    const order = latest.current;
+    timer.current = setTimeout(async () => {
+      const result = await checkBoardLayout(
+        layoutFormData(nextSize, nextCells),
+      ).catch(() => undefined);
+      if (order !== latest.current || result?.kind === "ignored") {
+        return;
+      }
+      setCheck((current) => {
+        switch (result?.kind) {
+          case "problems":
+            return { problems: result.problems, errors: [] };
+          case "invalid":
+            return { problems: [], errors: result.errors };
+          case "failed":
+            return { ...current, failed: result.message };
+          default:
+            return { ...current, failed: BOARD_CHECK_FAILED };
+        }
+      });
+    }, CHECK_DELAY_MS);
+  }
 
   function inRange(text: string, current: number): number {
     const value = Number(text);
@@ -140,6 +198,7 @@ function LayoutForm({
 
   function changeSize(next: { width: string; height: string }) {
     setSize(next);
+    scheduleCheck(next, cells);
     setGrid((current) => ({
       width: inRange(next.width, current.width),
       height: inRange(next.height, current.height),
@@ -147,15 +206,17 @@ function LayoutForm({
   }
 
   function pressTile(position: Position) {
-    setCells(
-      tool.placement
-        ? placeTile(cells, position, tool.placement)
-        : removeTile(cells, position),
-    );
+    const next = tool.placement
+      ? placeTile(cells, position, tool.placement)
+      : removeTile(cells, position);
+    setCells(next);
+    scheduleCheck(size, next);
   }
 
   function pressConnection(connection: Connection) {
-    setCells(toggleConnection(cells, connection));
+    const next = toggleConnection(cells, connection);
+    setCells(next);
+    scheduleCheck(size, next);
   }
 
   return (
@@ -219,11 +280,27 @@ function LayoutForm({
           </label>
         ))}
       </fieldset>
+      {/* section にしないのは、名前に「公開」を含む領域になり、「公開」の節の取り違えになるため */}
+      <div>
+        <h3>公開できない理由</h3>
+        {check.failed && <p role="status">{check.failed}</p>}
+        {check.errors.length > 0 ? (
+          <ul aria-label="レイアウトの誤り">
+            {check.errors.map((error) => (
+              <li key={error.message}>{error.message}</li>
+            ))}
+          </ul>
+        ) : (
+          <PublishProblemList problems={check.problems} onSelect={setFocus} />
+        )}
+      </div>
       <BoardGrid
         width={grid.width}
         height={grid.height}
         tiles={cells.tiles}
         connections={cells.connections}
+        marks={problemMarks(check.problems)}
+        focus={focus}
         onTile={pressTile}
         onConnection={pressConnection}
       />

@@ -44,6 +44,21 @@ const boardQuery = graphql(`
           lapBonus
           checkpointBonus
         }
+        publishProblems {
+          __typename
+          ... on BaseCountProblem {
+            positions {
+              x
+              y
+            }
+          }
+          ... on UnreachableTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
+        }
         connections {
           a {
             x
@@ -183,6 +198,7 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
             }}
             tiles={board.tiles}
             connections={board.connections}
+            problems={board.publishProblems}
           />
         ) : (
           <BoardGrid

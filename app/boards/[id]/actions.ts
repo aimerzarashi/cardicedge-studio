@@ -4,10 +4,16 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
-import { type Notice, type RenameDeckState, target } from "../../deck-form";
 import {
+  type Notice,
+  type PublishState,
+  type RenameDeckState,
+  target,
+} from "../../deck-form";
+import {
+  BOARD_CHECK_FAILED,
   BOARD_NOT_DRAFT,
-  boardPublishErrorMessage,
+  BOARD_NOT_PUBLISHABLE,
   boardRuleErrorMessage,
   CORE_UNAVAILABLE,
   FORBIDDEN,
@@ -21,9 +27,10 @@ import {
 import { waitBoard } from "../wait-board";
 import {
   type ChangeLayoutState,
+  type CheckLayoutResult,
   layoutErrors,
+  layoutInput,
   parseLayout,
-  tileInput,
 } from "./layout-form";
 import { type ChangeRulesState, parseRules } from "./rules-form";
 
@@ -93,6 +100,41 @@ const changeBoardLayoutMutation = graphql(`
   }
 `);
 
+const checkBoardLayoutQuery = graphql(`
+  query CheckBoardLayout($input: CheckBoardLayoutInput!) {
+    checkBoardLayout(input: $input) {
+      __typename
+      ... on CheckBoardLayoutSuccess {
+        publishProblems {
+          __typename
+          ... on BaseCountProblem {
+            positions {
+              x
+              y
+            }
+          }
+          ... on UnreachableTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
+        }
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldOutOfRange {
+            min
+            max
+          }
+        }
+      }
+    }
+  }
+`);
+
 const deleteBoardMutation = graphql(`
   mutation DeleteBoard($input: DeleteBoardInput!) {
     deleteBoard(input: $input) {
@@ -110,11 +152,20 @@ const publishBoardMutation = graphql(`
         revision
       }
       ... on BoardNotPublishableError {
-        baseCount
-        checkpointCount
-        unreachableTiles {
-          x
-          y
+        problems {
+          __typename
+          ... on BaseCountProblem {
+            positions {
+              x
+              y
+            }
+          }
+          ... on UnreachableTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
         }
       }
     }
@@ -249,7 +300,7 @@ export async function changeBoardLayout(
   }
 
   const result = await callCore(changeBoardLayoutMutation, {
-    input: { ...board, ...layout, tiles: layout.tiles.map(tileInput) },
+    input: { ...board, ...layoutInput(layout) },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
@@ -279,6 +330,34 @@ export async function changeBoardLayout(
       return {};
     case "ForbiddenError":
       return { error: FORBIDDEN };
+  }
+}
+
+// 編集中のレイアウトを保存せずに core で判定する（ブラウザから core を直接呼ばないため Server Action 経由）。
+// 画面を出し直さず、結果だけを返す
+export async function checkBoardLayout(
+  form: FormData,
+): Promise<CheckLayoutResult> {
+  const layout = parseLayout(form);
+  if (layout === undefined) {
+    return { kind: "ignored" };
+  }
+
+  const result = await callCore(checkBoardLayoutQuery, {
+    input: layoutInput(layout),
+  });
+  if (!result.ok) {
+    return { kind: "failed", message: BOARD_CHECK_FAILED };
+  }
+
+  const checked = result.data.checkBoardLayout;
+  switch (checked.__typename) {
+    case "CheckBoardLayoutSuccess":
+      return { kind: "problems", problems: checked.publishProblems };
+    case "ValidationErrors":
+      return { kind: "invalid", errors: layoutErrors(checked.errors, layout) };
+    case "ForbiddenError":
+      return { kind: "failed", message: FORBIDDEN };
   }
 }
 
@@ -316,9 +395,9 @@ export async function deleteBoard(
 }
 
 export async function publishBoard(
-  _previous: Notice,
+  _previous: PublishState,
   form: FormData,
-): Promise<Notice> {
+): Promise<PublishState> {
   const board = target(form);
   if (board === undefined) {
     return { error: INVALID_TARGET };
@@ -334,7 +413,11 @@ export async function publishBoard(
     case "PublishBoardSuccess":
       return showChanged(published.id, published.revision, "公開しました");
     case "BoardNotPublishableError":
-      return { error: boardPublishErrorMessage(published) };
+      return {
+        error: BOARD_NOT_PUBLISHABLE,
+        revision: board.revision,
+        problems: published.problems,
+      };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
