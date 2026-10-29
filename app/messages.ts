@@ -1,5 +1,7 @@
 // core は文言を返さず、理由の型と値だけを返すため、文言はここで作る
 
+import type { PublishProblem } from "./boards/publish-problems";
+
 export function nameErrorMessage(
   errors: { __typename: string; max?: number }[],
 ): string {
@@ -90,32 +92,20 @@ export function starterDeckLimitReachedMessage(max: number): string {
 export const BOARD_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
 
-// ボードを公開できないときの誤り（数と座標は core が返したものを使う。座標は core と同じ 0 始まりで、(列, 行) の順に出す）
-export function boardPublishErrorMessage(error: {
-  baseCount: number;
-  checkpointCount: number;
-  unreachableTiles: { x: number; y: number }[];
-}): string {
-  const messages: string[] = [];
-  if (error.baseCount === 0) {
-    messages.push("拠点が 0 個です。ちょうど 1 つ置いてください");
-  } else if (error.baseCount > 1) {
-    messages.push(
-      `拠点が ${error.baseCount} 個あります。ちょうど 1 つにしてください`,
-    );
+export const BOARD_NOT_PUBLISHABLE = "公開できません。理由を確認してください";
+
+// ボードを公開できない理由（種類は __typename、数は core が返した座標の数）。core の message は開発者向けのため出さない
+export function boardPublishProblemMessage(problem: PublishProblem): string {
+  switch (problem.__typename) {
+    case "BaseCountProblem":
+      return problem.positions.length === 0
+        ? "拠点がありません。ちょうど 1 つ置いてください"
+        : `拠点が ${problem.positions.length} つあります。ちょうど 1 つにしてください`;
+    case "NoCheckpointProblem":
+      return "チェックポイントがありません。1 つ以上置いてください";
+    case "UnreachableTilesProblem":
+      return `拠点から行けないマスが ${problem.positions.length} つあります`;
   }
-  if (error.checkpointCount === 0) {
-    messages.push("チェックポイントがありません。1 つ以上置いてください");
-  }
-  if (error.unreachableTiles.length > 0) {
-    const positions = error.unreachableTiles
-      .map(({ x, y }) => `(${x}, ${y})`)
-      .join("・");
-    messages.push(
-      `拠点から行けないマスがあります: ${positions}（(列, 行) の順。0 から数えます）`,
-    );
-  }
-  return messages.join("。");
 }
 
 // ボードのレイアウトを保存できないときの誤り（範囲は core が返したものを使う。座標は (列, 行) の順で、core と同じ 0 始まり）
@@ -159,6 +149,9 @@ export function boardConnectionErrorMessage(
       return `${ends}の入力が正しくありません`;
   }
 }
+
+export const BOARD_CHECK_FAILED =
+  "公開できない理由を確かめられませんでした。一覧と印は直前のものです";
 
 export const BOARD_LAYOUT_INVALID = "レイアウトの入力が正しくありません";
 

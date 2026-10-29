@@ -52,6 +52,9 @@ const boardsQuery = graphql(`
               lapBonus
               checkpointBonus
             }
+            publishProblems {
+              __typename
+            }
             registeredAt
             updatedAt
           }
@@ -212,6 +215,13 @@ function BoardsResult({
                             `${RULE_LABELS[field]} ${node.defaultRules[field]}`,
                         )
                         .join("・")}
+                      {/* 公開できるかは準備中のボードだけに出す（公開中・使用不可には要らない） */}
+                      {node.status === "DRAFT" &&
+                        ` ／ ${
+                          node.publishProblems.length === 0
+                            ? "公開できます"
+                            : `公開できない理由 ${node.publishProblems.length} 件`
+                        }`}
                     </td>
                   </tr>
                 </tbody>

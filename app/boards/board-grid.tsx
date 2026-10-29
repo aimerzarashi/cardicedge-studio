@@ -12,7 +12,10 @@ import {
   type Connection,
   connectionBetween,
   hasConnection,
+  type Mark,
+  type MarkKind,
   type Position,
+  samePosition,
   type Tile,
   tileAt,
   tileLabel,
@@ -26,6 +29,9 @@ import {
 //   横の間: 「(x, y) と (x+1, y) のつながり」、縦の間: 「(x, y) と (x, y+1) のつながり」（つながっているかは aria-pressed）
 // 見方: はみ出した分はスクロールバーではなく、枠の中で表示を動かして見る（ドラッグで動かす・ホイールとボタンで拡大縮小）。
 // 編集の操作はこの部品に持たせず、押されたときの処理（onTile・onConnection）だけを外から受ける。渡さなければ表示だけになる。
+// 印: marks のマスに、種類ごとの枠（色と線の形）を付ける。マスの色（属性・拠点・チェックポイント）とぶつからないよう、枠で見せる。
+//   focus に渡した位置は枠を太くして光らせ、渡されるたびに先頭のマスが枠の中央に来るよう表示を動かす（倍率は変えない）。
+//   どの理由の印か・どのマスへ動くかは外が決める（この部品は理由を知らない）。game に写すときは marks・focus を渡さなければ何も変わらない
 // onClick を持つため、Server Component（表示だけの詳細）からも使えるよう Client Component にしている
 
 // マスの一辺とつながりの幅（px）。回す前の grid の大きさの計算にも使う
@@ -67,6 +73,17 @@ function fitView(size: Size, width: number, height: number): View {
   };
 }
 
+// 倍率を変えずに、マスの中心を枠の中央へ動かす（回す前の grid の中の中心を、fitView と同じ変換で枠の座標へ移す）
+function centerOn(view: View, size: Size, position: Position): View {
+  const cx = position.x * (TILE + LINK) + TILE / 2;
+  const cy = position.y * (TILE + LINK) + TILE / 2;
+  return {
+    scale: view.scale,
+    x: size.width / 2 - (view.scale * (cx - cy)) / Math.SQRT2,
+    y: size.height / 2 - (view.scale * (cx + cy)) / Math.SQRT2 / 2,
+  };
+}
+
 // 点（枠の中の座標）を動かさずに倍率を変える
 function zoomAt(view: View, factor: number, px: number, py: number): View {
   const scale = clamp(view.scale * factor);
@@ -79,6 +96,8 @@ export function BoardGrid({
   height,
   tiles,
   connections,
+  marks = [],
+  focus,
   onTile,
   onConnection,
 }: {
@@ -86,6 +105,9 @@ export function BoardGrid({
   height: number;
   tiles: Tile[];
   connections: Connection[];
+  marks?: Mark[];
+  // 渡し直すたびに（中身が同じでも）、先頭の位置へ動いて目立たせる
+  focus?: Position[];
   onTile?: (position: Position) => void;
   onConnection?: (connection: Connection) => void;
 }) {
@@ -110,8 +132,17 @@ export function BoardGrid({
   const [animated, setAnimated] = useState(false);
   const [dragging, setDragging] = useState(false);
 
+  const [seenFocus, setSeenFocus] = useState(focus);
   const fitted = size ? fitView(size, width, height) : null;
   const shown = view ?? fitted;
+
+  if (focus !== seenFocus) {
+    setSeenFocus(focus);
+    if (focus?.[0] && size && shown) {
+      setAnimated(true);
+      setView(centerOn(shown, size, focus[0]));
+    }
+  }
 
   // ホイールの既定のスクロールを止めるには passive でない listener が要り、React の onWheel では付けられないため DOM に付ける
   useEffect(() => {
@@ -213,6 +244,8 @@ export function BoardGrid({
             key={key}
             position={{ x, y }}
             tile={tileAt(tiles, { x, y })}
+            mark={marks.find((mark) => samePosition(mark, { x, y }))}
+            focused={focus?.some((p) => samePosition(p, { x, y })) ?? false}
             onTile={onTile}
           />,
         );
@@ -341,6 +374,38 @@ export function BoardGrid({
           </li>
         ))}
       </ul>
+      {marks.length > 0 && (
+        <ul
+          aria-label="印"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "1rem",
+            listStyle: "none",
+            padding: 0,
+          }}
+        >
+          {(Object.keys(MARK_STYLES) as MarkKind[])
+            .filter((kind) => marks.some((mark) => mark.kind === kind))
+            .map((kind) => (
+              <li key={kind}>
+                <span
+                  aria-hidden
+                  style={{
+                    ...markOutline(kind, false),
+                    display: "inline-block",
+                    boxSizing: "border-box",
+                    width: "1em",
+                    height: "1em",
+                    marginRight: "0.25em",
+                    verticalAlign: "middle",
+                  }}
+                />
+                {MARK_STYLES[kind].legend}
+              </li>
+            ))}
+        </ul>
+      )}
     </fieldset>
   );
 }
@@ -400,23 +465,55 @@ function paint(tile: Tile | undefined): CSSProperties {
   }
 }
 
+// 印は枠で見せる（マスの色は塗りなので重ならない）。種類は色と線の形の両方で分ける
+const MARK_STYLES: Record<
+  MarkKind,
+  { color: string; line: "solid" | "dashed"; legend: string }
+> = {
+  base: { color: "#ffe600", line: "solid", legend: "拠点の数の印" },
+  unreachable: {
+    color: "#00e5ff",
+    line: "dashed",
+    legend: "拠点から行けないマスの印",
+  },
+};
+
+function markOutline(kind: MarkKind, focused: boolean): CSSProperties {
+  const { color, line } = MARK_STYLES[kind];
+  return {
+    outline: `${focused ? 5 : 3}px ${line} ${color}`,
+    outlineOffset: 2,
+    boxShadow: focused ? `0 0 14px 6px ${color}` : undefined,
+  };
+}
+
 function TileButton({
   position,
   tile,
+  mark,
+  focused,
   onTile,
 }: {
   position: Position;
   tile: Tile | undefined;
+  mark: Mark | undefined;
+  focused: boolean;
   onTile?: (position: Position) => void;
 }) {
   const name = `(${position.x}, ${position.y}) のマス`;
   return (
     <button
       type="button"
-      aria-label={tile ? `${name} ${tileLabel(tile)}` : name}
+      aria-label={`${tile ? `${name} ${tileLabel(tile)}` : name}${mark ? `（${mark.label}）` : ""}`}
+      data-mark={mark?.kind}
+      data-focused={focused || undefined}
       disabled={onTile === undefined}
       onClick={() => onTile?.(position)}
-      style={{ ...paint(tile), padding: 0 }}
+      style={{
+        ...paint(tile),
+        ...(mark && markOutline(mark.kind, focused)),
+        padding: 0,
+      }}
     />
   );
 }

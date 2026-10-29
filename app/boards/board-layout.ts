@@ -13,6 +13,10 @@ export type Tile = Position & Placement;
 export type Connection = { a: Position; b: Position };
 export type Cells = { tiles: Tile[]; connections: Connection[] };
 
+// 格子のマスに付ける印。種類で見分ける（色・枠の形が違う）。label は印の説明（マスの名前に添える）
+export type MarkKind = "base" | "unreachable";
+export type Mark = Position & { kind: MarkKind; label: string };
+
 export const TILE_KIND_LABELS: Record<Placement["__typename"], string> = {
   LandTile: "土地",
   BaseTile: "拠点",
