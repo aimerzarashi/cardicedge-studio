@@ -1,7 +1,7 @@
 # コマンド
 
-- `make up` / `make down` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make core-local` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
-- `make up` は先に `../core` の `make up` を実行する。`make down` は studio だけを止める（core は止めない）
+- `make up` / `make down` / `make clean` / `make migrate` / `make migrate-generate NAME=<name>` / `make migrate-hash` / `make gen-api` / `make core-local` / `make fmt` / `make lint` / `make test`、任意で `make tunnel`（Cloudflare Quick Tunnel。URL の再表示は `make url`）
+- `make up` は先に `../core` の `make up` を実行する。`make down` は studio だけを止める（core は止めない）。studio-db のデータは名前付きのボリュームに置き、`make down` では消さない。消す `make clean` のあとは core も作り直す（seed が作り直したオペレーターを、core が前の紐づけのまま紐づけ直さないため。studio#19）
 - pnpm・node はコンテナ内で実行する（例: `docker compose exec studio pnpm lint`）。node_modules はコンテナの pnpm が作り、ホストと共有する
 - lint は `make lint`（biome check、`pnpm typecheck`、scripts/check-migrations.sh、scripts/check-auth-schema.sh）でファイルを書き換えない。typecheck は `next typegen` で Next.js の型（LayoutProps 等）を生成してから tsc を実行する。フォーマットの修正は `make fmt`（biome format --write）
 - pnpm のバージョンを上げるときは package.json の `packageManager`、local/studio/Dockerfile・.build/Dockerfile・.gitlab-ci.yml の `PNPM_VERSION` を揃える（corepack は使わない）
