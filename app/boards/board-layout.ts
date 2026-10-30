@@ -109,6 +109,14 @@ export function hasConnection(
   return connections.some((c) => sameConnection(c, connection));
 }
 
+// 置いてあるマスがすべて格子の中に収まる最小の幅・高さ（座標は 0 始まりなので、一番右の列・一番下の行 + 1）。マスが無ければ 0
+export function sizeToFit(tiles: Tile[]): { width: number; height: number } {
+  return {
+    width: Math.max(0, ...tiles.map((tile) => tile.x + 1)),
+    height: Math.max(0, ...tiles.map((tile) => tile.y + 1)),
+  };
+}
+
 // 新しく置いたマスだけ、隣に置いてあるマスと自動でつなぐ。置き直し（種類・属性の変更）で再びつなぐと、切ったつながりが戻ってしまう
 export function placeTile(
   { tiles, connections, pairs }: Cells,

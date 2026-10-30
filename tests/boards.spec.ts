@@ -287,28 +287,26 @@ test("拠点を 2 つ置くと保存せずに数が一覧に出て、つなが�
   );
 });
 
-test("幅を範囲の外にして格子の外にマスができると、レイアウトの誤りが一覧の場所に出て、公開できない理由は出ない", async ({
+test("置いてあるマスより幅を小さくしても、格子は描き直されず、レイアウトの誤りも出ない", async ({
   page,
 }) => {
   await loginAsOperator(page);
-  await registerBoard(page, uniqueName("はみ出す"));
+  await registerBoard(page, uniqueName("はみ出さない"));
   await savePublishableLayout(page);
 
   const layout = section(page, "レイアウト");
-  // 幅を 2 にすると、(2, 0) のチェックポイントが格子の外になる
-  const width = await layout.getByLabel("幅").inputValue();
+  // (2, 0) のチェックポイントがあるので、幅は 3 より小さくできない
+  await expect(layout.getByLabel("幅")).toHaveAttribute("min", "3");
   await layout.getByLabel("幅").fill("2");
 
-  const errors = layout.getByRole("list", { name: "レイアウトの誤り" });
-  await expect(errors).toBeVisible();
-  await expect(problemList(page)).toHaveCount(0);
-  await expect(layout.getByText("公開できます", { exact: true })).toHaveCount(
-    0,
+  await expect(tileButton(page, 2, 0)).toHaveAccessibleName(
+    "(2, 0) のマス チェックポイント",
   );
-
-  // 戻すと誤りは消え、公開できない理由の判定に戻る
-  await layout.getByLabel("幅").fill(width);
-  await expect(errors).toHaveCount(0);
+  // 問い合わせを待つ時間（0.3 秒）を過ぎても、誤りは出ず、今の判定が残る
+  await page.waitForTimeout(1000);
+  await expect(
+    layout.getByRole("list", { name: "レイアウトの誤り" }),
+  ).toHaveCount(0);
   await expect(layout.getByText("公開できます", { exact: true })).toBeVisible();
 });
 
@@ -516,7 +514,7 @@ test("画面で作ったレイアウトを保存し、公開できる", async ({
   await expect(detail(page, "状態")).toHaveText("公開中");
 });
 
-test("幅を小さくして保存すると、格子の外に出たマスの誤りが出て、置いたマスは残る", async ({
+test("置いてあるマスより幅を小さくした値では保存できず、マスを消すと入力した幅になる", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -524,17 +522,24 @@ test("幅を小さくして保存すると、格子の外に出たマスの誤�
   await putTiles(page, "火属性の土地", [[5, 0]]);
 
   const editor = section(page, "レイアウト");
-  await editor.getByLabel("幅").fill("3");
-  await expect(tileButton(page, 5, 0)).toHaveCount(0);
+  const width = editor.getByLabel("幅");
+  await expect(width).toHaveAttribute("min", "6");
+  await width.fill("3");
   await editor.getByRole("button", { name: "レイアウトを保存" }).click();
 
-  await expect(
-    editor.getByText(/\(5, 0\) のマスが格子の外です。列は 0〜2 の範囲/),
-  ).toBeVisible();
-  await editor.getByLabel("幅").fill("8");
+  // 入力の下限でブラウザが送信を止める
+  expect(
+    await width.evaluate((input: HTMLInputElement) => input.validity.valid),
+  ).toBe(false);
+  await expect(editor.getByText("レイアウトを保存しました")).toHaveCount(0);
   await expect(tileButton(page, 5, 0)).toHaveAccessibleName(
     "(5, 0) のマス 火属性の土地",
   );
+
+  // 入力欄に残っている 3 に、格子が合う
+  await putTiles(page, "消す", [[5, 0]]);
+  await expect(tileButton(page, 3, 0)).toHaveCount(0);
+  await expect(tileButton(page, 2, 0)).toBeVisible();
 });
 
 test("公開中は、同じ格子が表示だけで出て、編集の操作は出ない", async ({
