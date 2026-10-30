@@ -100,10 +100,14 @@ lint:
 
 # テスト
 
-# 専用の core・DB と本番用イメージの studio を使い捨てで起動してテストし、終了後に破棄する（開発用の環境とは独立）
-TEST_COMPOSE := CORE_VERSION=$(CORE_VERSION) docker compose -p studio-test -f compose.test.yaml
+# 専用の core・DB と本番用イメージの studio を使い捨てで起動してテストし、終了後に破棄する（開発用の環境とは独立）。
+# 落ちたときだけ、破棄する前に記録を test-failures/ に移す（scripts/save-test-failure.sh）
+TEST_PROJECT := -p studio-test -f compose.test.yaml
+TEST_COMPOSE := CORE_VERSION=$(CORE_VERSION) docker compose $(TEST_PROJECT)
 
 .PHONY: test
 test:
 	$(TEST_COMPOSE) up -d --build --wait && $(TEST_COMPOSE) run --rm --build studio-test-runner; \
-	status=$$?; $(TEST_COMPOSE) --profile runner down -v; exit $$status
+	status=$$?; \
+	if [ $$status -ne 0 ]; then CORE_VERSION=$(CORE_VERSION) scripts/save-test-failure.sh docker compose $(TEST_PROJECT); fi; \
+	$(TEST_COMPOSE) --profile runner down -v; exit $$status

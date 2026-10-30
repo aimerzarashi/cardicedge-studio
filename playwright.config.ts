@@ -15,6 +15,9 @@ export default defineConfig({
   use: {
     baseURL,
     connectOptions: { wsEndpoint },
+    // 落ちたテストだけ、あとから操作と通信を追えるよう残す（たまに落ちるテストは再現を探さず、起きたときの記録で調べる。studio#46）
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

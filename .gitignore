@@ -44,6 +44,7 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+/test-failures/
 
 # Claude 関連
 .claude/settings.local.json
