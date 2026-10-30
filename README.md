@@ -55,6 +55,18 @@ studio が前提にする core の版は Makefile の `CORE_VERSION` に書く�
 開発用の環境とはコンテナ・ネットワーク・DB が別で、ホストにポートも公開しないため、開発用を起動したままでも実行できる。
 core の DB は、core と同じく studio 用・game 用の 2 つ（core_studio・core_game。core_game は local/core-db の初期化の SQL で作る）。
 
+### テストが落ちたとき
+
+`make test` が落ちたときだけ、テスト用の環境を消す前に、`test-failures/<日時>/`（git 管理しない）に記録を移す（scripts/save-test-failure.sh。studio#46）。次に流しても消えない。要らなくなったら手で消す。
+
+| 場所 | 中身 | 見方 |
+|---|---|---|
+| `test-results/<テスト>/` | 落ちたテストの trace（`trace.zip`）・スクリーンショット・error-context.md | trace は https://trace.playwright.dev に `trace.zip` を開く（読み込みはブラウザの中だけで、ファイルは送られない）。画面の操作の順、送った通信（Server Action の応答を含む）、各時点の画面が見える |
+| `logs/<サービス>.log` | 各コンテナのログ（時刻つき） | core のログで、操作のコマンド・投影の処理と誤り（ERROR）を時刻で追う |
+| `db/core_studio.sql`・`db/core_game.sql`・`db/studio.sql` | 各 DB の中身（pg_dump） | `domain_events` の行で、操作のイベントが保存されていたかを、read model の表（boards 等）で、反映していたかを見る。イベントは保存され read model にも反映していれば、投影の遅れでテストが待ちきれなかっただけと判断できる |
+
+自動で流し直す（retries）は付けていない。流し直しで通ると、たまに落ちることが隠れるため。たまに落ちるテストは再現を探さず、この記録で調べる。
+
 ### Tunnel（任意）
 
 `make tunnel` は `https://xxxx.trycloudflare.com` の URL を表示する。スマホ等の外部端末から確認するときに使う。
