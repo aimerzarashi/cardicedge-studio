@@ -32,10 +32,16 @@ url:
 	done; \
 	echo "tunnel URL not found within 30s. see: docker compose logs studio-tunnel" >&2; exit 1
 
-# tunnel を含む studio の全サービスを停止する（core は game も使うため止めない）。pnpm のキャッシュ用ボリュームは残す（消すときは down -v）
+# tunnel を含む studio の全サービスを停止する（core は game も使うため止めない）。studio-db のデータと pnpm のキャッシュのボリュームは残す（消すときは make clean）
 .PHONY: down
 down:
 	docker compose --profile '*' down
+
+# down に加えて、studio-db のデータ（と pnpm のキャッシュ）のボリュームも消す。core の DB が残っていると、seed が作り直した
+# オペレーターを core が紐づけ直さず権限なしになるため、core も作り直す（ルートの make down）（studio#19）
+.PHONY: clean
+clean:
+	docker compose --profile '*' down -v
 
 # マイグレーション
 

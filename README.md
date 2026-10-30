@@ -24,7 +24,8 @@ make url     # （任意）起動中の Tunnel の URL を再表示
 make migrate # 未適用の migrations だけを Atlas で適用（DB を作り直さない）
 make migrate-generate NAME=<name> # better-auth の設定と DB の差分 SQL を次の番号で生成
 make migrate-hash # migrations を手で足したら atlas.sum を作り直す
-make down    # studio を停止（tunnel を含む。core は game も使うため止めない）
+make down    # studio を停止（tunnel を含む。core は game も使うため止めない。studio-db のデータは残す）
+make clean   # down に加えて studio-db のデータも消す（core も作り直すこと。下の注意）
 ```
 
 http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバーはホストに公開していない）。
@@ -90,6 +91,8 @@ Issue の MR では、何もしない手動のジョブだけを置いて実行�
 | JWKS | `/api/auth/jwks`（EdDSA / Ed25519）。core が JWT の検証に使う |
 
 `make up` では、studio-migrate がマイグレーションを適用してから、開発サーバーの起動前に `db:seed`（冪等）を実行する。
+
+studio-db のデータは名前付きのボリュームに置き、`make down` では消さない。`make clean` で消すと、seed がオペレーターを作り直してユーザー ID（JWT の `sub`）が変わり、core の DB に残った前の紐づけと合わずに「この操作をする権限がありません」になる（core は別の (発行元, ユーザー ID) に紐づいたオペレーターを紐づけ直さない）。`make clean` のあとは core も作り直す（ルートの `make down`）。core の DB だけが空になったときは、core が初めてのログインでメールアドレスから紐づけ直すので、そのままでよい（studio#19）。
 
 ### サインアップとオペレーター
 
