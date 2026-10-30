@@ -13,6 +13,8 @@ import {
   placeTile,
   pressPairable,
   removeTile,
+  sizeToFit,
+  type Tile,
   tileLabel,
   toggleConnection,
 } from "../board-layout";
@@ -155,10 +157,28 @@ function LayoutForm({
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
+  // 置いてあるマスより小さくはできない。縮めたら外に出たマスを消す形にしないのは、消したつもりのないマスが消えるため（studio#40）
+  function minSize(tiles: Tile[]) {
+    const fit = sizeToFit(tiles);
+    return {
+      width: Math.max(sizeRange.min, fit.width),
+      height: Math.max(sizeRange.min, fit.height),
+    };
+  }
+  const min = minSize(cells.tiles);
+
   function scheduleCheck(nextSize: typeof size, nextCells: Cells) {
     clearTimeout(timer.current);
     latest.current += 1;
     const order = latest.current;
+    // 下限より小さい値は、入力の min で保存も止まる途中の値として、問い合わせずに今の表示を残す
+    const nextMin = minSize(nextCells.tiles);
+    if (
+      Number(nextSize.width) < nextMin.width ||
+      Number(nextSize.height) < nextMin.height
+    ) {
+      return;
+    }
     timer.current = setTimeout(async () => {
       const result = await checkBoardLayout(
         layoutFormData(nextSize, nextCells),
@@ -181,23 +201,29 @@ function LayoutForm({
     }, CHECK_DELAY_MS);
   }
 
-  function inRange(text: string, current: number): number {
+  function inRange(text: string, current: number, lower: number): number {
     const value = Number(text);
     return text.trim() !== "" &&
       Number.isInteger(value) &&
-      value >= sizeRange.min &&
+      value >= lower &&
       value <= sizeRange.max
       ? value
       : current;
   }
 
+  // マスを消して下限が下がったときも、入力中の幅・高さに格子を合わせる（入力欄の値と格子をずらさない）
+  function resize(nextSize: typeof size, nextCells: Cells) {
+    const lower = minSize(nextCells.tiles);
+    setGrid((current) => ({
+      width: inRange(nextSize.width, current.width, lower.width),
+      height: inRange(nextSize.height, current.height, lower.height),
+    }));
+  }
+
   function changeSize(next: { width: string; height: string }) {
     setSize(next);
     scheduleCheck(next, cells);
-    setGrid((current) => ({
-      width: inRange(next.width, current.width),
-      height: inRange(next.height, current.height),
-    }));
+    resize(next, cells);
   }
 
   function pressTile(position: Position) {
@@ -218,6 +244,7 @@ function LayoutForm({
     }
     setCells(next);
     scheduleCheck(size, next);
+    resize(size, next);
   }
 
   function pressConnection(connection: Connection) {
@@ -260,7 +287,7 @@ function LayoutForm({
           type="number"
           name="width"
           step={1}
-          min={sizeRange.min}
+          min={min.width}
           max={sizeRange.max}
           required
           value={size.width}
@@ -273,7 +300,7 @@ function LayoutForm({
           type="number"
           name="height"
           step={1}
-          min={sizeRange.min}
+          min={min.height}
           max={sizeRange.max}
           required
           value={size.height}

@@ -19,7 +19,7 @@ import type { PublishProblem } from "../publish-problems";
 
 export type Layout = Cells & { width: number; height: number };
 
-// 格子に印は付けない。画面の操作で起こせるレイアウトの誤りは格子の外のマスだけで、格子に描かれないため（studio#33）
+// 格子に印は付けない。画面の操作ではレイアウトの誤りを起こせず（格子の外のマスは studio#40 で作れなくした）、起きるのは画面と core の決まりがずれたときだけのため（studio#33）
 export type LayoutError = {
   message: string;
 };
