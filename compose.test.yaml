@@ -20,6 +20,13 @@ services:
       GAME_JWT_AUDIENCE: diecardomain-core
       # seed のオペレーター（scripts/seed.ts）と同じアドレス。ログインして core を呼ぶと紐づく
       STUDIO_INITIAL_OPERATOR_EMAIL: operator@example.com
+      # トレースとログの送り先（core の compose の otel-lgtm。落ちたテストのトレースの記録に使う。studio#51）。受け手が止まっていても core は普通に動く
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: core
+    # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける（core#74）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       start_period: 30s
