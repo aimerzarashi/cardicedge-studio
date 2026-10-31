@@ -13,16 +13,11 @@ import {
   placeTile,
   pressPairable,
   removeTile,
-  sizeToFit,
-  type Tile,
   tileLabel,
   toggleConnection,
 } from "../board-layout";
-import {
-  type PublishProblem,
-  PublishProblemList,
-  problemMarks,
-} from "../publish-problems";
+import { type PublishProblem, problemMarks } from "../publish-problem";
+import { PublishProblemList } from "../publish-problems";
 import { checkBoardLayout } from "./actions";
 import {
   type ChangeLayoutState,
@@ -31,6 +26,7 @@ import {
   layoutFormData,
   tileField,
 } from "./layout-form";
+import { gridSizeFor, isBelowMin, minSize } from "./layout-size";
 
 // 操作が止まってから問い合わせるまでの待ち。1 クリックごとに core を呼ばないため
 const CHECK_DELAY_MS = 300;
@@ -157,26 +153,14 @@ function LayoutForm({
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  // 置いてあるマスより小さくはできない。縮めたら外に出たマスを消す形にしないのは、消したつもりのないマスが消えるため（studio#40）
-  function minSize(tiles: Tile[]) {
-    const fit = sizeToFit(tiles);
-    return {
-      width: Math.max(sizeRange.min, fit.width),
-      height: Math.max(sizeRange.min, fit.height),
-    };
-  }
-  const min = minSize(cells.tiles);
+  const min = minSize(cells.tiles, sizeRange.min);
 
   function scheduleCheck(nextSize: typeof size, nextCells: Cells) {
     clearTimeout(timer.current);
     latest.current += 1;
     const order = latest.current;
     // 下限より小さい値は、入力の min で保存も止まる途中の値として、問い合わせずに今の表示を残す
-    const nextMin = minSize(nextCells.tiles);
-    if (
-      Number(nextSize.width) < nextMin.width ||
-      Number(nextSize.height) < nextMin.height
-    ) {
+    if (isBelowMin(nextSize, minSize(nextCells.tiles, sizeRange.min))) {
       return;
     }
     timer.current = setTimeout(async () => {
@@ -201,23 +185,10 @@ function LayoutForm({
     }, CHECK_DELAY_MS);
   }
 
-  function inRange(text: string, current: number, lower: number): number {
-    const value = Number(text);
-    return text.trim() !== "" &&
-      Number.isInteger(value) &&
-      value >= lower &&
-      value <= sizeRange.max
-      ? value
-      : current;
-  }
-
   // マスを消して下限が下がったときも、入力中の幅・高さに格子を合わせる（入力欄の値と格子をずらさない）
   function resize(nextSize: typeof size, nextCells: Cells) {
-    const lower = minSize(nextCells.tiles);
-    setGrid((current) => ({
-      width: inRange(nextSize.width, current.width, lower.width),
-      height: inRange(nextSize.height, current.height, lower.height),
-    }));
+    const lower = minSize(nextCells.tiles, sizeRange.min);
+    setGrid((current) => gridSizeFor(nextSize, current, lower, sizeRange.max));
   }
 
   function changeSize(next: { width: string; height: string }) {

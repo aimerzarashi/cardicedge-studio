@@ -13,6 +13,7 @@
     "db:seed": "node --conditions=react-server scripts/seed.ts",
     "format": "biome format --write",
     "test": "playwright test",
+    "test:unit": "node --test \"app/**/*.test.ts\"",
     "codegen": "graphql-codegen --config codegen.ts"
   },
   "dependencies": {

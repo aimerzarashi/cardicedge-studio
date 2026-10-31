@@ -1,4 +1,4 @@
-import type { PublishProblem } from "./boards/publish-problems";
+import type { PublishProblem } from "./boards/publish-problem";
 import { cardErrorMessage, formErrorMessage } from "./messages";
 
 // プリセットデッキとスターターデッキの詳細の画面で共通の、フォームの受け渡し
