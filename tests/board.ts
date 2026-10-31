@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { callCore } from "./core";
 import { expect } from "./fixtures";
 import { section } from "./preset-deck";
 
@@ -39,31 +40,6 @@ export type Connection = {
 };
 // 転送円どうし・橋どうしの対（つながりと同じ形）
 export type Pair = Connection;
-
-// 画面で作るのが重いレイアウト（拠点から行けないマスの座標の確かめ等）は、ログイン中のオペレーターの JWT で core を直接呼んで入れる。
-// 公開の入口（envoy の 10000）を使うのは、中継役用の入口には core への経路が無いため
-async function callCore(
-  page: Page,
-  query: string,
-  variables: Record<string, unknown>,
-) {
-  const publicURL = process.env.PLAYWRIGHT_PUBLIC_URL;
-  if (!publicURL) throw new Error("PLAYWRIGHT_PUBLIC_URL が未設定です");
-  const tokenResponse = await page.request.get("/api/auth/token");
-  expect(tokenResponse.status()).toBe(200);
-  const { token } = await tokenResponse.json();
-  const response = await fetch(`${publicURL}/studio/graphql`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  expect(response.status).toBe(200);
-  const { data } = await response.json();
-  return data;
-}
 
 // 詳細の画面にいるボードのレイアウトを入れる（準備中のものだけ入れられる）
 export async function setBoardLayout(
