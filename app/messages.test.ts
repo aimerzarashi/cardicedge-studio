@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   boardPublishProblemMessage,
+  boardRuleErrorMessage,
   NAME_ALREADY_IN_USE,
   nameErrorMessage,
+  RULE_LABELS,
+  ruleStep,
 } from "./messages.ts";
 
 describe("nameErrorMessage", () => {
@@ -87,6 +90,69 @@ describe("boardPublishProblemMessage（公開できない理由の文言）", ()
         positions: at(1),
       }),
       "相手のいない転送円・橋が 1 つあります。対にするか、消してください",
+    );
+  });
+});
+
+describe("boardRuleErrorMessage", () => {
+  it("下限を割ったときは、core が返した下限を文言に入れる", () => {
+    assert.equal(
+      boardRuleErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "roundLimit",
+        min: 1,
+      }),
+      "ラウンドの上限は 1 以上にしてください",
+    );
+  });
+
+  it("目標の魔力が開始時の魔力以下のときは、比べる相手の項目名から文言を作る", () => {
+    assert.equal(
+      boardRuleErrorMessage({
+        __typename: "FieldNotGreaterThan",
+        field: "targetMagic",
+        than: "startingMagic",
+      }),
+      "目標の魔力は開始時の魔力より大きくしてください",
+    );
+  });
+
+  it("サイコロの目の最大が最小を下回ったときは、比べる相手の項目名から文言を作る", () => {
+    assert.equal(
+      boardRuleErrorMessage({
+        __typename: "FieldLessThan",
+        field: "diceMax",
+        than: "diceMin",
+      }),
+      "サイコロの目（最大）はサイコロの目（最小）以上にしてください",
+    );
+  });
+
+  it("知らない型のときは、項目の入力が正しくないことを伝える", () => {
+    assert.equal(
+      boardRuleErrorMessage({ __typename: "Other", field: "diceMin" }),
+      "サイコロの目（最小）の入力が正しくありません",
+    );
+  });
+});
+
+describe("ruleStep", () => {
+  it("魔力は 100 刻み、ラウンドの上限とサイコロの目は 1 刻みにする", () => {
+    assert.deepEqual(
+      Object.fromEntries(
+        (Object.keys(RULE_LABELS) as (keyof typeof RULE_LABELS)[]).map(
+          (field) => [field, ruleStep(field)],
+        ),
+      ),
+      {
+        targetMagic: 100,
+        startingMagic: 100,
+        lapBonus: 100,
+        checkpointBonus: 100,
+        roundLimit: 1,
+        diceMin: 1,
+        diceMax: 1,
+      },
     );
   });
 });

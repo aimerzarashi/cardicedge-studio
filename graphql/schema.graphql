@@ -132,6 +132,18 @@ type BoardDefaultRules {
 	チェックポイントのボーナス（チェックポイントを通ったときに増える魔力。0 以上。登録した直後は 100）
 	"""
 	checkpointBonus: Int!
+	"""
+	ラウンドの上限（1 以上。上限に達したら、その時点で魔力の多い人が勝つ。登録した直後は 30）
+	"""
+	roundLimit: Int!
+	"""
+	サイコロの目の最小（1 以上。登録した直後は 1）
+	"""
+	diceMin: Int!
+	"""
+	サイコロの目の最大（最小以上。登録した直後は 6）
+	"""
+	diceMax: Int!
 }
 """
 ボードの一覧の絞り込み
@@ -610,7 +622,7 @@ enum CardType {
 """
 union CardsResult = CardConnection | ValidationErrors | ForbiddenError
 """
-ボードの既定のルールを変える入力（変えた後の 4 つの値の全体）
+ボードの既定のルールを変える入力（変えた後の 7 つの値の全体）
 """
 input ChangeBoardDefaultRulesInput {
 	"""
@@ -637,6 +649,18 @@ input ChangeBoardDefaultRulesInput {
 	チェックポイントのボーナス（0 以上）
 	"""
 	checkpointBonus: Int!
+	"""
+	ラウンドの上限（1 以上）
+	"""
+	roundLimit: Int!
+	"""
+	サイコロの目の最小（1 以上）
+	"""
+	diceMin: Int!
+	"""
+	サイコロの目の最大（最小以上でなければ入力の誤り）
+	"""
+	diceMax: Int!
 }
 """
 ボードの既定のルールの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
@@ -919,6 +943,19 @@ type FieldInvalidFormat implements FieldError {
 	誤りのある入力の項目
 	"""
 	field: String!
+}
+"""
+入力が、別の入力の項目の値より小さい（等しいのは誤りでない。例: サイコロの目の最大が最小より小さい）
+"""
+type FieldLessThan implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	下回ってはいけない相手の入力の項目（例: diceMin）
+	"""
+	than: String!
 }
 """
 つながりの両端が隣どうし（上下左右に 1 マス）でない（同じ座標を指すものを含む）
