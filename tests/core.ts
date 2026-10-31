@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect } from "./fixtures";
+import { expect, traceparentOf } from "./fixtures";
 
 // 画面で作るのが重いものは、ログイン中のオペレーターの JWT で core を直接呼んで入れる。
 // 公開の入口（envoy の 10000）を使うのは、中継役用の入口には core への経路が無いため
@@ -26,6 +26,7 @@ export async function callCore(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      traceparent: traceparentOf(page),
       Authorization: `Bearer ${await tokenOf(page)}`,
     },
     body: JSON.stringify({ query, variables }),

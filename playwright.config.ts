@@ -11,7 +11,9 @@ if (!wsEndpoint || !baseURL) {
 
 export default defineConfig({
   testDir: "./tests",
-  reporter: "list",
+  // HTML のレポートは、人が落ちたテストの画面・Playwright の trace・trace id（注記）を 1 か所で見るため。
+  // 自動で開くとコンテナの中でサーバーを立てて止まるため、開かない
+  reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
     connectOptions: { wsEndpoint },

@@ -24,7 +24,7 @@
 | local/migrate | マイグレーション用イメージ（Atlas Community + migrations。core と同じ構成） |
 | scripts/check-migrations.sh | Atlas が検出しない migrations の違反の検査（core と同じものを置く。変えるときは core / game と揃える） |
 | scripts/check-auth-schema.sh | better-auth の設定と DB（DATABASE_URL）のスキーマに差分が無いことの検査（マイグレーションの作り忘れを防ぐ） |
-| scripts/save-test-failure.sh | `make test` が落ちたときに、テスト用の環境を消す前に記録（test-results・ログ・DB の中身）を test-failures/ に移す |
+| scripts/save-test-failure.sh | `make test` が落ちたときに、テスト用の環境を消す前に記録（test-results・ログ・DB の中身・落ちたテストのトレースとログ）を test-failures/ に移す |
 | scripts/seed.ts | 開発・テスト用の、メールアドレスを確認済みのオペレーターを作る（`pnpm db:seed`） |
 | tests | Playwright のテスト（E2E） |
 | `*.test.ts`（app/ 配下） | `node --test` の単体テスト。調べる元のファイルの隣に置く（board-layout.test.ts・messages.test.ts・boards/board-view.test.ts・boards/board-paint.test.ts・boards/publish-problem.test.ts・boards/[id]/layout-size.test.ts）。本番用イメージのビルドには入れない（.dockerignore） |
@@ -97,7 +97,7 @@
 - `run-server` は studio の node_modules の `@playwright/test` を Playwright のコンテナに読み取り専用で渡して起動する（npx で起動のたびに npm から取ってこない。npm に届かないとサーバーが立たないため。studio#25）。`@playwright/test`（package.json）と compose の Playwright イメージのバージョンは一致させる
 - テストは tests/fixtures.ts の `test` / `expect` を使う。テストごとに `X-Forwarded-For` で別の IP を名乗り、本番モードのレート制限（ログインは同じ IP から 10 秒に 3 回）でほかのテストと枠を共有しないようにしている。名乗った IP が効くのは、テスト用の環境だけにある中継役用の入口（envoy の 10001。`PLAYWRIGHT_BASE_URL`）を通るとき。公開の入口は `PLAYWRIGHT_PUBLIC_URL`
 - `make test` のテスト用のオペレーターは seed（operator@example.com。パスワード付き・確認済み）。ほかのアカウントはテストの中でサインアップし、Mailpit の確認のメールで確認する（tests/account.ts）
-- 落ちたテストだけ Playwright が trace とスクリーンショットを残し（playwright.config.ts）、`make test` が落ちたときだけ、テスト用の環境を消す前に scripts/save-test-failure.sh が test-results・各コンテナのログ・各 DB の中身（pg_dump）を `test-failures/<日時>/`（git 管理しない）に移す。見方は README の「テストが落ちたとき」。retries は付けない（流し直しで通ると、たまに落ちることが隠れるため）。たまに落ちるテストは再現を探さず、起きたときにこの記録で調べる（投影の遅れで待ちきれなかっただけか、イベントと read model で確かめる。studio#46）
+- 落ちたテストだけ Playwright が trace とスクリーンショットを残し、HTML のレポート（playwright-report/。自動では開かない）にすべてのテストの結果と trace id（注記）を出し（playwright.config.ts）、`make test` が落ちたときだけ、テスト用の環境を消す前に scripts/save-test-failure.sh が test-results・HTML のレポート・各コンテナのログ・各 DB の中身（pg_dump）を `test-failures/<日時>/`（git 管理しない）に移す。見方は README の「テストが落ちたとき」。テストごとに tests/fixtures.ts が W3C の traceparent を作り、ブラウザの通信（`extraHTTPHeaders`）と tests/core.ts の `callCore` に付けるため、落ちたテストは `test-results/<テスト>/trace-id.txt` に trace id を残し、save-test-failure.sh が core の compose の otel-lgtm（Grafana の API。GRAFANA_URL、既定 http://127.0.0.1:3002）から Tempo のトレースと Loki のログ（trace_id と、保存のログのイベント（event_id 等）で、その保存より後に絞って引いた投影のログ。読むのに jq を使う）を `traces/<trace id>/` に JSON で保存する（受け手が止まっていれば飛ばす。終了コードは変えない。AI に調べさせるときは `test-failures/<日時>/` を渡し、記録に無いことは Grafana の API で引く（README の「テストが落ちたとき」）。studio#51）。retries は付けない（流し直しで通ると、たまに落ちることが隠れるため）。たまに落ちるテストは再現を探さず、起きたときにこの記録で調べる（投影の遅れで待ちきれなかっただけか、イベントと read model で確かめる。studio#46）
 - メールは Mailpit が受け止め、テストは Mailpit の API で読む（tests/mail.ts）。メールのリンクのホスト名は BETTER_AUTH_URL のため、パスだけを使う（開発用の環境では localhost:3001 で、ブラウザのコンテナから届かない）
 
 # 認証（better-auth）
