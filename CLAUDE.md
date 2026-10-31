@@ -18,6 +18,7 @@
 | lib/core.ts | core の GraphQL を、ログイン中のオペレーターとして呼ぶ（`callCore`。サーバーだけ。最初に `connection()` を呼び、core を呼ぶ画面をビルドのときに前もって描かせない。studio#21）。JWT は `auth.api.getToken({ headers })` でセッションの Cookie からもらう。core に届かない（502・503・504・つながらない・10 秒の時間切れ）ときは投げずに `{ ok: false, reason: "unavailable" }` を返し、401 はログイン画面へ移す |
 | graphql | `make gen-api` の生成物（`schema.graphql` は前提にする版の core のイメージから取り出した studio 用のスキーマ、ほかは graphql-codegen の型）。手で直さない。biome の対象から外している |
 | codegen.ts・.graphqlrc.yaml | graphql-codegen の設定と、VSCode の GraphQL の拡張の設定（どちらも graphql/schema.graphql と app・lib の操作を指す） |
+| instrumentation.ts | OpenTelemetry（`@vercel/otel` の `registerOTel`）。送り先は標準の環境変数（`OTEL_EXPORTER_OTLP_ENDPOINT` 等）で渡し、任意（無ければ送らない）。core を呼ぶ fetch に traceparent を付けるため、`propagateContextUrls` に `CORE_GRAPHQL_URL` を渡す（既定では同じ宛先にしか付かず、トレースが core で切れる）。パッケージは @vercel/otel のほか、同梱の文書が一緒に入れるよう書いている @opentelemetry/sdk-logs・api-logs・instrumentation（@vercel/otel の peer。版は peer の範囲 <0.300 の最新に固定）。開発・テスト用の環境は core の compose の otel-lgtm（ホストの 4318）に送る（`extra_hosts` の host.docker.internal。共有ネットワークには入れない）。見方は README の「トレース」（studio#50） |
 | proxy.ts | 未ログインのときにログイン画面へ移す（Next.js 16 の proxy。Cookie の有無だけを見る） |
 | migrations | DB マイグレーション（`NNNN_name.sql` + `atlas.sum`）。better-auth のテーブルも `auth generate` で SQL にしてここに置き、Atlas で適用する |
 | local/migrate | マイグレーション用イメージ（Atlas Community + migrations。core と同じ構成） |
