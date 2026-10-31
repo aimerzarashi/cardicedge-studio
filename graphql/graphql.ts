@@ -115,16 +115,22 @@ export type CardType =
   | 'ITEM'
   | 'SPELL';
 
-/** ボードの既定のルールを変える入力（変えた後の 4 つの値の全体） */
+/** ボードの既定のルールを変える入力（変えた後の 7 つの値の全体） */
 export type ChangeBoardDefaultRulesInput = {
   /** チェックポイントのボーナス（0 以上） */
   checkpointBonus: number;
+  /** サイコロの目の最大（最小以上でなければ入力の誤り） */
+  diceMax: number;
+  /** サイコロの目の最小（1 以上） */
+  diceMin: number;
   /** ボードの公開用の ID */
   id: string;
   /** 周回のボーナス（0 以上） */
   lapBonus: number;
   /** 画面が見ていたボードの revision */
   revision: number;
+  /** ラウンドの上限（1 以上） */
+  roundLimit: number;
   /** 開始時の魔力（0 以上） */
   startingMagic: number;
   /** 目標の魔力（1 以上。開始時の魔力より大きくなければ入力の誤り） */
@@ -394,6 +400,7 @@ export type RenameBoardMutation = { renameBoard:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -424,6 +431,7 @@ export type ChangeBoardDefaultRulesMutation = { changeBoardDefaultRules:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldLessThan', than: string, field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', than: string, field: string }
@@ -454,6 +462,7 @@ export type ChangeBoardLayoutMutation = { changeBoardLayout:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -486,6 +495,7 @@ export type CheckBoardLayoutQuery = { checkBoardLayout:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -562,7 +572,7 @@ export type BoardQuery = { board:
         | { __typename: 'SanctuaryTile', x: number, y: number }
         | { __typename: 'ShrineTile', x: number, y: number }
         | { __typename: 'WarpTile', x: number, y: number }
-      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
+      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number }, publishProblems: Array<
         | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'NoCheckpointProblem' }
         | { __typename: 'UnpairedTilesProblem', positions: Array<{ x: number, y: number }> }
@@ -587,6 +597,7 @@ export type RegisterBoardMutation = { registerBoard:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -610,7 +621,7 @@ export type BoardsQueryVariables = Exact<{
 
 
 export type BoardsQuery = { boards:
-    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number }, publishProblems: Array<
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number }, publishProblems: Array<
             | { __typename: 'BaseCountProblem' }
             | { __typename: 'NoCheckpointProblem' }
             | { __typename: 'UnpairedTilesProblem' }
@@ -700,6 +711,7 @@ export type RegisterCreatureMutation = { registerCreature:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -728,6 +740,7 @@ export type RegisterItemMutation = { registerItem:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -758,6 +771,7 @@ export type RenamePresetDeckMutation = { renamePresetDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -787,6 +801,7 @@ export type SetPresetDeckCardCountsMutation = { setPresetDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -858,6 +873,7 @@ export type RegisterPresetDeckMutation = { registerPresetDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -909,6 +925,7 @@ export type RegisterSpellMutation = { registerSpell:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -940,6 +957,7 @@ export type RenameStarterDeckMutation = { renameStarterDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -970,6 +988,7 @@ export type SetStarterDeckCardCountsMutation = { setStarterDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -1013,6 +1032,7 @@ export type PublishStarterDeckMutation = { publishStarterDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1085,6 +1105,7 @@ export type RegisterStarterDeckMutation = { registerStarterDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1202,6 +1223,9 @@ export const ChangeBoardDefaultRulesDocument = new TypedDocumentString(`
           min
         }
         ... on FieldNotGreaterThan {
+          than
+        }
+        ... on FieldLessThan {
           than
         }
       }
@@ -1345,6 +1369,9 @@ export const BoardDocument = new TypedDocumentString(`
         startingMagic
         lapBonus
         checkpointBonus
+        roundLimit
+        diceMin
+        diceMax
       }
       publishProblems {
         __typename
@@ -1456,6 +1483,9 @@ export const BoardsDocument = new TypedDocumentString(`
             startingMagic
             lapBonus
             checkpointBonus
+            roundLimit
+            diceMin
+            diceMax
           }
           publishProblems {
             __typename

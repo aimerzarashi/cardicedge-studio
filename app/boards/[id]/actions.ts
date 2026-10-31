@@ -72,6 +72,9 @@ const changeBoardDefaultRulesMutation = graphql(`
           ... on FieldNotGreaterThan {
             than
           }
+          ... on FieldLessThan {
+            than
+          }
         }
       }
     }

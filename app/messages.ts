@@ -185,11 +185,26 @@ export const RULE_LABELS = {
   startingMagic: "開始時の魔力",
   lapBonus: "周回のボーナス",
   checkpointBonus: "チェックポイントのボーナス",
+  roundLimit: "ラウンドの上限",
+  diceMin: "サイコロの目（最小）",
+  diceMax: "サイコロの目（最大）",
 } as const;
 export type RuleField = keyof typeof RULE_LABELS;
 
 export function isRuleField(value: string): value is RuleField {
   return Object.hasOwn(RULE_LABELS, value);
+}
+
+// 魔力の 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い）。魔力でない項目は 1 刻み
+export function ruleStep(field: RuleField): number {
+  switch (field) {
+    case "roundLimit":
+    case "diceMin":
+    case "diceMax":
+      return 1;
+    default:
+      return 100;
+  }
 }
 
 function ruleLabel(field: string): string {
@@ -209,6 +224,8 @@ export function boardRuleErrorMessage(error: {
       return `${label}は ${error.min} 以上にしてください`;
     case "FieldNotGreaterThan":
       return `${label}は${ruleLabel(error.than ?? "")}より大きくしてください`;
+    case "FieldLessThan":
+      return `${label}は${ruleLabel(error.than ?? "")}以上にしてください`;
     default:
       return `${label}の入力が正しくありません`;
   }

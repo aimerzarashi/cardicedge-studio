@@ -43,6 +43,9 @@ const boardQuery = graphql(`
           startingMagic
           lapBonus
           checkpointBonus
+          roundLimit
+          diceMin
+          diceMax
         }
         publishProblems {
           __typename

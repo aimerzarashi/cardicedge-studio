@@ -1,11 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { RULE_LABELS, type RuleField } from "../../messages";
+import { RULE_LABELS, type RuleField, ruleStep } from "../../messages";
 import type { ChangeRulesState, Rules } from "./rules-form";
-
-// 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い。core の決まりは core が判定する）
-const STEP = 100;
 
 const initialState: ChangeRulesState = {};
 
@@ -47,7 +44,7 @@ export function RulesEditor({
             <input
               type="number"
               name={field}
-              step={STEP}
+              step={ruleStep(field)}
               required
               defaultValue={kept.values?.[field] ?? rules[field]}
             />

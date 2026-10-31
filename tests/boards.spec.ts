@@ -344,6 +344,9 @@ test("公開中は、格子も既定のルールも表示だけで出て、編�
   await expect(detail(page, "開始時の魔力")).toHaveText("600");
   await expect(detail(page, "周回のボーナス")).toHaveText("300");
   await expect(detail(page, "チェックポイントのボーナス")).toHaveText("100");
+  await expect(detail(page, "ラウンドの上限")).toHaveText("30");
+  await expect(detail(page, "サイコロの目（最小）")).toHaveText("1");
+  await expect(detail(page, "サイコロの目（最大）")).toHaveText("6");
   await expect(rules.getByLabel("目標の魔力")).toHaveCount(0);
   await expect(rules.getByRole("button", { name: "ルールを保存" })).toHaveCount(
     0,
@@ -548,6 +551,9 @@ test("準備中のボードの既定のルールを変えて保存すると、�
   await rules.getByLabel("開始時の魔力").fill("0");
   await rules.getByLabel("周回のボーナス").fill("500");
   await rules.getByLabel("チェックポイントのボーナス").fill("100");
+  await rules.getByLabel("ラウンドの上限").fill("20");
+  await rules.getByLabel("サイコロの目（最小）").fill("2");
+  await rules.getByLabel("サイコロの目（最大）").fill("12");
   await rules.getByRole("button", { name: "ルールを保存" }).click();
 
   await expect(rules.getByText("ルールを保存しました")).toBeVisible();
@@ -558,6 +564,9 @@ test("準備中のボードの既定のルールを変えて保存すると、�
   await expect(rules.getByLabel("チェックポイントのボーナス")).toHaveValue(
     "100",
   );
+  await expect(rules.getByLabel("ラウンドの上限")).toHaveValue("20");
+  await expect(rules.getByLabel("サイコロの目（最小）")).toHaveValue("2");
+  await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("12");
 });
 
 test("決まりに反する既定のルールを保存すると誤りが出て、入力した値が残り、保存した値は変わらない", async ({
@@ -583,14 +592,26 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
 
   await rules.getByLabel("目標の魔力").fill("8000");
   await rules.getByLabel("周回のボーナス").fill("-100");
+  await rules.getByLabel("ラウンドの上限").fill("0");
+  await rules.getByLabel("サイコロの目（最小）").fill("4");
+  await rules.getByLabel("サイコロの目（最大）").fill("3");
   await save.click();
   await expect(
     rules.getByText("周回のボーナスは 0 以上にしてください"),
+  ).toBeVisible();
+  await expect(
+    rules.getByText("ラウンドの上限は 1 以上にしてください"),
+  ).toBeVisible();
+  await expect(
+    rules.getByText(
+      "サイコロの目（最大）はサイコロの目（最小）以上にしてください",
+    ),
   ).toBeVisible();
 
   await page.reload();
   await expect(rules.getByLabel("目標の魔力")).toHaveValue("8000");
   await expect(rules.getByLabel("周回のボーナス")).toHaveValue("300");
+  await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("6");
 });
 
 test("一覧に、マスの数（土地・拠点・チェックポイント・転送円・橋・施設）と既定のルールが出て、準備中のボードだけ公開できない理由の数か「公開できます」が出る", async ({
@@ -641,7 +662,7 @@ test("一覧に、マスの数（土地・拠点・チェックポイント・�
     "拠点 1・チェックポイント 1・土地 3（火 2・地 0・水 1・風 0・無 0・複 0）・転送円 2・橋 2・聖堂 1・ほこら 1・占い館 1・カード屋 1",
   );
   await expect(readyRow).toContainText(
-    "目標の魔力 8000・開始時の魔力 600・周回のボーナス 300・チェックポイントのボーナス 100",
+    "目標の魔力 8000・開始時の魔力 600・周回のボーナス 300・チェックポイントのボーナス 100・ラウンドの上限 30・サイコロの目（最小） 1・サイコロの目（最大） 6",
   );
   await expect(readyRow).toContainText("公開できます");
   // 空のボードの理由は、拠点の数とチェックポイントの 2 件
