@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import { publishCard, registerCreature } from "./card";
+import { createPublishedCreatures } from "./card";
+import { callCore, expectSuccess, untilReached } from "./core";
 import { expect } from "./fixtures";
 
 export async function registerPresetDeck(page: Page, name: string) {
@@ -18,17 +19,6 @@ export function section(page: Page, heading: string) {
   return page.getByRole("region", { name: heading });
 }
 
-// デッキに入れられるのは公開中のカードだけのため、登録したら公開する
-export async function registerCreatures(page: Page, names: string[]) {
-  for (const name of names) {
-    await registerCreature(page, name);
-    await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
-  }
-  for (const name of names) {
-    await publishCard(page, name);
-  }
-}
-
 // カードの一覧は投影されてから出るため、出るまで絞り込み直す
 export async function searchCards(
   page: Page,
@@ -44,22 +34,86 @@ export async function searchCards(
   }).toPass();
 }
 
-// 合計がちょうど 40 枚のプリセットデッキ（4 枚ずつ 10 種類のクリーチャー）を作り、詳細の URL を返す
-export async function registerFullPresetDeck(
+// ここから下は、確かめたいことの前準備としてプリセットデッキを入れる道具。画面で登録する流れは preset-decks.spec.ts で確かめている。
+// ログインしてから呼ぶ。登録したデッキが投影に届くまで待つため、返した URL をすぐ開ける
+async function untilPresetDeckReached(
+  page: Page,
+  id: string,
+  revision: number,
+) {
+  await untilReached(`プリセットデッキ ${id} が詳細に届く`, async () => {
+    const data = await callCore(
+      page,
+      `query($id: UUID!) {
+        presetDeck(id: $id) { __typename ... on PresetDeck { revision } }
+      }`,
+      { id },
+    );
+    return (
+      data.presetDeck.__typename === "PresetDeck" &&
+      data.presetDeck.revision >= revision
+    );
+  });
+}
+
+// 空のプリセットデッキを登録して、詳細の URL（パス）を返す
+export async function createPresetDeck(
+  page: Page,
+  name: string,
+): Promise<string> {
+  const deck = await registerPresetDeckByCore(page, name);
+  await untilPresetDeckReached(page, deck.id, deck.revision);
+  return `/preset-decks/${deck.id}`;
+}
+
+async function registerPresetDeckByCore(page: Page, name: string) {
+  const data = await callCore(
+    page,
+    `mutation($input: RegisterPresetDeckInput!) {
+      registerPresetDeck(input: $input) {
+        __typename
+        ... on RegisterPresetDeckSuccess { id revision }
+      }
+    }`,
+    { input: { name } },
+  );
+  expectSuccess(data.registerPresetDeck, "RegisterPresetDeckSuccess");
+  return data.registerPresetDeck as { id: string; revision: number };
+}
+
+// 合計がちょうど 40 枚のプリセットデッキ（4 枚ずつ 10 種類の公開中のクリーチャー）を入れ、詳細の URL を返す
+export async function createFullPresetDeck(
   page: Page,
   name: string,
 ): Promise<string> {
   const id = crypto.randomUUID().slice(0, 8);
-  const cards = Array.from({ length: 10 }, (_, i) => `c${i}-${id}`);
-  await registerCreatures(page, cards);
-  await registerAndOpen(page, name);
-  const deckURL = new URL(page.url()).pathname;
-  await searchCards(page, deckURL, id, 10);
-  const candidates = section(page, "カードを探す");
-  for (const card of cards) {
-    await candidates.getByLabel(`${card}の枚数`).fill("4");
-  }
-  await candidates.getByRole("button", { name: "枚数を保存" }).click();
-  await expect(candidates.getByText("枚数を保存しました")).toBeVisible();
-  return deckURL;
+  const cards = await createPublishedCreatures(
+    page,
+    Array.from({ length: 10 }, (_, i) => `c${i}-${id}`),
+    id,
+  );
+  const deck = await registerPresetDeckByCore(page, name);
+  const data = await callCore(
+    page,
+    `mutation($input: SetPresetDeckCardCountsInput!) {
+      setPresetDeckCardCounts(input: $input) {
+        __typename
+        ... on SetPresetDeckCardCountsSuccess { revision }
+      }
+    }`,
+    {
+      input: {
+        id: deck.id,
+        revision: deck.revision,
+        cards: cards.map(({ id: cardId }) => ({ cardId, count: 4 })),
+      },
+    },
+  );
+  expectSuccess(data.setPresetDeckCardCounts, "SetPresetDeckCardCountsSuccess");
+  await untilPresetDeckReached(
+    page,
+    deck.id,
+    data.setPresetDeckCardCounts.revision,
+  );
+  return `/preset-decks/${deck.id}`;
 }

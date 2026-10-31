@@ -1,12 +1,19 @@
 import type { Page } from "@playwright/test";
 import { loginAsOperator, retireCard, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
-import { registerFullPresetDeck, section } from "./preset-deck";
-import { registerFullStarterDeck, registerStarterDeck } from "./starter-deck";
+import { createFullPresetDeck, searchCards, section } from "./preset-deck";
+import {
+  createFullStarterDeck,
+  createStarterDeck,
+  createTenCreatures,
+  registerStarterDeck,
+} from "./starter-deck";
 
 // 公開中のスターターデッキの数には上限があり、core の DB を共有するため、公開するテストは公開したまま終わらない
 // （使用不可にして終える）。公開するテストは同じファイルの中で順に流れる（fullyParallel にしていないため）。
-// ほかのファイルのテストは、スターターデッキを公開しない
+// ほかのファイルのテストは、スターターデッキを公開しない。
+// 前準備（カード・プリセットデッキ・スターターデッキ）は GraphQL で入れ（tests/core.ts）、確かめる画面の操作だけを画面でする。
+// 画面で空から登録する流れは、1 本目のテストで確かめている
 
 function deckRows(page: Page) {
   return page.locator("tbody tr");
@@ -39,7 +46,7 @@ test("使われている名前で登録すると名前の重複が表示され�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("水・風");
-  await registerStarterDeck(page, name);
+  await createStarterDeck(page, name);
 
   await page.goto("/starter-decks/new");
   const empty = section(page, "空から作る");
@@ -55,7 +62,7 @@ test("プリセットデッキから写して登録すると、名前とカー�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const presetDeckURL = await registerFullPresetDeck(page, name);
+  const presetDeckURL = await createFullPresetDeck(page, name);
 
   await expect(async () => {
     await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
@@ -85,7 +92,7 @@ test("写した後に元のプリセットデッキを変えると「変わっ�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const presetDeckURL = await registerFullPresetDeck(page, name);
+  const presetDeckURL = await createFullPresetDeck(page, name);
   await expect(async () => {
     await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
     await page
@@ -118,7 +125,7 @@ test("元のプリセットデッキを削除すると、写した元に「削�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const presetDeckURL = await registerFullPresetDeck(page, name);
+  const presetDeckURL = await createFullPresetDeck(page, name);
   await expect(async () => {
     await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
     await page
@@ -147,7 +154,7 @@ test("名前を変えると詳細の見出しと入力欄が新しい名前に�
   page,
 }) => {
   await loginAsOperator(page);
-  await registerStarterDeck(page, uniqueName("火・地"));
+  await page.goto(await createStarterDeck(page, uniqueName("火・地")));
   const renamed = uniqueName("炎・大地");
 
   const rename = section(page, "名前の変更");
@@ -163,10 +170,15 @@ test("カードを探して枚数を保存すると入れたカードに出て�
   page,
 }) => {
   await loginAsOperator(page);
-  const { deckURL, cards } = await registerFullStarterDeck(
-    page,
-    uniqueName("火・地"),
-  );
+  const { id, names: cards } = await createTenCreatures(page);
+  const deckURL = await createStarterDeck(page, uniqueName("火・地"));
+  await searchCards(page, deckURL, id, 10);
+  const candidates = section(page, "カードを探す");
+  for (const card of cards) {
+    await candidates.getByLabel(`${card}の枚数`).fill("4");
+  }
+  await candidates.getByRole("button", { name: "枚数を保存" }).click();
+  await expect(candidates.getByText("枚数を保存しました")).toBeVisible();
   await page.goto(deckURL);
 
   const deckCards = section(page, "入れたカード");
@@ -185,7 +197,7 @@ test("合計が 40 枚でないスターターデッキを公開しようとす�
   page,
 }) => {
   await loginAsOperator(page);
-  await registerStarterDeck(page, uniqueName("作りかけ"));
+  await page.goto(await createStarterDeck(page, uniqueName("作りかけ")));
 
   await section(page, "公開").getByRole("button", { name: "公開する" }).click();
 
@@ -202,7 +214,7 @@ test("入っているカードが公開中でなくなったスターターデ�
   page,
 }) => {
   await loginAsOperator(page);
-  const { deckURL, cards } = await registerFullStarterDeck(
+  const { deckURL, cards } = await createFullStarterDeck(
     page,
     uniqueName("火・地"),
   );
@@ -222,7 +234,8 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  await registerFullStarterDeck(page, name);
+  const { deckURL } = await createFullStarterDeck(page, name);
+  await page.goto(deckURL);
 
   const publish = section(page, "公開");
   await publish.getByRole("button", { name: "公開する" }).click();
@@ -252,7 +265,7 @@ test("状態で絞り込むと、その状態のスターターデッキだけ�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  await registerStarterDeck(page, name);
+  await createStarterDeck(page, name);
   await expect(async () => {
     await page.goto(`/starter-decks?name=${encodeURIComponent(name)}`);
     await expect(deckRows(page)).toHaveCount(1, { timeout: 1_000 });
@@ -276,8 +289,8 @@ test("削除を確かめてから削除すると一覧の画面に移り、詳�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("水・風");
-  await registerStarterDeck(page, name);
-  const deckURL = new URL(page.url()).pathname;
+  const deckURL = await createStarterDeck(page, name);
+  await page.goto(deckURL);
 
   const del = section(page, "削除");
   await del.getByRole("button", { name: "削除する" }).click();
@@ -300,7 +313,8 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const { deckURL } = await registerFullStarterDeck(page, name);
+  const { deckURL } = await createFullStarterDeck(page, name);
+  await page.goto(deckURL);
   const other = await page.context().newPage();
   await other.goto(deckURL);
   await expect(other.getByRole("heading", { level: 1 })).toHaveText(name);
@@ -329,7 +343,7 @@ test("公開中の数の上限に達していると、上限の数が出て準�
   // テストの core の公開中の上限は既定の 2。ほかのテストは公開したら使用不可にして終えるため、ここで 2 つ公開すれば埋まる
   const decks = [];
   for (const base of ["火・地", "水・風", "光・闇"]) {
-    decks.push((await registerFullStarterDeck(page, uniqueName(base))).deckURL);
+    decks.push((await createFullStarterDeck(page, uniqueName(base))).deckURL);
   }
   const published: string[] = [];
   try {
