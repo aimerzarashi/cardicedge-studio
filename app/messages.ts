@@ -1,6 +1,6 @@
 // core は文言を返さず、理由の型と値だけを返すため、文言はここで作る
 
-import type { PublishProblem } from "./boards/publish-problems";
+import type { PublishProblem } from "./boards/publish-problem";
 
 export function nameErrorMessage(
   errors: { __typename: string; max?: number }[],

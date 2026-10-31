@@ -105,8 +105,16 @@ lint:
 TEST_PROJECT := -p studio-test -f compose.test.yaml
 TEST_COMPOSE := CORE_VERSION=$(CORE_VERSION) docker compose $(TEST_PROJECT)
 
+# 単体テスト（node --test。純粋な関数の決まり）。core・DB・ブラウザを起動せず、テスト用のランナーのコンテナだけを依存なしで一度動かす。
+# 落ちたら E2E を待たずに止める（make test の前提にしている）。記録を残す環境が無いため save-test-failure.sh は呼ばない
+.PHONY: test-unit
+test-unit:
+	$(TEST_COMPOSE) run --rm --no-deps --build studio-test-runner pnpm test:unit; \
+	status=$$?; \
+	$(TEST_COMPOSE) --profile runner down -v; exit $$status
+
 .PHONY: test
-test:
+test: test-unit
 	$(TEST_COMPOSE) up -d --build --wait && $(TEST_COMPOSE) run --rm --build studio-test-runner; \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then CORE_VERSION=$(CORE_VERSION) scripts/save-test-failure.sh docker compose $(TEST_PROJECT); fi; \

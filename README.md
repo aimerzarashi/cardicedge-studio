@@ -18,7 +18,8 @@ Node.js・pnpm はコンテナ内で動くため、ホストへのインスト�
 make up      # core（../core）を起動してから、開発サーバー（Next.js）・envoy・Playwright のブラウザを起動
 make fmt     # biome でフォーマットを修正
 make lint    # biome check・型チェック・migrations の検査・better-auth の設定と開発用 DB の差分の検査
-make test    # 専用の core・DB と本番用イメージの studio を使い捨てで起動し、Playwright で確認
+make test-unit # 単体テスト（pnpm test:unit = node --test。core・DB を起動しない。make test も最初に流す）
+make test    # 単体テストを流してから、専用の core・DB と本番用イメージの studio を使い捨てで起動し、Playwright で確認
 make tunnel  # （任意）Cloudflare Quick Tunnel を起動し、外部公開用 URL を表示
 make url     # （任意）起動中の Tunnel の URL を再表示
 make migrate # 未適用の migrations だけを Atlas で適用（DB を作り直さない）

@@ -66,8 +66,8 @@ lint:
     # 適用済みのマイグレーションの変更・削除・改名も検査する。比較元は対象ブランチ（main）との分岐点
     - scripts/check-migrations.sh $CI_MERGE_REQUEST_DIFF_BASE_SHA
 
-# migrations を空の DB に Atlas で適用し、better-auth の設定（lib/auth.ts）とスキーマに差分が無いことを確かめる。
-# Playwright のテストは CI では未実行（make test でローカルで確かめる）
+# 単体テスト（node --test。make test-unit と同じ）を流し、migrations を空の DB に Atlas で適用し、better-auth の設定（lib/auth.ts）と
+# スキーマに差分が無いことを確かめる。Playwright のテストは CI では未実行（make test でローカルで確かめる）
 test:
   stage: test
   extends: [.on-mr, .pnpm]
@@ -85,6 +85,7 @@ test:
     JWT_ISSUER: diecardomain-studio
     JWT_AUDIENCE: diecardomain-core
   script:
+    - pnpm test:unit
     - curl -sSfL -o /usr/local/bin/atlas "https://release.ariga.io/atlas/atlas-community-linux-amd64-v${ATLAS_VERSION}"
     - chmod +x /usr/local/bin/atlas
     - atlas migrate apply --dir file://migrations --url "$DATABASE_URL?sslmode=disable"

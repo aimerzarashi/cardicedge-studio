@@ -15,7 +15,7 @@ import {
   type Pair,
   type Tile,
 } from "../board-layout";
-import type { PublishProblem } from "../publish-problems";
+import type { PublishProblem } from "../publish-problem";
 
 export type Layout = Cells & { width: number; height: number };
 
