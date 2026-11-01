@@ -35,6 +35,13 @@ services:
       PLAYWRIGHT_PUBLIC_URL: http://studio-envoy:10000
       # Playwright のテストが、届いたメールを Mailpit の API で読む
       PLAYWRIGHT_MAILPIT_URL: http://studio-mailpit:8025
+      # トレースの送り先（OpenTelemetry の標準の環境変数。studio#50）。受け手（core の compose の otel-lgtm）が止まっていても studio は普通に動く
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: studio
+    # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける。理由は core の compose の otel-lgtm の注記（core#74）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # 共有ネットワーク（diecardomain-studio）には参加しない。参加すると core・game から envoy を通らずに直接届き、
     # x-client-ip を自由に付けてレート制限をすり抜けられる（studio#11）。core を呼ぶときは studio-envoy の /studio/graphql を通す
     depends_on:
@@ -79,6 +86,10 @@ services:
       POSTGRES_USER: studio_user
       POSTGRES_PASSWORD: studio_password
       POSTGRES_DB: studio
+    # 名前付きのボリュームにし、make down で消さない。名前の無いボリュームだと down のたびに空になり、seed が作り直す
+    # オペレーターの ID（JWT の sub）が変わって、core の DB に残った紐づけと合わなくなる（studio#19）
+    volumes:
+      - studio-db-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U studio_user -d studio"]
       interval: 2s
@@ -139,6 +150,7 @@ services:
 
 volumes:
   node-cache:
+  studio-db-data:
 
 # core と共有する studio 用のネットワーク（core の make up で作成される）。studio 側は studio-envoy だけが参加する。
 # game 用のネットワーク（diecardomain-game）とは分け、game から studio に内部から届く経路を無くす（studio#30・core#45）

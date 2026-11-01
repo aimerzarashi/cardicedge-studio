@@ -11,10 +11,15 @@ if (!wsEndpoint || !baseURL) {
 
 export default defineConfig({
   testDir: "./tests",
-  reporter: "list",
+  // HTML のレポートは、人が落ちたテストの画面・Playwright の trace・trace id（注記）を 1 か所で見るため。
+  // 自動で開くとコンテナの中でサーバーを立てて止まるため、開かない
+  reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
     connectOptions: { wsEndpoint },
+    // 落ちたテストだけ、あとから操作と通信を追えるよう残す（たまに落ちるテストは再現を探さず、起きたときの記録で調べる。studio#46）
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

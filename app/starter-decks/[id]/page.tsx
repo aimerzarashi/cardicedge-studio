@@ -14,6 +14,7 @@ import { STATUS_LABELS } from "@/lib/status";
 import { type CardCountRow, CardCountsForm } from "../../card-counts-form";
 import { DeleteDeck } from "../../delete-deck";
 import { RenameDeckForm } from "../../rename-deck-form";
+import { StatusButton } from "../../status-button";
 import {
   deleteStarterDeck,
   publishStarterDeck,
@@ -21,7 +22,6 @@ import {
   retireStarterDeck,
   setStarterDeckCardCounts,
 } from "./actions";
-import { StatusButton } from "./status-button";
 
 const starterDeckQuery = graphql(`
   query StarterDeck($id: UUID!) {

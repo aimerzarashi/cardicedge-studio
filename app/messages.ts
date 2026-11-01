@@ -1,5 +1,7 @@
 // core は文言を返さず、理由の型と値だけを返すため、文言はここで作る
 
+import type { PublishProblem } from "./boards/publish-problem";
+
 export function nameErrorMessage(
   errors: { __typename: string; max?: number }[],
 ): string {
@@ -85,4 +87,146 @@ export const STARTER_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
 export function starterDeckLimitReachedMessage(max: number): string {
   return `公開中のスターターデッキは ${max} 個までです。ほかのものを使用不可にすると公開できます`;
+}
+
+export const BOARD_NOT_DRAFT =
+  "準備中でないため、変えられません。最新の状態を表示しています";
+
+export const BOARD_NOT_PUBLISHABLE = "公開できません。理由を確認してください";
+
+// ボードを公開できない理由（種類は __typename、数は core が返した座標の数）。core の message は開発者向けのため出さない
+export function boardPublishProblemMessage(problem: PublishProblem): string {
+  switch (problem.__typename) {
+    case "BaseCountProblem":
+      return problem.positions.length === 0
+        ? "拠点がありません。ちょうど 1 つ置いてください"
+        : `拠点が ${problem.positions.length} つあります。ちょうど 1 つにしてください`;
+    case "NoCheckpointProblem":
+      return "チェックポイントがありません。1 つ以上置いてください";
+    case "UnreachableTilesProblem":
+      return `拠点から行けないマスが ${problem.positions.length} つあります`;
+    case "UnpairedTilesProblem":
+      return `相手のいない転送円・橋が ${problem.positions.length} つあります。対にするか、消してください`;
+  }
+}
+
+// ボードのレイアウトを保存できないときの誤り（範囲は core が返したものを使う。座標は (列, 行) の順で、core と同じ 0 始まり）
+export function boardSizeErrorMessage(
+  label: "幅" | "高さ",
+  error: { min?: number; max?: number },
+): string {
+  return `${label}は ${error.min}〜${error.max} にしてください`;
+}
+
+export function boardTileErrorMessage(
+  position: { x: number; y: number },
+  error: { __typename: string; field: string; min?: number; max?: number },
+): string {
+  const at = `(${position.x}, ${position.y})`;
+  switch (error.__typename) {
+    case "FieldOutOfRange": {
+      const axis = error.field.endsWith(".x") ? "列" : "行";
+      return `${at} のマスが格子の外です。${axis}は ${error.min}〜${error.max} の範囲に置いてください`;
+    }
+    case "FieldDuplicated":
+      return `${at} のマスが重複しています`;
+    default:
+      return `${at} のマスの入力が正しくありません`;
+  }
+}
+
+export function boardConnectionErrorMessage(
+  connection: { a: { x: number; y: number }; b: { x: number; y: number } },
+  error: { __typename: string },
+): string {
+  const ends = `(${connection.a.x}, ${connection.a.y}) と (${connection.b.x}, ${connection.b.y}) のつながり`;
+  switch (error.__typename) {
+    case "FieldNotFound":
+      return `${ends}の端にマスがありません`;
+    case "FieldNotAdjacent":
+      return `${ends}は、上下左右に隣り合うマスどうしではありません`;
+    case "FieldDuplicated":
+      return `${ends}が重複しています`;
+    default:
+      return `${ends}の入力が正しくありません`;
+  }
+}
+
+// 画面は対の端を転送円・橋のマスから作るため、起こるのは画面とのずれがあったときだけ
+export function boardPairErrorMessage(
+  pair: { a: { x: number; y: number }; b: { x: number; y: number } },
+  error: { __typename: string },
+): string {
+  const ends = `(${pair.a.x}, ${pair.a.y}) と (${pair.b.x}, ${pair.b.y}) の対`;
+  switch (error.__typename) {
+    case "FieldNotFound":
+      return `${ends}の端にマスがありません`;
+    case "FieldNotPairable":
+      return `${ends}の端が、転送円でも橋でもありません`;
+    case "FieldPairKindMismatch":
+      return `${ends}が、転送円と橋の組み合わせです。同じ種類どうしにしてください`;
+    case "FieldPairedWithSelf":
+      return `${ends}が、同じマスどうしです`;
+    case "FieldDuplicated":
+      return `${ends}が重複しています（同じマスは 1 つの対にだけ入れられます）`;
+    default:
+      return `${ends}の入力が正しくありません`;
+  }
+}
+
+export const BOARD_CHECK_FAILED =
+  "公開できない理由を確かめられませんでした。一覧と印は直前のものです";
+
+export const BOARD_LAYOUT_INVALID = "レイアウトの入力が正しくありません";
+
+// ボードの既定のルールの項目の呼び方（core の項目名から）
+export const RULE_LABELS = {
+  targetMagic: "目標の魔力",
+  startingMagic: "開始時の魔力",
+  lapBonus: "周回のボーナス",
+  checkpointBonus: "チェックポイントのボーナス",
+  roundLimit: "ラウンドの上限",
+  diceMin: "サイコロの目（最小）",
+  diceMax: "サイコロの目（最大）",
+} as const;
+export type RuleField = keyof typeof RULE_LABELS;
+
+export function isRuleField(value: string): value is RuleField {
+  return Object.hasOwn(RULE_LABELS, value);
+}
+
+// 魔力の 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い）。魔力でない項目は 1 刻み
+export function ruleStep(field: RuleField): number {
+  switch (field) {
+    case "roundLimit":
+    case "diceMin":
+    case "diceMax":
+      return 1;
+    default:
+      return 100;
+  }
+}
+
+function ruleLabel(field: string): string {
+  return isRuleField(field) ? RULE_LABELS[field] : field;
+}
+
+// 下限・比べる相手は core が返した値を使う（決まりの値を studio に書き写さない）
+export function boardRuleErrorMessage(error: {
+  __typename: string;
+  field: string;
+  min?: number;
+  than?: string;
+}): string {
+  const label = ruleLabel(error.field);
+  switch (error.__typename) {
+    case "FieldTooSmall":
+      return `${label}は ${error.min} 以上にしてください`;
+    case "FieldNotGreaterThan":
+      return `${label}は${ruleLabel(error.than ?? "")}より大きくしてください`;
+    case "FieldLessThan":
+      return `${label}は${ruleLabel(error.than ?? "")}以上にしてください`;
+    default:
+      return `${label}の入力が正しくありません`;
+  }
 }

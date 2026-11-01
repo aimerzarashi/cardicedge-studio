@@ -1,9 +1,16 @@
+import type { PublishProblem } from "./boards/publish-problem";
 import { cardErrorMessage, formErrorMessage } from "./messages";
 
 // プリセットデッキとスターターデッキの詳細の画面で共通の、フォームの受け渡し
 
 // 操作した結果、画面で知らせること
 export type Notice = { status?: string; error?: string };
+
+// 公開・使用不可にするボタンの結果。公開できなかったボードは、理由の一覧を、画面で見た版（revision）に結びつけて返す
+export type PublishState = Notice & {
+  revision?: number;
+  problems?: PublishProblem[];
+};
 
 // 入力した値と誤りは、画面で見た版（revision）に結びつける。ほかの操作で版が変わった後は、古い版で入力した値を残さない
 export type Kept = { revision?: number };

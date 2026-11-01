@@ -20,6 +20,13 @@ services:
       GAME_JWT_AUDIENCE: diecardomain-core
       # seed のオペレーター（scripts/seed.ts）と同じアドレス。ログインして core を呼ぶと紐づく
       STUDIO_INITIAL_OPERATOR_EMAIL: operator@example.com
+      # トレースとログの送り先（core の compose の otel-lgtm。落ちたテストのトレースの記録に使う。studio#51）。受け手が止まっていても core は普通に動く
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: core
+    # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける（core#74）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "/app", "healthcheck"]
       start_period: 30s
@@ -83,6 +90,13 @@ services:
       CORE_GRAPHQL_URL: http://studio-envoy:10000/studio/graphql
       SMTP_URL: smtp://studio-mailpit:1025
       MAIL_FROM: diecardomain studio <no-reply@diecardomain.example>
+      # トレースの送り先（OpenTelemetry の標準の環境変数。studio#50）。受け手（core の compose の otel-lgtm）が止まっていても studio は普通に動く
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_SERVICE_NAME: studio
+    # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける。理由は core の compose の otel-lgtm の注記（core#74）
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       start_period: 60s

@@ -1,4 +1,494 @@
 """
+拠点がちょうど 1 つでない（公開するボードの拠点はちょうど 1 つ）
+"""
+type BaseCountProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	置いてある拠点の座標（行 → 列の順。拠点が無ければ空）
+	"""
+	positions: [BoardPosition!]!
+}
+"""
+拠点（公開するボードにちょうど 1 つ）
+"""
+type BaseTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
+ボード
+"""
+type Board {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべてのボードの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: BoardStatus!
+	"""
+	幅（列の数。範囲は studioRules.board。登録した直後は 8 を範囲に収めた値）
+	"""
+	width: Int!
+	"""
+	高さ（行の数。範囲は studioRules.board。登録した直後は 8 を範囲に収めた値）
+	"""
+	height: Int!
+	"""
+	既定のルール（対戦を始めるときの既定の値。始めるときにここから変えられる前提）
+	"""
+	defaultRules: BoardDefaultRules!
+	"""
+	マスの数（種類ごと・土地の属性ごと。置いてあるマスから数えた値）
+	"""
+	tileCounts: BoardTileCounts!
+	"""
+	公開できない理由（空なら公開できる）。保存のたびに、置いてあるマスから投影が計算する。状態によらず計算した結果を返す（公開中のボードは条件を満たしているので空）
+	"""
+	publishProblems: [BoardPublishProblem!]!
+	"""
+	置いてあるマス（置いていない座標は含まない。行 → 列の順: y の小さい順、同じ y では x の小さい順）
+	"""
+	tiles: [BoardTile!]!
+	"""
+	マスどうしのつながり（向きは無い。a の座標が小さい側になり、a → b の順に並べる）
+	"""
+	connections: [BoardConnection!]!
+	"""
+	転送円どうし・橋どうしの対（向きは無い。a の座標が小さい側になり、a → b の順に並べる）。相手のいない転送円・橋は含まれない（公開できない理由 UnpairedTilesProblem になる）
+	"""
+	pairs: [BoardTilePair!]!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+マスどうしのつながり（向きは無い）
+"""
+type BoardConnection {
+	"""
+	片方の端（座標が小さい側。行 → 列の順に比べる）
+	"""
+	a: BoardPosition!
+	"""
+	もう片方の端
+	"""
+	b: BoardPosition!
+}
+"""
+つなぐマスの入力（向きは無い。a と b を入れ替えても同じつながり）
+"""
+input BoardConnectionInput {
+	"""
+	片方の端（マスが置いてある座標）
+	"""
+	a: BoardPositionInput!
+	"""
+	もう片方の端（a の上下左右に隣り合う、マスが置いてある座標）
+	"""
+	b: BoardPositionInput!
+}
+"""
+ボードの既定のルール。対戦を始めるときはこの値から変えられる前提の、既定の値。
+効き方は対戦の決まりで、ここでは値の形だけを決める
+"""
+type BoardDefaultRules {
+	"""
+	目標の魔力（魔力がこの値に届いて拠点に戻ると勝ち。1 以上、開始時の魔力より大きい。登録した直後は 8000）
+	"""
+	targetMagic: Int!
+	"""
+	開始時の魔力（対戦を始めるときの魔力。0 以上。登録した直後は 600）
+	"""
+	startingMagic: Int!
+	"""
+	周回のボーナス（拠点に戻ったときに増える魔力。0 以上。登録した直後は 300）
+	"""
+	lapBonus: Int!
+	"""
+	チェックポイントのボーナス（チェックポイントを通ったときに増える魔力。0 以上。登録した直後は 100）
+	"""
+	checkpointBonus: Int!
+	"""
+	ラウンドの上限（1 以上。上限に達したら、その時点で魔力の多い人が勝つ。登録した直後は 30）
+	"""
+	roundLimit: Int!
+	"""
+	サイコロの目の最小（1 以上。登録した直後は 1）
+	"""
+	diceMin: Int!
+	"""
+	サイコロの目の最大（最小以上。登録した直後は 6）
+	"""
+	diceMax: Int!
+}
+"""
+ボードの一覧の絞り込み
+"""
+input BoardFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [BoardStatus!]
+}
+"""
+名前が、ほかのボードですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type BoardNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でないボードの名前・レイアウト・既定のルールを変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type BoardNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+ボードが無い（削除したものを含む）
+"""
+type BoardNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+公開の条件を満たしていない（拠点がちょうど 1 つ、チェックポイントが 1 つ以上、すべてのマスに拠点からつながりと対をたどって行ける、すべての転送円・橋に対の相手がいる）
+"""
+type BoardNotPublishableError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	公開できない理由の一覧（Board.publishProblems と同じ形と順）
+	"""
+	problems: [BoardPublishProblem!]!
+}
+"""
+格子の座標。x が列、y が行（どちらも 0 始まり）
+"""
+type BoardPosition {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+}
+"""
+つながりの端の座標の入力
+"""
+input BoardPositionInput {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
+公開できない理由（BaseCountProblem・NoCheckpointProblem・UnreachableTilesProblem・UnpairedTilesProblem）。理由は __typename で見分け、
+座標を持つ理由は断片（... on BaseCountProblem 等）で取る
+"""
+interface BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+ボードの詳細の結果
+"""
+union BoardResult = Board | BoardNotFoundError | ForbiddenError
+"""
+ボードの決まり
+"""
+type BoardRules {
+	"""
+	幅・高さの下限（この値を含む。幅・高さに共通）
+	"""
+	minSize: Int!
+	"""
+	幅・高さの上限（この値を含む。幅・高さに共通）
+	"""
+	maxSize: Int!
+}
+"""
+ボードの状態。準備中は名前・レイアウトを自由に変えられ、公開の条件を満たさなくてよい。公開中は公開の条件を満たす。
+使用不可は新しい対戦に使わない
+"""
+enum BoardStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+置いてあるマス（LandTile・BaseTile・CheckpointTile・WarpTile・BridgeTile・SanctuaryTile・ShrineTile・ProphecyShopTile・CardShopTile）。種類は __typename で見分け、種類ごとの項目は断片（... on LandTile 等）で取る
+"""
+interface BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
+土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
+効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
+"""
+enum BoardTileAttribute {
+	"""
+	火（火属性）
+	"""
+	FIRE
+	"""
+	地（地属性）
+	"""
+	EARTH
+	"""
+	水（水属性）
+	"""
+	WATER
+	"""
+	風（風属性）
+	"""
+	WIND
+	"""
+	無（無属性）
+	"""
+	NEUTRAL
+	"""
+	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
+	"""
+	MULTI
+}
+"""
+ボードのマスの数（read model の投影のときに数える）。土地だけが属性を持つので、属性ごとの数の和が土地の数になる
+"""
+type BoardTileCounts {
+	"""
+	土地の数（属性ごとの数の和）
+	"""
+	land: Int!
+	"""
+	拠点の数
+	"""
+	base: Int!
+	"""
+	チェックポイントの数
+	"""
+	checkpoint: Int!
+	"""
+	火属性の土地の数
+	"""
+	fire: Int!
+	"""
+	地属性の土地の数
+	"""
+	earth: Int!
+	"""
+	水属性の土地の数
+	"""
+	water: Int!
+	"""
+	風属性の土地の数
+	"""
+	wind: Int!
+	"""
+	無属性の土地の数
+	"""
+	neutral: Int!
+	"""
+	複属性の土地の数
+	"""
+	multi: Int!
+	"""
+	転送円の数
+	"""
+	warp: Int!
+	"""
+	橋の数
+	"""
+	bridge: Int!
+	"""
+	聖堂の数
+	"""
+	sanctuary: Int!
+	"""
+	ほこらの数
+	"""
+	shrine: Int!
+	"""
+	占い館の数
+	"""
+	prophecyShop: Int!
+	"""
+	カード屋の数
+	"""
+	cardShop: Int!
+}
+"""
+置くマスの入力。land・base・checkpoint・warp・bridge・sanctuary・shrine・prophecyShop・cardShop のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
+"""
+input BoardTileInput @oneOf {
+	"""
+	土地
+	"""
+	land: LandTileInput
+	"""
+	拠点
+	"""
+	base: TilePositionInput
+	"""
+	チェックポイント
+	"""
+	checkpoint: TilePositionInput
+	"""
+	転送円（属性は持たない。対は pairs で指す）
+	"""
+	warp: TilePositionInput
+	"""
+	橋（属性は持たない。対は pairs で指す）
+	"""
+	bridge: TilePositionInput
+	"""
+	聖堂（属性は持たない）
+	"""
+	sanctuary: TilePositionInput
+	"""
+	ほこら（属性は持たない）
+	"""
+	shrine: TilePositionInput
+	"""
+	占い館（属性は持たない）
+	"""
+	prophecyShop: TilePositionInput
+	"""
+	カード屋（属性は持たない）
+	"""
+	cardShop: TilePositionInput
+}
+"""
+転送円どうし・橋どうしの対（向きは無い。離れていてよい）
+"""
+type BoardTilePair {
+	"""
+	片方の端（座標が小さい側。行 → 列の順に比べる）
+	"""
+	a: BoardPosition!
+	"""
+	もう片方の端
+	"""
+	b: BoardPosition!
+}
+"""
+対にするマスの入力（転送円どうし・橋どうし。向きは無い。a と b を入れ替えても同じ対で、離れていてよい）
+"""
+input BoardTilePairInput {
+	"""
+	片方の端（転送円または橋が置いてある座標）
+	"""
+	a: BoardPositionInput!
+	"""
+	もう片方の端（a と同じ種類のマスが置いてある、a と違う座標）
+	"""
+	b: BoardPositionInput!
+}
+"""
+ボードの一覧の 1 ページ（名前の順）
+"""
+type BoardsConnection {
+	"""
+	このページのボード
+	"""
+	edges: [BoardsEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+ボードの一覧の 1 件と、その位置
+"""
+type BoardsEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	ボード
+	"""
+	node: Board!
+}
+"""
+ボードの一覧の結果
+"""
+union BoardsResult = BoardsConnection | ValidationErrors | ForbiddenError
+"""
+橋（通ると、歩数を使わずに対の相手の橋から出る。2 つで 1 マスの両端で、止まるのは入った方と反対側の端）。属性は持たない。
+対は Board.pairs で持つ（相手のいない橋は保存できるが、公開できない）
+"""
+type BridgeTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
 カード（Creature・Item・Spell）。種類は __typename で見分け、種類ごとの項目は断片（... on Creature 等）で取る
 """
 interface Card {
@@ -89,6 +579,19 @@ type CardNotFoundError {
 	message: String!
 }
 """
+カード屋（止まると、用意されたカードから 1 枚買える）。属性は持たない
+"""
+type CardShopTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
 カードの状態。準備中は自由に変えられ、デッキに入れられず、game に写さない。公開中はデッキに入れられ、game に写す。
 使用不可は新しくデッキに入れられないが、プレイヤーが持っているので game には写す
 """
@@ -118,6 +621,165 @@ enum CardType {
 カードの一覧の結果
 """
 union CardsResult = CardConnection | ValidationErrors | ForbiddenError
+"""
+ボードの既定のルールを変える入力（変えた後の 7 つの値の全体）
+"""
+input ChangeBoardDefaultRulesInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+	"""
+	目標の魔力（1 以上。開始時の魔力より大きくなければ入力の誤り）
+	"""
+	targetMagic: Int!
+	"""
+	開始時の魔力（0 以上）
+	"""
+	startingMagic: Int!
+	"""
+	周回のボーナス（0 以上）
+	"""
+	lapBonus: Int!
+	"""
+	チェックポイントのボーナス（0 以上）
+	"""
+	checkpointBonus: Int!
+	"""
+	ラウンドの上限（1 以上）
+	"""
+	roundLimit: Int!
+	"""
+	サイコロの目の最小（1 以上）
+	"""
+	diceMin: Int!
+	"""
+	サイコロの目の最大（最小以上でなければ入力の誤り）
+	"""
+	diceMax: Int!
+}
+"""
+ボードの既定のルールの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
+"""
+union ChangeBoardDefaultRulesResult = ChangeBoardDefaultRulesSuccess | ValidationErrors | BoardNotFoundError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードの既定のルールを変えた（前と同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeBoardDefaultRulesSuccess {
+	"""
+	変えたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+ボードのレイアウトを変える入力（変えた後の全体。前の内容は引き継がれず、ここに無いマス・つながりは消える）
+"""
+input ChangeBoardLayoutInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+	"""
+	幅（studioRules.board の範囲の中。外なら入力の誤り）
+	"""
+	width: Int!
+	"""
+	高さ（studioRules.board の範囲の中。外なら入力の誤り）
+	"""
+	height: Int!
+	"""
+	置くマスの全体（同じ座標を 2 回入れると入力の誤り）
+	"""
+	tiles: [BoardTileInput!]!
+	"""
+	つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り）
+	"""
+	connections: [BoardConnectionInput!]!
+	"""
+	対の全体（転送円どうし・橋どうし。端にマスが置いてあり、同じ種類で、別の座標であること。同じマスを 2 つの対に入れる、同じ対を 2 回入れると入力の誤り。相手のいない転送円・橋は保存できる）。対が無ければ空のリスト
+	"""
+	pairs: [BoardTilePairInput!]!
+}
+"""
+ボードのレイアウトの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
+"""
+union ChangeBoardLayoutResult = ChangeBoardLayoutSuccess | ValidationErrors | BoardNotFoundError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードのレイアウトを変えた（前と変わらなければ何も変えず、revision も進まない）
+"""
+type ChangeBoardLayoutSuccess {
+	"""
+	変えたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの）
+"""
+input CheckBoardLayoutInput {
+	"""
+	幅（studioRules.board の範囲の中。外なら入力の誤り）
+	"""
+	width: Int!
+	"""
+	高さ（studioRules.board の範囲の中。外なら入力の誤り）
+	"""
+	height: Int!
+	"""
+	置くマスの全体（同じ座標を 2 回入れると入力の誤り）
+	"""
+	tiles: [BoardTileInput!]!
+	"""
+	つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り）
+	"""
+	connections: [BoardConnectionInput!]!
+	"""
+	対の全体（転送円どうし・橋どうし。changeBoardLayout と同じ決まり）。対が無ければ空のリスト
+	"""
+	pairs: [BoardTilePairInput!]!
+}
+"""
+ボードのレイアウトの判定の結果
+"""
+union CheckBoardLayoutResult = CheckBoardLayoutSuccess | ValidationErrors | ForbiddenError
+"""
+レイアウトの判定の結果（保存していない）。公開できる条件を満たしていれば publishProblems は空
+"""
+type CheckBoardLayoutSuccess {
+	"""
+	公開できない理由（公開するときの BoardNotPublishableError.problems と同じ型・順。空なら公開できる）
+	"""
+	publishProblems: [BoardPublishProblem!]!
+}
+"""
+チェックポイント（公開するボードに 1 つ以上）
+"""
+type CheckpointTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
 """
 クリーチャー（カードの種類の 1 つ）
 """
@@ -176,6 +838,32 @@ input DeckCardCountInput {
 	その枚数にする（0〜4。0 にするとデッキから外す）
 	"""
 	count: Int!
+}
+"""
+ボードを削除する入力
+"""
+input DeleteBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+}
+"""
+ボードの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteBoardResult = DeleteBoardSuccess | BoardNotFoundError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードを削除した（名前はほかのボードが使えるようになる）
+"""
+type DeleteBoardSuccess {
+	"""
+	削除したボードの公開用の ID
+	"""
+	id: UUID!
 }
 """
 プリセットデッキを削除する入力
@@ -257,11 +945,55 @@ type FieldInvalidFormat implements FieldError {
 	field: String!
 }
 """
+入力が、別の入力の項目の値より小さい（等しいのは誤りでない。例: サイコロの目の最大が最小より小さい）
+"""
+type FieldLessThan implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	下回ってはいけない相手の入力の項目（例: diceMin）
+	"""
+	than: String!
+}
+"""
+つながりの両端が隣どうし（上下左右に 1 マス）でない（同じ座標を指すものを含む）
+"""
+type FieldNotAdjacent implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: connections.2）
+	"""
+	field: String!
+}
+"""
 入力の ID が指すもの（プリセットデッキに入れるカード等）が無い
 """
 type FieldNotFound implements FieldError {
 	"""
 	誤りのある入力の項目
+	"""
+	field: String!
+}
+"""
+入力が、別の入力の項目の値より大きくない（等しいのも含む。例: 目標の魔力が開始時の魔力以下）
+"""
+type FieldNotGreaterThan implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	大きくなければならない相手の入力の項目（例: startingMagic）
+	"""
+	than: String!
+}
+"""
+対の端のマスが、転送円でも橋でもない
+"""
+type FieldNotPairable implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置と端を含む。例: pairs.2.a）
 	"""
 	field: String!
 }
@@ -281,6 +1013,24 @@ type FieldOutOfRange implements FieldError {
 	範囲の上限（この値を含む）
 	"""
 	max: Int!
+}
+"""
+対の両端が、転送円と橋（組めるのは同じ種類どうしだけ）
+"""
+type FieldPairKindMismatch implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: pairs.2）
+	"""
+	field: String!
+}
+"""
+対の両端が同じ座標（自分自身と組んでいる）
+"""
+type FieldPairedWithSelf implements FieldError {
+	"""
+	誤りのある入力の項目（一覧の中の位置を含む。例: pairs.2）
+	"""
+	field: String!
 }
 """
 入力が空（前後の空白だけの場合を含む）
@@ -303,6 +1053,19 @@ type FieldTooLong implements FieldError {
 	上限の文字数
 	"""
 	max: Int!
+}
+"""
+入力が下限より小さい（上限は無い）
+"""
+type FieldTooSmall implements FieldError {
+	"""
+	誤りのある入力の項目
+	"""
+	field: String!
+	"""
+	下限（この値を含む）
+	"""
+	min: Int!
 }
 """
 合計がちょうど決まった値でない（公開するスターターデッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
@@ -343,6 +1106,15 @@ type FieldUnavailable implements FieldError {
 操作する権限が無い（JWT は正しいが、core のオペレーターとして登録されていない等）
 """
 type ForbiddenError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中のボードを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidBoardStatusTransitionError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
@@ -395,7 +1167,104 @@ type Item implements Card {
 	"""
 	updatedAt: DateTime!
 }
+"""
+土地（ふつうのマス。公開するボードの、拠点・チェックポイント以外のマス）
+"""
+type LandTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+	"""
+	属性
+	"""
+	attribute: BoardTileAttribute!
+}
+"""
+置く土地の入力
+"""
+input LandTileInput {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+	"""
+	属性
+	"""
+	attribute: BoardTileAttribute!
+}
 type Mutation {
+	"""
+	ボードを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerBoard(
+		"""
+		登録するボード
+		"""
+		input: RegisterBoardInput!
+	): RegisterBoardResult!
+	"""
+	ボードの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameBoard(
+		"""
+		変える内容
+		"""
+		input: RenameBoardInput!
+	): RenameBoardResult!
+	"""
+	ボードのレイアウト（大きさ・マス・つながり）を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	changeBoardLayout(
+		"""
+		変える内容
+		"""
+		input: ChangeBoardLayoutInput!
+	): ChangeBoardLayoutResult!
+	"""
+	ボードの既定のルールを変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	changeBoardDefaultRules(
+		"""
+		変える内容
+		"""
+		input: ChangeBoardDefaultRulesInput!
+	): ChangeBoardDefaultRulesResult!
+	"""
+	ボードを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteBoard(
+		"""
+		削除するボード
+		"""
+		input: DeleteBoardInput!
+	): DeleteBoardResult!
+	"""
+	ボードを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishBoard(
+		"""
+		公開するボード
+		"""
+		input: PublishBoardInput!
+	): PublishBoardResult!
+	"""
+	ボードを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireBoard(
+		"""
+		使用不可にするボード
+		"""
+		input: RetireBoardInput!
+	): RetireBoardResult!
 	"""
 	カードを公開中にする（紐づいたオペレーターだけ。準備中・使用不可から）
 	"""
@@ -542,6 +1411,15 @@ type Mutation {
 	): RetireStarterDeckResult!
 }
 """
+チェックポイントが 1 つも無い（公開するボードのチェックポイントは 1 つ以上）
+"""
+type NoCheckpointProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 ページの情報
 """
 type PageInfo {
@@ -657,6 +1535,49 @@ union PresetDeckResult = PresetDeck | PresetDeckNotFoundError | ForbiddenError
 """
 union PresetDecksResult = PresetDeckConnection | ValidationErrors | ForbiddenError
 """
+占い館（止まると、選んだ種類のカードを自分の山札から 1 枚引ける）。属性は持たない
+"""
+type ProphecyShopTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
+ボードを公開する入力
+"""
+input PublishBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+}
+"""
+ボードの公開の結果（準備中・使用不可から公開中にできる。公開の条件を満たさなければ公開できない）
+"""
+union PublishBoardResult = PublishBoardSuccess | BoardNotFoundError | BoardNotPublishableError | RevisionConflictError | ForbiddenError
+"""
+ボードを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishBoardSuccess {
+	"""
+	公開したボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開したボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 カードを公開中にする入力
 """
 input PublishCardInput {
@@ -717,6 +1638,43 @@ type PublishStarterDeckSuccess {
 	revision: Int!
 }
 type Query {
+	"""
+	ボードの一覧（紐づいたオペレーターだけ）
+	"""
+	boards(
+		"""
+		絞り込み
+		"""
+		filter: BoardFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): BoardsResult!
+	"""
+	ボードの詳細（紐づいたオペレーターだけ）
+	"""
+	board(
+		"""
+		ボードの公開用の ID
+		"""
+		id: UUID!
+	): BoardResult!
+	"""
+	ボードのレイアウトを保存せずに判定する（紐づいたオペレーターだけ。ボードを指さず、何も保存せず、イベントも作らない。入力の誤りは changeBoardLayout と同じ決まりと項目で ValidationErrors になり、誤りが無ければ公開できない理由を、公開するときと同じ判定で返す。保存と違い、準備中でなくても、どのボードにも関わらず呼べる）
+	"""
+	checkBoardLayout(
+		"""
+		判定するレイアウトの全体
+		"""
+		input: CheckBoardLayoutInput!
+	): CheckBoardLayoutResult!
 	"""
 	カードの一覧（紐づいたオペレーターだけ）
 	"""
@@ -792,6 +1750,36 @@ type Query {
 		"""
 		id: UUID!
 	): StarterDeckResult!
+	"""
+	studio でマスタを作るときの決まり（紐づいたオペレーターだけ）
+	"""
+	studioRules: StudioRulesResult!
+}
+"""
+ボードを登録する入力
+"""
+input RegisterBoardInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+ボードの登録の結果
+"""
+union RegisterBoardResult = RegisterBoardSuccess | ValidationErrors | BoardNameAlreadyInUseError | ForbiddenError
+"""
+ボードを登録した（準備中。四角形の 8×8（範囲の外なら範囲に収めた値）で、マスもつながりも無い）
+"""
+type RegisterBoardSuccess {
+	"""
+	登録したボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録したボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
 }
 """
 クリーチャーを登録する入力
@@ -938,6 +1926,40 @@ type RegisterStarterDeckSuccess {
 	revision: Int!
 }
 """
+ボードの名前を変える入力
+"""
+input RenameBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+ボードの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameBoardResult = RenameBoardSuccess | ValidationErrors | BoardNotFoundError | BoardNameAlreadyInUseError | BoardNotDraftError | RevisionConflictError | ForbiddenError
+"""
+ボードの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameBoardSuccess {
+	"""
+	変えたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 プリセットデッキの名前を変える入力
 """
 input RenamePresetDeckInput {
@@ -1002,6 +2024,36 @@ type RenameStarterDeckSuccess {
 	id: UUID!
 	"""
 	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+ボードを使用不可にする入力
+"""
+input RetireBoardInput {
+	"""
+	ボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたボードの revision
+	"""
+	revision: Int!
+}
+"""
+ボードの使用不可の結果
+"""
+union RetireBoardResult = RetireBoardSuccess | BoardNotFoundError | InvalidBoardStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+ボードを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireBoardSuccess {
+	"""
+	使用不可にしたボードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にしたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -1075,6 +2127,19 @@ type RevisionConflictError {
 	message: String!
 }
 """
+聖堂（通る・止まると、属性ごとの品物を売り買いできる）。属性は持たない
+"""
+type SanctuaryTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
+}
+"""
 プリセットデッキのカードの枚数を変える入力
 """
 input SetPresetDeckCardCountsInput {
@@ -1141,6 +2206,19 @@ type SetStarterDeckCardCountsSuccess {
 	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
+}
+"""
+ほこら（止まると、ランダムで特別なことが起きる）。属性は持たない
+"""
+type ShrineTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
 }
 """
 スペル（カードの種類の 1 つ）
@@ -1339,9 +2417,61 @@ enum StarterDeckStatus {
 """
 union StarterDecksResult = StarterDeckConnection | ValidationErrors | ForbiddenError
 """
+studio でマスタを作るときの決まり
+"""
+type StudioRules {
+	"""
+	ボードの決まり
+	"""
+	board: BoardRules!
+}
+"""
+studio の決まりの結果
+"""
+union StudioRulesResult = StudioRules | ForbiddenError
+"""
+置く拠点・チェックポイント・転送円・橋・施設の座標の入力
+"""
+input TilePositionInput {
+	"""
+	列（0 以上、幅 − 1 以下）
+	"""
+	x: Int!
+	"""
+	行（0 以上、高さ − 1 以下）
+	"""
+	y: Int!
+}
+"""
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
 """
 scalar UUID
+"""
+対の相手のいない転送円・橋がある（公開するボードのすべての転送円・橋に、対の相手がいる）。拠点の数によらず判定する
+"""
+type UnpairedTilesProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	相手のいない転送円・橋の座標（行 → 列の順）
+	"""
+	positions: [BoardPosition!]!
+}
+"""
+拠点からつながりと対をたどって行けないマスがある（拠点がちょうど 1 つのときだけ判定する。対の 2 マスは隣どうしと同じに道として数える）
+"""
+type UnreachableTilesProblem implements BoardPublishProblem {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	行けないマスの座標（行 → 列の順）
+	"""
+	positions: [BoardPosition!]!
+}
 """
 入力の誤り（操作は行われていない）
 """
@@ -1350,4 +2480,18 @@ type ValidationErrors {
 	項目ごとの誤り（1 件以上）
 	"""
 	errors: [FieldError!]!
+}
+"""
+転送円（ぴったり止まると、対の相手の転送円へ移る。通り過ぎるだけなら移らない）。属性は持たない。
+対は Board.pairs で持つ（相手のいない転送円は保存できるが、公開できない）
+"""
+type WarpTile implements BoardTile {
+	"""
+	列
+	"""
+	x: Int!
+	"""
+	行
+	"""
+	y: Int!
 }

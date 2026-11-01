@@ -1,19 +1,22 @@
 import type { Page } from "@playwright/test";
 import {
+  createDraftCreatures,
+  createPublishedCreatures,
   loginAsOperator,
-  registerCreature,
   retireCard,
   uniqueName,
 } from "./card";
 import { expect, test } from "./fixtures";
 import {
+  createPresetDeck,
   registerAndOpen,
-  registerCreatures,
   registerPresetDeck,
   searchCards,
   section,
 } from "./preset-deck";
 
+// 前準備（カード・プリセットデッキ）は GraphQL で入れ（tests/core.ts）、確かめる画面の操作だけを画面でする。
+// 画面で登録する流れは、1 本目のテストで確かめている
 function deckRows(page: Page) {
   return page.locator("tbody tr");
 }
@@ -44,7 +47,7 @@ test("使われている名前で登録すると名前の重複が表示され�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("水・風");
-  await registerAndOpen(page, name);
+  await createPresetDeck(page, name);
 
   await registerPresetDeck(page, name);
 
@@ -57,7 +60,7 @@ test("名前を変えると詳細の見出しと入力欄が新しい名前に�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  await registerAndOpen(page, name);
+  await page.goto(await createPresetDeck(page, name));
   const renamed = uniqueName("炎・大地");
 
   const rename = section(page, "名前の変更");
@@ -74,9 +77,8 @@ test("カードを探して枚数を保存すると入れたカードに出て�
 }) => {
   await loginAsOperator(page);
   const id = crypto.randomUUID().slice(0, 8);
-  await registerCreatures(page, [`a-${id}`, `b-${id}`]);
-  await registerAndOpen(page, uniqueName("火・地"));
-  const deckURL = new URL(page.url()).pathname;
+  await createPublishedCreatures(page, [`a-${id}`, `b-${id}`], id);
+  const deckURL = await createPresetDeck(page, uniqueName("火・地"));
   await searchCards(page, deckURL, id, 2);
 
   const candidates = section(page, "カードを探す");
@@ -106,9 +108,9 @@ test("枚数が範囲の外だとカードの行に誤りが表示され、入�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("ドラゴン");
-  await registerCreatures(page, [name]);
-  await registerAndOpen(page, uniqueName("火・地"));
-  await searchCards(page, new URL(page.url()).pathname, name, 1);
+  await createPublishedCreatures(page, [name], name);
+  const deckURL = await createPresetDeck(page, uniqueName("火・地"));
+  await searchCards(page, deckURL, name, 1);
 
   const candidates = section(page, "カードを探す");
   await candidates.getByLabel(`${name}の枚数`).fill("5");
@@ -129,8 +131,8 @@ test("削除を確かめてから削除すると一覧の画面に移り、詳�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("水・風");
-  await registerAndOpen(page, name);
-  const deckURL = new URL(page.url()).pathname;
+  const deckURL = await createPresetDeck(page, name);
+  await page.goto(deckURL);
 
   const del = section(page, "削除");
   await del.getByRole("button", { name: "削除する" }).click();
@@ -157,10 +159,11 @@ test("ほかの画面で先に変えられていると、変えずに最新の�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  await registerAndOpen(page, name);
+  const deckURL = await createPresetDeck(page, name);
+  await page.goto(deckURL);
   // 同じオペレーターが同じデッキをもう 1 つのページで開いておく
   const other = await page.context().newPage();
-  await other.goto(page.url());
+  await other.goto(deckURL);
   await expect(other.getByRole("heading", { level: 1 })).toHaveText(name);
 
   const renamed = uniqueName("炎・大地");
@@ -183,12 +186,11 @@ test("ほかの画面で先に変えられていると、変えずに最新の�
 test("カードを探す一覧には公開中のカードだけが出る", async ({ page }) => {
   await loginAsOperator(page);
   const id = crypto.randomUUID().slice(0, 8);
-  await registerCreature(page, `draft-${id}`);
-  await expect(page.getByText(`「draft-${id}」を登録しました`)).toBeVisible();
-  await registerCreatures(page, [`published-${id}`]);
-  await registerAndOpen(page, uniqueName("火・地"));
+  await createDraftCreatures(page, [`draft-${id}`], id);
+  await createPublishedCreatures(page, [`published-${id}`], id);
+  const deckURL = await createPresetDeck(page, uniqueName("火・地"));
 
-  await searchCards(page, new URL(page.url()).pathname, id, 1);
+  await searchCards(page, deckURL, id, 1);
 
   const candidates = section(page, "カードを探す");
   await expect(candidates.getByLabel(`published-${id}の枚数`)).toBeVisible();
@@ -200,9 +202,8 @@ test("探した後に公開中でなくなったカードを入れようとす�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("ドラゴン");
-  await registerCreatures(page, [name]);
-  await registerAndOpen(page, uniqueName("火・地"));
-  const deckURL = new URL(page.url()).pathname;
+  await createPublishedCreatures(page, [name], name);
+  const deckURL = await createPresetDeck(page, uniqueName("火・地"));
   await searchCards(page, deckURL, name, 1);
   const candidates = section(page, "カードを探す");
   await candidates.getByLabel(`${name}の枚数`).fill("2");
