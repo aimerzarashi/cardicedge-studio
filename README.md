@@ -207,7 +207,7 @@ secret だけが漏れた場合、Cookie の署名は作れるが、セッショ
 
 ## DB マイグレーション
 
-core・studio・game で同じ形式（Atlas Community Edition `arigaio/atlas:1.3.6-community`、`migrations/NNNN_name.sql` + `atlas.sum`）にそろえている（方針は core#5、決まりと Atlas の注意点の詳細は core の README）。
+core・studio・game で同じ形式（Atlas Community Edition `arigaio/atlas:1.3.5-community`、`migrations/NNNN_name.sql` + `atlas.sum`）にそろえている（方針は core#5、決まりと Atlas の注意点の詳細は core の README）。
 better-auth の CLI（`auth migrate`）で直接 DB を変えるのではなく、`auth generate` で差分 SQL をファイルに出し、レビューしてから Atlas で適用する。
 
 ### better-auth の設定を変えたとき（プラグインの追加等）
