@@ -97,13 +97,15 @@ services:
     # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける。理由は core の compose の otel-lgtm の注記（core#74）
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # 起動の確かめで better-auth の入口（/api/auth/ok）を読み、その部品を先に読み込ませる。固定のファイル（favicon.ico）だと、最初の
+    # ログインのときに読み込みが重なって遅くなり、テストが表示を待つ上限（5 秒）を超えて落ちたことがあるため（studio#57）
     healthcheck:
       test:
         [
           "CMD",
           "node",
           "-e",
-          "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://localhost:3000/api/auth/ok').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       start_period: 60s
       start_interval: 1s
