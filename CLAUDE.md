@@ -83,7 +83,7 @@
   - 同じ画面の流れを重ねて確かめない。流れが重なるテストは 1 本にまとめ、テスト名で何を保証するかがわかるようにする
   - 見た目（色）は自動のテストにせず、目で確かめる
   - E2E から外したテストは、何で確かめるようになったか（単体テスト・残した E2E・確かめなくてよい理由）を MR に一覧で書く
-- 単体テストは Node 組み込みの `node --test`（Node 24 は型を取り除いて .ts をそのまま読む）で、`describe`/`it` と `node:assert/strict` を使う。標準で足りるのでパッケージは足さない（部品の描画を単体で確かめたくなったら、そのときに Vitest 等を足すか考える）。`pnpm test:unit` で流し（`app/**/*.test.ts`）、`make test` の最初に `make test-unit`（テスト用のランナーのコンテナだけを `--no-deps` で一度動かす。core・DB・ブラウザは起動しない）を流して、落ちたら E2E の環境を起動せずに止める。`make lint` では流さない
+- 単体テストは Node 組み込みの `node --test`（Node 26 は型を取り除いて .ts をそのまま読む）で、`describe`/`it` と `node:assert/strict` を使う。標準で足りるのでパッケージは足さない（部品の描画を単体で確かめたくなったら、そのときに Vitest 等を足すか考える）。`pnpm test:unit` で流し（`app/**/*.test.ts`）、`make test` の最初に `make test-unit`（テスト用のランナーのコンテナだけを `--no-deps` で一度動かす。core・DB・ブラウザは起動しない）を流して、落ちたら E2E の環境を起動せずに止める。`make lint` では流さない
 - 単体テストは調べる元のファイルの隣に `*.test.ts` で置く。JSX を含む `.tsx` は Node が読めないため、部品の中の純粋な関数は `.ts` に出してから単体テストにする（board-view.ts・board-paint.ts 等。振る舞いは変えない）。時間に関わる副作用（layout-editor.tsx の scheduleCheck の 0.3 秒の待ちと古い結果を捨てる番号）は出さず、E2E で確かめる
 - 単体テストで読むファイル（とそこから値を import するファイル）は、値の相対 import に `.ts` の拡張子を付ける（tsconfig の `allowImportingTsExtensions` で許している。Node は拡張子を補わないため）。型だけの import（`import type`）は消えるので、そのままでよい。`@/` で値を import しているファイルは Node が解決できないため、単体テストで読むなら相対パスにする。単体テストで読まない `.tsx` は拡張子を付けない
 - `*.test.ts` は biome・typecheck の対象に入る。本番用イメージのビルドには入れない（.dockerignore の `**/*.test.ts`）

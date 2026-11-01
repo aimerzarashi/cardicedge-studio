@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:24.21.0-bookworm-slim
+ARG NODE_IMAGE=node:26.13.0-bookworm-slim
 
 # pnpm の取得専用ステージ。curl はここでだけ使い、最終イメージには残さない
 FROM ${NODE_IMAGE} AS pnpm
