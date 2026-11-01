@@ -18,8 +18,9 @@ variables:
   # Docker Hub の配布先（タグのパイプラインで push する）
   DOCKERHUB_IMAGE: diecardomain/studio
   DOCKERHUB_MIGRATE_IMAGE: diecardomain/studio-migrate
-  # local/migrate/Dockerfile の FROM と揃える
-  ATLAS_VERSION: "1.3.6"
+  # local/migrate/Dockerfile の FROM と揃える。test ジョブは community 版のバイナリを release.ariga.io から取るので、上げるときは
+  # イメージ（Docker Hub）だけでなくバイナリが置かれているかも確かめる（1.3.6 はイメージだけあり、バイナリは 403 だった。core#60）
+  ATLAS_VERSION: "1.3.5"
 
 # lint / test は main に向かう MR（マイルストーンの MR）で実行する。main への push では実行しない（直前の MR で同じ中身を
 # 確かめているため。マイルストーンのブランチは main に rebase してから MR にする。core#30・studio#22）。
