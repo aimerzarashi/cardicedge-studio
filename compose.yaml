@@ -11,7 +11,12 @@ services:
       - node-cache:/home/node/.cache
     # ホストには公開せず、studio-envoy 経由でアクセスする
     # 開発用オペレーターの seed（冪等）を済ませてから開発サーバーを起動する。テーブルは studio-migrate が先に作る
-    command: ["sh", "-c", "pnpm install --frozen-lockfile && pnpm db:seed && exec pnpm dev --hostname 0.0.0.0"]
+    command:
+      [
+        "sh",
+        "-c",
+        "pnpm install --frozen-lockfile && pnpm db:seed && exec pnpm dev --hostname 0.0.0.0",
+      ]
     environment:
       DATABASE_URL: postgres://studio_user:studio_password@studio-db:5432/studio
       # 開発用の固定値（本番では環境ごとに安全な値を渡す）
@@ -49,7 +54,13 @@ services:
         condition: service_completed_successfully
     # make up (--wait) はこれが healthy になるまで待つ
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/favicon.ico').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       start_period: 120s
       start_interval: 1s
       interval: 10s
@@ -72,7 +83,7 @@ services:
 
   # 送ったメールを受け止める（外には送らない）。ホストから http://localhost:8025 で読む。衝突する場合は STUDIO_MAILPIT_PORT で変更する
   studio-mailpit:
-    image: axllent/mailpit:v1.31.4
+    image: axllent/mailpit:v1.33.0
     ports:
       - ${STUDIO_MAILPIT_PORT:-8025}:8025
 
@@ -98,7 +109,7 @@ services:
 
   # 開発環境の入口。他プロジェクトと衝突する場合は STUDIO_PORT で変更する
   studio-envoy:
-    image: envoyproxy/envoy:v1.39.2
+    image: envoyproxy/envoy:v1.40.2
     ports:
       - ${STUDIO_PORT:-3001}:10000
     volumes:
@@ -111,7 +122,13 @@ services:
       - diecardomain-studio
     # イメージに curl が無いため bash の /dev/tcp で admin の /ready を確認する（HTTP/1.0 は 426 になる）
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9901 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q LIVE <&3"]
+      test:
+        [
+          "CMD",
+          "bash",
+          "-c",
+          "exec 3<>/dev/tcp/localhost/9901 && printf 'GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q LIVE <&3",
+        ]
       start_period: 30s
       start_interval: 1s
       interval: 10s
@@ -120,7 +137,7 @@ services:
 
   # オプション: Cloudflare Quick Tunnel で外部（スマホ等）からアクセスする。make tunnel で起動
   studio-tunnel:
-    image: cloudflare/cloudflared:2026.9.3
+    image: cloudflare/cloudflared:2026.10.7
     profiles: ["tunnel"]
     command: ["tunnel", "--no-autoupdate", "--url", "http://studio-envoy:10000"]
     depends_on:
@@ -129,7 +146,7 @@ services:
 
   # ブラウザ入りの公式イメージ。@playwright/test とバージョンを一致させる
   studio-playwright:
-    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
     init: true
     user: pwuser
     working_dir: /home/pwuser
@@ -138,10 +155,25 @@ services:
     # node_modules/.bin/playwright は pnpm がホストのパスを書いたスクリプトなので使わず、cli.js を node で起動する
     volumes:
       - ./node_modules:/home/pwuser/node_modules:ro
-    command: ["node", "node_modules/@playwright/test/cli.js", "run-server", "--port", "3000", "--host", "0.0.0.0"]
+    command:
+      [
+        "node",
+        "node_modules/@playwright/test/cli.js",
+        "run-server",
+        "--port",
+        "3000",
+        "--host",
+        "0.0.0.0",
+      ]
     # make up (--wait) で、サーバーが接続を受け付けるまで待つ
     healthcheck:
-      test: ["CMD", "node", "-e", "require('net').connect(3000,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('net').connect(3000,'localhost').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))",
+        ]
       start_period: 120s
       start_interval: 1s
       interval: 10s

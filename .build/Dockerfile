@@ -8,7 +8,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends curl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 # package.json の packageManager と版を揃える
-ARG PNPM_VERSION=12.9.1
+ARG PNPM_VERSION=12.16.1
 ENV PNPM_HOME=/pnpm
 RUN curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=$PNPM_VERSION SHELL=bash sh -
 
