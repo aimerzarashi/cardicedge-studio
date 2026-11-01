@@ -11,7 +11,7 @@ USER node
 
 # pnpm は公式のスタンドアロン版（ネイティブ実行ファイル）を入れる。
 # corepack は Node.js 25 以降に同梱されないため使わない。package.json の packageManager と版を揃える
-ARG PNPM_VERSION=12.9.1
+ARG PNPM_VERSION=12.16.1
 ENV PNPM_HOME=/home/node/.local/share/pnpm
 ENV PATH=$PNPM_HOME/bin:$PATH
 RUN curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=$PNPM_VERSION SHELL=bash sh - \
