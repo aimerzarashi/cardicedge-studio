@@ -6,7 +6,6 @@
 
 - Docker Engine + Docker Compose v2 以降
 - make
-- jq（`make test` が落ちたときの記録で、受け手のログを読む。無ければその部分だけ飛ばす）
 
 想定環境は Linux / WSL2（ホストの uid 1000）。開発用コンテナは uid 1000 のユーザーで動き、生成物をホストユーザー所有にする。
 macOS・Windows ネイティブでは、ホストのエディタの型補完・biome 拡張が動かない（node_modules に Linux 用バイナリが入るため）。実行・テスト・lint はコンテナ内で動く。
@@ -69,13 +68,12 @@ core の DB は、core と同じく studio 用・game 用の 2 つ（core_studio
 | `db/core_studio.sql`・`db/core_game.sql`・`db/studio.sql` | 各 DB の中身（pg_dump） | `domain_events` の行で、操作のイベントが保存されていたかを、read model の表（boards 等）で、反映していたかを見る。イベントは保存され read model にも反映していれば、投影の遅れでテストが待ちきれなかっただけと判断できる |
 | `test-results/<テスト>/trace-id.txt` | 落ちたテストの trace id（テストごとに W3C の traceparent を作り、ブラウザの通信と core を直接呼ぶ前準備の両方に付けている。tests/fixtures.ts） | そのテストの studio・core の処理が、この 1 つの trace id でつながっている |
 | `traces/<trace id>/tempo.json` | その trace id の Tempo のトレース（JSON）。studio と core のスパン | `batches[].resource` の `service.name`（studio / core）ごとに `scopeSpans[].spans[]`（`name`・開始と終了の時刻・親子）を読む。Grafana で開くなら http://localhost:3002 の Explore（Tempo）に trace id を入れる（受け手が動いていれば） |
-| `traces/<trace id>/loki.json` | その trace id を持つ core・studio のログ（Loki の query_range の応答。JSON） | `data.result[]` の各 stream の `stream`（`event_id`・`trace_id` 等のメタデータ）と `values[]`（`[時刻(ns), メッセージ]`） |
-| `traces/<trace id>/loki-event-<event_id>.json` | 保存のログのイベント（`event_id`・`entity_type`・`entity_id`・`aggregate_version`）で、その保存より後に絞って引いた core のログ（投影・ポリシーの処理。これらは trace_id を持たずイベントでつながる。event_id だけでは、前に流したテストの同じ番号のログが混ざるため） | 同上。イベントが投影で処理されたか（`duration_ms`・`result`）を見る |
+| `traces/<trace id>/loki.json` | その trace id を持つ core・studio のログと、その保存を処理した投影・ポリシーのログ（`eventdriven: event processed`。`lag_ms`・`duration_ms`・`result` つき。トレースの無い保存、seed 等の処理には付かない）（Loki の query_range の応答。JSON） | `data.result[]` の各 stream の `stream`（`event_id`・`trace_id` 等のメタデータ）と `values[]`（`[時刻(ns), メッセージ]`） |
 | `traces/<trace id>/test-dir.txt` | その trace id のテストの `test-results/` の下のディレクトリ名 | trace id とテストの対応 |
 
 trace id の見つけ方は、落ちたテストの `test-results/<テスト>/trace-id.txt`、`traces/` の下のディレクトリ名と `test-dir.txt`、または HTML のレポートの「Annotations」。HTML のレポートには通ったテストの trace id も出るので、通ったが遅かったテストも受け手で調べられる。テストが通ったときのレポートは `playwright-report/`（git 管理しない。次に流すと作り直す）に残る。AI に調べさせるときは、`test-failures/<日時>/` のディレクトリごと渡す。受け手（core の compose の otel-lgtm）が動いていない・取れないときは、`traces/` は作られないか欠ける（`make test` の終了コードは変わらない）。ログは、`logs/core.log` でも `event_id` で引ける。
 
-記録に無いことは、受け手に Grafana の API で問い合わせる（受け手が動いていて、core の `make down` の前に限る。前に流したテストや開発の環境のログも入っているので、時刻や条件で絞る）。記録を先に読み、足りないときに使う。時刻は Loki が UNIX 時刻の ns、Tempo の検索が s。
+記録に無いことは、受け手に Grafana の API で問い合わせる（受け手が動いていて、core の `make down` の前に限る。前に流したテストや開発の環境のログも入っているので、時刻や条件で絞る）。記録を先に読み、足りないときに使う。時刻は Loki が UNIX 時刻の ns、Tempo の検索が s。出力の整形に jq を使っている（無くても問い合わせはできる）。
 
 ```sh
 G=http://127.0.0.1:3002/api/datasources/proxy/uid

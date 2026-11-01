@@ -33,10 +33,10 @@ loki="$grafana/api/datasources/proxy/uid/loki/loki/api/v1/query_range"
 tempo="$grafana/api/datasources/proxy/uid/tempo/api/traces"
 since="$(( ($(date +%s) - 6 * 3600) * 1000000000 ))"
 
-# 使い方: query <LogQL> <出力ファイル> [始まりの時刻(ns)]
+# 使い方: query <LogQL> <出力ファイル>
 query() {
   curl -fsS --max-time 20 -G "$loki" --data-urlencode "query=$1" \
-    --data-urlencode "start=${3:-$since}" --data-urlencode "limit=5000" --data-urlencode "direction=forward" > "$2"
+    --data-urlencode "start=$since" --data-urlencode "limit=5000" --data-urlencode "direction=forward" > "$2"
 }
 
 for file in "$dir"/test-results/*/trace-id.txt; do
@@ -46,20 +46,9 @@ for file in "$dir"/test-results/*/trace-id.txt; do
   mkdir -p "$out"
   basename "$(dirname "$file")" > "$out/test-dir.txt"
   curl -fsS --max-time 20 "$tempo/$id" > "$out/tempo.json" || { echo "Tempo からトレース $id を取れませんでした" >&2; rm -f "$out/tempo.json"; }
-  # trace_id はログの本文ではなく構造化メタデータのため、本文の検索（|=）ではなくフィルター（| trace_id=）で引く
+  # trace_id はログの本文ではなく構造化メタデータのため、本文の検索（|=）ではなくフィルター（| trace_id=）で引く。
+  # 保存のログも、投影・ポリシーの処理のログ（eventdriven: event processed）も、保存したときの trace_id を持つので、これ 1 回で入る
   query "{service_name=~\"core|studio\"} | trace_id=\"$id\"" "$out/loki.json" || { echo "Loki からトレース $id のログを取れませんでした" >&2; rm -f "$out/loki.json"; }
-  # 投影・ポリシーの処理のログは trace_id を持たず、event_id 等（構造化メタデータ）で保存のログとつながる。
-  # event_id だけで引かないのは、DB ごとの連番でテスト用の環境を作るたびに同じ番号になり、受け手には前に流したテストのログも
-  # 残っていて、別の実行のログが混ざるため（実際に混ざった）。イベントを決める項目をそろえ、保存のログの時刻より後に絞る
-  if [ -f "$out/loki.json" ] && command -v jq > /dev/null; then
-    jq -r '.data.result[] | select(.stream.event_id) | [.stream.event_id, .stream.entity_type, .stream.entity_id, .stream.aggregate_version, .values[0][0]] | @tsv' \
-      "$out/loki.json" | while IFS=$'\t' read -r event type entity version at; do
-      query "{service_name=\"core\"} | event_id=\"$event\" | entity_type=\"$type\" | entity_id=\"$entity\" | aggregate_version=\"$version\"" \
-        "$out/loki-event-$event.json" "$at" || rm -f "$out/loki-event-$event.json"
-    done
-  elif [ -f "$out/loki.json" ]; then
-    echo "jq が無いため、投影・ポリシーの処理のログを取りませんでした（README の「必要なもの」）" >&2
-  fi
 done
 
 echo "テストが落ちたときの記録を $dir に保存しました（見方は README の「テストが落ちたとき」）" >&2
