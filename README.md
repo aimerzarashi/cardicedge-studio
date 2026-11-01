@@ -99,16 +99,16 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 
 | パイプライン                                       | ジョブ             | 内容                                                                                                                                                                                                                                                                                                                              |
 | -------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| マイルストーンのブランチに向かう MR（Issue の MR） | lint・test（手動） | ふだんは実行せず、手元の `make lint`・`make test` で確かめる。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる。CI の手順を変えたとき等、CI で確かめたいときだけ手で動かす（失敗するとマージできなくなる）                                                                         |
+| マイルストーンのブランチに向かう MR（Issue の MR） | check（手動） | ふだんは実行せず、手元の `make lint`・`make test` で確かめる。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる。CI の手順を変えたとき等、CI で確かめたいときだけ手で動かす（失敗するとマージできなくなる） |
 | main に向かう MR（マイルストーンの MR） | check | `make lint` 相当（biome・型・migrations の検査）のあとに、単体テスト・migrations を空の DB に Atlas で適用・better-auth の設定とスキーマの差分の検査を、1 つのジョブで順に流す（GitLab のコンピューティング時間を短縮するため、ジョブごとの準備を 1 回にする。lint で落ちたら test は流さない。studio#55）。Playwright のテストは CI では未実行 |
-| main に向かう MR                                   | build-mr（手動）   | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後）                                                                                                                                                                                           |
+| main に向かう MR                                   | build-mr（手動）   | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（check が通った後）                                                                                                                                                                                           |
 | main                                               | release            | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない。入った MR・Issue へのコメント（どの版で入ったか）は書かない（`.releaserc.json` の `successCommentCondition: false`。書くと GitLab の回数の制限にかかることがあるため。studio#53・core#77） |
 | タグ（`v*`）                                       | deploy             | Docker Hub の `diecardomain/studio:<タグ>`・`:latest` と `diecardomain/studio-migrate:<タグ>`・`:latest` に push                                                                                                                                                                                                                  |
 
 本番用イメージは Next.js の standalone 出力を `node server.js` で動かす（`.build/Dockerfile`）。
 バージョンは Conventional Commits で決まる（`feat:` → マイナー、`fix:` / `perf:` → パッチ、`BREAKING CHANGE` → メジャー）。
 
-Issue の MR では、何もしない手動のジョブだけを置いて実行しない（lint・test は手元の `make lint`・`make test` で確かめる。パイプラインを作らないと「パイプラインが成功する必要がある」の設定でマージできず、その設定は main に向かう MR の歯止めとして残すため）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため。main は直接 push できない設定にしている）。共有 Runner の時間を減らすため（core#30・studio#22）。
+マイルストーンのブランチに向かう Issue の MR では check のジョブを手動にして、ふだんは実行しない（手元の `make lint`・`make test` で確かめる。GitLab のコンピューティング時間を Issue ごとに使わないため）。手動のジョブだけのパイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる（「パイプラインが成功する必要がある」の設定は、main に向かう MR の歯止めとして残す）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため）。main は直接 push できない設定（保護ブランチの push は No one）にして、すべての変更が main に向かう MR の check を通るようにしている（core#30・core#33）。
 
 ## 認証（better-auth）
 
@@ -221,8 +221,8 @@ better-auth の CLI（`auth migrate`）で直接 DB を変えるのではなく�
 - 追加のみ。適用済みのファイルは変更・削除・改名しない。down は無い
 - 例外として、リリース前（本番の DB ができる前）に限り、並びを作り直してよい。作り直したら `migrations/BASELINE` の 1 行目を書き換える（`check-migrations.sh` は比較元とこの行が違えば比べ合わせを飛ばす。core#33）
 - ファイル名は `NNNN_name.sql`（番号は数字だけ）。`-- atlas:txmode none` 等の指示行の直後には空行を入れる
-- lib/auth.ts を変えたのにマイグレーションを作り忘れると、Atlas の適用は通るのに本番でテーブル・列が足りずに壊れる。`scripts/check-auth-schema.sh`（`auth generate` で差分が無いことを確かめる）で検査する（`make lint`・CI の test）
-- 上記と番号の重複・適用済みより小さい番号の追加は、Atlas が検出しないため `scripts/check-migrations.sh`（core と同じもの）で検査する（`make lint`・CI の lint）
+- lib/auth.ts を変えたのにマイグレーションを作り忘れると、Atlas の適用は通るのに本番でテーブル・列が足りずに壊れる。`scripts/check-auth-schema.sh`（`auth generate` で差分が無いことを確かめる）で検査する（`make lint`・CI の check のジョブ（test の手順））
+- 上記と番号の重複・適用済みより小さい番号の追加は、Atlas が検出しないため `scripts/check-migrations.sh`（core と同じもの）で検査する（`make lint`・CI の check のジョブ（lint の手順））
 
 | 環境                          | 実行方法                                                                                                                                              |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
