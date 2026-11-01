@@ -103,7 +103,7 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 | main に向かう MR（マイルストーンの MR） | lint | `make lint` 相当 |
 | main に向かう MR | test | migrations を空の DB に Atlas で適用し、better-auth の設定とスキーマに差分が無いことを確かめる（Playwright のテストは CI では未実行） |
 | main に向かう MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後） |
-| main | release | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない |
+| main | release | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない。入った MR・Issue へのコメント（どの版で入ったか）は書かない（`.releaserc.json` の `successCommentCondition: false`。書くと GitLab の回数の制限にかかることがあるため。studio#53・core#77） |
 | タグ（`v*`） | deploy | Docker Hub の `diecardomain/studio:<タグ>`・`:latest` と `diecardomain/studio-migrate:<タグ>`・`:latest` に push |
 
 本番用イメージは Next.js の standalone 出力を `node server.js` で動かす（`.build/Dockerfile`）。
