@@ -68,3 +68,31 @@ export async function createFullNpcDeck(
   await untilNpcDeckReached(page, deck.id, data.setNpcDeckCardCounts.revision);
   return `/npc-decks/${deck.id}`;
 }
+
+// 公開中の NPC のデッキ（40 枚）を入れ、公開用の ID を返す。NPC のアバターに割り当てる前準備に使う
+export async function createPublishedNpcDeck(
+  page: Page,
+  name: string,
+): Promise<string> {
+  const id = (await createFullNpcDeck(page, name)).replace("/npc-decks/", "");
+  const detail = await callCore(
+    page,
+    `query($id: UUID!) {
+      npcDeck(id: $id) { __typename ... on NpcDeck { revision } }
+    }`,
+    { id },
+  );
+  const data = await callCore(
+    page,
+    `mutation($input: PublishNpcDeckInput!) {
+      publishNpcDeck(input: $input) {
+        __typename
+        ... on PublishNpcDeckSuccess { revision }
+      }
+    }`,
+    { input: { id, revision: detail.npcDeck.revision } },
+  );
+  expectSuccess(data.publishNpcDeck, "PublishNpcDeckSuccess");
+  await untilNpcDeckReached(page, id, data.publishNpcDeck.revision);
+  return id;
+}

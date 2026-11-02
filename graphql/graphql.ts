@@ -236,8 +236,8 @@ export type NpcAvatarFilter = {
 };
 
 /**
- * NPC のアバターの状態。準備中は名前を自由に変えられる。公開中の数に上限は無く、公開の条件も無い。
- * 使用不可は新しい対戦に使わない
+ * NPC のアバターの状態。準備中は名前と使うデッキを自由に変えられる。公開中の数に上限は無い。
+ * 公開中にできるのは、使うデッキに公開中のものが 1 つ以上あるとき。使用不可は新しい対戦に使わない
  */
 export type NpcAvatarStatus =
   /** 準備中（登録したときの状態） */
@@ -464,6 +464,16 @@ export type RetireStarterDeckInput = {
   /** スターターデッキの公開用の ID */
   id: string;
   /** 画面が見ていたスターターデッキの revision */
+  revision: number;
+};
+
+/** NPC のアバターに使うデッキを割り当てる入力 */
+export type SetNpcAvatarDecksInput = {
+  /** 使う NPC のデッキの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じデッキは 2 回入れられない。新しく入れるデッキは公開中のものだけ） */
+  deckIds: Array<string>;
+  /** NPC のアバターの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC のアバターの revision */
   revision: number;
 };
 
@@ -952,6 +962,55 @@ export type PublishNpcAvatarMutation = { publishNpcAvatar:
     | { __typename: 'NpcAvatarNotFoundError' }
     | { __typename: 'PublishNpcAvatarSuccess', id: string, revision: number }
     | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong' }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type SetNpcAvatarDecksMutationVariables = Exact<{
+  input: SetNpcAvatarDecksInput;
+}>;
+
+
+export type SetNpcAvatarDecksMutation = { setNpcAvatarDecks:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcAvatarNotDraftError' }
+    | { __typename: 'NpcAvatarNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'SetNpcAvatarDecksSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong' }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
    };
 
 export type RetireNpcAvatarMutationVariables = Exact<{
@@ -974,8 +1033,20 @@ export type NpcAvatarQueryVariables = Exact<{
 
 export type NpcAvatarQuery = { npcAvatar:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'NpcAvatar', id: string, name: string, status: NpcAvatarStatus, revision: number, registeredAt: string, updatedAt: string }
+    | { __typename: 'NpcAvatar', id: string, name: string, status: NpcAvatarStatus, revision: number, registeredAt: string, updatedAt: string, decks: Array<{ id: string, name: string, status: NpcDeckStatus }> }
     | { __typename: 'NpcAvatarNotFoundError' }
+   };
+
+export type NpcAvatarCandidateDecksQueryVariables = Exact<{
+  filter?: NpcDeckFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type NpcAvatarCandidateDecksQuery = { npcDecks:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckConnection', edges: Array<{ node: { id: string, name: string, totalCount: number } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ValidationErrors' }
    };
 
 export type RegisterNpcAvatarMutationVariables = Exact<{
@@ -1015,7 +1086,7 @@ export type NpcAvatarsQueryVariables = Exact<{
 
 export type NpcAvatarsQuery = { npcAvatars:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'NpcAvatarConnection', edges: Array<{ node: { id: string, name: string, status: NpcAvatarStatus, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'NpcAvatarConnection', edges: Array<{ node: { id: string, name: string, status: NpcAvatarStatus, registeredAt: string, updatedAt: string, decks: Array<{ id: string, name: string }> } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ValidationErrors' }
    };
 
@@ -2182,9 +2253,30 @@ export const PublishNpcAvatarDocument = new TypedDocumentString(`
       id
       revision
     }
+    ... on ValidationErrors {
+      errors {
+        __typename
+      }
+    }
   }
 }
     `) as unknown as TypedDocumentString<PublishNpcAvatarMutation, PublishNpcAvatarMutationVariables>;
+export const SetNpcAvatarDecksDocument = new TypedDocumentString(`
+    mutation SetNpcAvatarDecks($input: SetNpcAvatarDecksInput!) {
+  setNpcAvatarDecks(input: $input) {
+    __typename
+    ... on SetNpcAvatarDecksSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SetNpcAvatarDecksMutation, SetNpcAvatarDecksMutationVariables>;
 export const RetireNpcAvatarDocument = new TypedDocumentString(`
     mutation RetireNpcAvatar($input: RetireNpcAvatarInput!) {
   retireNpcAvatar(input: $input) {
@@ -2207,10 +2299,35 @@ export const NpcAvatarDocument = new TypedDocumentString(`
       revision
       registeredAt
       updatedAt
+      decks {
+        id
+        name
+        status
+      }
     }
   }
 }
     `) as unknown as TypedDocumentString<NpcAvatarQuery, NpcAvatarQueryVariables>;
+export const NpcAvatarCandidateDecksDocument = new TypedDocumentString(`
+    query NpcAvatarCandidateDecks($filter: NpcDeckFilter, $after: String) {
+  npcDecks(filter: $filter, after: $after) {
+    __typename
+    ... on NpcDeckConnection {
+      edges {
+        node {
+          id
+          name
+          totalCount
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcAvatarCandidateDecksQuery, NpcAvatarCandidateDecksQueryVariables>;
 export const RegisterNpcAvatarDocument = new TypedDocumentString(`
     mutation RegisterNpcAvatar($input: RegisterNpcAvatarInput!) {
   registerNpcAvatar(input: $input) {
@@ -2240,6 +2357,10 @@ export const NpcAvatarsDocument = new TypedDocumentString(`
           id
           name
           status
+          decks {
+            id
+            name
+          }
           registeredAt
           updatedAt
         }
