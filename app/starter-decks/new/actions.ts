@@ -96,6 +96,14 @@ const registerStarterDeckFromPresetDeckMutation = graphql(`
         id
         revision
       }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          ... on FieldTooLong {
+            max
+          }
+        }
+      }
     }
   }
 `);
@@ -104,16 +112,18 @@ export async function registerStarterDeckFromPresetDeck(
   _previous: RegisterFromPresetDeckState,
   form: FormData,
 ): Promise<RegisterFromPresetDeckState> {
+  // 中身の正誤は core が判定するため、ここでは形（文字列であること）だけを確かめる
   const presetDeckId = form.get("presetDeckId");
-  if (typeof presetDeckId !== "string") {
+  const name = form.get("name");
+  if (typeof presetDeckId !== "string" || typeof name !== "string") {
     return { error: INVALID_TARGET };
   }
 
   const result = await callCore(registerStarterDeckFromPresetDeckMutation, {
-    input: { presetDeckId },
+    input: { presetDeckId, name },
   });
   if (!result.ok) {
-    return { error: CORE_UNAVAILABLE };
+    return { value: name, error: CORE_UNAVAILABLE };
   }
 
   const registered = result.data.registerStarterDeckFromPresetDeck;
@@ -126,14 +136,13 @@ export async function registerStarterDeckFromPresetDeck(
         return { registeredId: registered.id };
       }
       return redirect(`/starter-decks/${registered.id}`);
-    // 名前は元のプリセットデッキの名前がそのまま入るため、入力欄の誤りにはならない
+    case "ValidationErrors":
+      return { value: name, nameError: nameErrorMessage(registered.errors) };
     case "StarterDeckNameAlreadyInUseError":
-      return {
-        error: `元のプリセットデッキと同じ名前のスターターデッキがすでにあります。${NAME_ALREADY_IN_USE}`,
-      };
+      return { value: name, nameError: NAME_ALREADY_IN_USE };
     case "PresetDeckNotFoundError":
-      return { error: "このプリセットデッキは見つかりません" };
+      return { value: name, error: "このプリセットデッキは見つかりません" };
     case "ForbiddenError":
-      return { error: FORBIDDEN };
+      return { value: name, error: FORBIDDEN };
   }
 }

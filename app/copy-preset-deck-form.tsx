@@ -6,7 +6,9 @@ import type { RegisterFromPresetDeckState } from "./deck-form";
 
 const initialState: RegisterFromPresetDeckState = {};
 
-export function CopyPresetDeckButton({
+// 名前は元から写さず、入れてから作る（元の名前のままだと、同じプリセットデッキから 2 つ目を作ると名前の重複になるため）。
+// 入力欄には最初から元の名前を入れておき、そのままでよければ直さずに作れる
+export function CopyPresetDeckForm({
   action,
   basePath,
   presetDeckId,
@@ -22,17 +24,33 @@ export function CopyPresetDeckButton({
   name: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const errorId = `copy-name-error-${presetDeckId}`;
 
   return (
     <form action={formAction}>
       <input type="hidden" name="presetDeckId" value={presetDeckId} />
+      {/* 送信の後、React は入力欄を defaultValue に戻すため、誤りのときに入力した値が残るよう state の値を渡す */}
+      <input
+        name="name"
+        required
+        aria-label={`${name}からコピーして作るデッキの名前`}
+        defaultValue={state.value ?? name}
+        aria-invalid={state.nameError ? true : undefined}
+        aria-describedby={state.nameError ? errorId : undefined}
+      />{" "}
       <button
         type="submit"
         disabled={isPending}
-        aria-label={`${name}を写して作る`}
+        aria-label={`${name}をコピーして作る`}
       >
-        写して作る
+        コピーして作る
       </button>
+      {state.nameError && (
+        <span id={errorId} role="alert">
+          {" "}
+          {state.nameError}
+        </span>
+      )}
       {state.registeredId !== undefined && (
         <span role="status">
           {" "}

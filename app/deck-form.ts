@@ -12,10 +12,15 @@ export type PublishState = Notice & {
   problems?: PublishProblem[];
 };
 
-// プリセットデッキから写して登録するボタンの結果
+// プリセットデッキからコピーして登録するフォームの結果
 export type RegisterFromPresetDeckState = {
+  // 誤りのときに入力欄に残す値（無ければ元のプリセットデッキの名前を入れる）
+  value?: string;
   // 登録できたが、詳細に反映されるのを待ちきれなかったときの、詳細の ID
   registeredId?: string;
+  // 入力欄の誤り
+  nameError?: string;
+  // 入力欄に結びつかない誤り
   error?: string;
 };
 

@@ -7,7 +7,7 @@ import type {
 } from "@/graphql/graphql";
 import { type CoreResult, callCore } from "@/lib/core";
 import { first } from "@/lib/search-params";
-import { CopyPresetDeckButton } from "../../copy-preset-deck-button";
+import { CopyPresetDeckForm } from "../../copy-preset-deck-form";
 import { registerStarterDeckFromPresetDeck } from "./actions";
 import { RegisterStarterDeckForm } from "./register-starter-deck-form";
 
@@ -32,7 +32,7 @@ const copySourcePresetDecksQuery = graphql(`
   }
 `);
 
-// 写し元を探す条件は URL に持つ（再読み込み・共有で同じ画面に戻るため）
+// コピー元を探す条件は URL に持つ（再読み込み・共有で同じ画面に戻るため）
 function pageURL(name: string, after?: string): string {
   const params = new URLSearchParams();
   if (name !== "") {
@@ -70,9 +70,9 @@ export default async function NewStarterDeckPage({
         <RegisterStarterDeckForm />
       </section>
       <section aria-labelledby="copy-heading">
-        <h2 id="copy-heading">プリセットデッキから写して作る</h2>
+        <h2 id="copy-heading">プリセットデッキからコピーして作る</h2>
         <p>
-          名前・カード・枚数を写して作ります。写した後に元を直しても変わりません。
+          カード・枚数をコピーし、名前を決めて作ります。コピーした後に元を直しても変わりません。
         </p>
         <Form action="/starter-decks/new">
           <label>
@@ -138,7 +138,7 @@ function PresetDecks({
                     </td>
                     <td>{node.totalCount}</td>
                     <td>
-                      <CopyPresetDeckButton
+                      <CopyPresetDeckForm
                         action={registerStarterDeckFromPresetDeck}
                         basePath="/starter-decks"
                         presetDeckId={node.id}
