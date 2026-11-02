@@ -1,4 +1,9 @@
 import type { Page } from "@playwright/test";
+import {
+  npcAvatarRevisionQuery,
+  registerNpcAvatarMutation,
+  setNpcAvatarDecksMutation,
+} from "@/app/npc-avatars/operations";
 import { callCore, expectSuccess, untilReached } from "./core";
 import { createPublishedNpcDeck } from "./npc-deck";
 
@@ -10,29 +15,13 @@ export async function createNpcAvatar(
   page: Page,
   name: string,
 ): Promise<string> {
-  const data = await callCore(
-    page,
-    `mutation($input: RegisterNpcAvatarInput!) {
-      registerNpcAvatar(input: $input) {
-        __typename
-        ... on RegisterNpcAvatarSuccess { id revision }
-      }
-    }`,
-    { input: { name } },
-  );
+  const data = await callCore(page, registerNpcAvatarMutation, {
+    input: { name },
+  });
   expectSuccess(data.registerNpcAvatar, "RegisterNpcAvatarSuccess");
-  const { id, revision } = data.registerNpcAvatar as {
-    id: string;
-    revision: number;
-  };
+  const { id, revision } = data.registerNpcAvatar;
   await untilReached(`NPC のアバター ${id} が詳細に届く`, async () => {
-    const reached = await callCore(
-      page,
-      `query($id: UUID!) {
-        npcAvatar(id: $id) { __typename ... on NpcAvatar { revision } }
-      }`,
-      { id },
-    );
+    const reached = await callCore(page, npcAvatarRevisionQuery, { id });
     return (
       reached.npcAvatar.__typename === "NpcAvatar" &&
       reached.npcAvatar.revision >= revision
@@ -49,33 +38,15 @@ export async function createPublishableNpcAvatar(
   const deckId = await createPublishedNpcDeck(page, `${name}のデッキ`);
   const avatarURL = await createNpcAvatar(page, name);
   const id = avatarURL.replace("/npc-avatars/", "");
-  const detail = await callCore(
-    page,
-    `query($id: UUID!) {
-      npcAvatar(id: $id) { __typename ... on NpcAvatar { revision } }
-    }`,
-    { id },
-  );
-  const data = await callCore(
-    page,
-    `mutation($input: SetNpcAvatarDecksInput!) {
-      setNpcAvatarDecks(input: $input) {
-        __typename
-        ... on SetNpcAvatarDecksSuccess { revision }
-      }
-    }`,
-    { input: { id, revision: detail.npcAvatar.revision, deckIds: [deckId] } },
-  );
+  const detail = await callCore(page, npcAvatarRevisionQuery, { id });
+  expectSuccess(detail.npcAvatar, "NpcAvatar");
+  const data = await callCore(page, setNpcAvatarDecksMutation, {
+    input: { id, revision: detail.npcAvatar.revision, deckIds: [deckId] },
+  });
   expectSuccess(data.setNpcAvatarDecks, "SetNpcAvatarDecksSuccess");
   const revision = data.setNpcAvatarDecks.revision;
   await untilReached(`NPC のアバター ${id} が詳細に届く`, async () => {
-    const reached = await callCore(
-      page,
-      `query($id: UUID!) {
-        npcAvatar(id: $id) { __typename ... on NpcAvatar { revision } }
-      }`,
-      { id },
-    );
+    const reached = await callCore(page, npcAvatarRevisionQuery, { id });
     return (
       reached.npcAvatar.__typename === "NpcAvatar" &&
       reached.npcAvatar.revision >= revision

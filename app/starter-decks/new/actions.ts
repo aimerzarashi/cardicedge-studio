@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { registerStarterDeckMutation } from "@/app/starter-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import type { RegisterFromPresetDeckState } from "../../deck-form";
@@ -12,26 +13,6 @@ import {
   nameErrorMessage,
 } from "../../messages";
 import { waitStarterDeck } from "../wait-starter-deck";
-
-const registerStarterDeckMutation = graphql(`
-  mutation RegisterStarterDeck($input: RegisterStarterDeckInput!) {
-    registerStarterDeck(input: $input) {
-      __typename
-      ... on RegisterStarterDeckSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type RegisterStarterDeckState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残す）

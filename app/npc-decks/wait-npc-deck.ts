@@ -1,17 +1,6 @@
 import "server-only";
-import { graphql } from "@/graphql";
+import { npcDeckRevisionQuery } from "@/app/npc-decks/operations";
 import { callCore } from "@/lib/core";
-
-const npcDeckRevisionQuery = graphql(`
-  query NpcDeckRevision($id: UUID!) {
-    npcDeck(id: $id) {
-      __typename
-      ... on NpcDeck {
-        revision
-      }
-    }
-  }
-`);
 
 // app/preset-decks/wait-preset-deck.ts と同じ。投影の遅れは数 ms のため、ふつうは 1〜2 回で届く。届かないのは投影が止まっているときなので、長くは待たない
 const TIMEOUT_MS = 3_000;

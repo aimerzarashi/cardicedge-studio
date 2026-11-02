@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { changeBoardLayoutMutation } from "@/app/boards/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -74,28 +75,6 @@ const changeBoardDefaultRulesMutation = graphql(`
           }
           ... on FieldLessThan {
             than
-          }
-        }
-      }
-    }
-  }
-`);
-
-const changeBoardLayoutMutation = graphql(`
-  mutation ChangeBoardLayout($input: ChangeBoardLayoutInput!) {
-    changeBoardLayout(input: $input) {
-      __typename
-      ... on ChangeBoardLayoutSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldOutOfRange {
-            min
-            max
           }
         }
       }

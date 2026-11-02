@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import type { TypedDocumentString } from "@/graphql/graphql";
 import { expect, traceparentOf } from "./fixtures";
 
 // 画面で作るのが重いものは、ログイン中のオペレーターの JWT で core を直接呼んで入れる。
@@ -15,11 +16,12 @@ async function tokenOf(page: Page): Promise<string> {
   return token;
 }
 
-export async function callCore(
+// 画面と同じ graphql() の操作（app/*/operations.ts）を受け取り、変数と結果の型をそこから付ける
+export async function callCore<TResult, TVariables>(
   page: Page,
-  query: string,
-  variables: Record<string, unknown>,
-) {
+  document: TypedDocumentString<TResult, TVariables>,
+  ...[variables]: TVariables extends Record<string, never> ? [] : [TVariables]
+): Promise<TResult> {
   const publicURL = process.env.PLAYWRIGHT_PUBLIC_URL;
   if (!publicURL) throw new Error("PLAYWRIGHT_PUBLIC_URL が未設定です");
   const response = await fetch(`${publicURL}/studio/graphql`, {
@@ -29,11 +31,11 @@ export async function callCore(
       traceparent: traceparentOf(page),
       Authorization: `Bearer ${await tokenOf(page)}`,
     },
-    body: JSON.stringify({ query, variables }),
+    body: JSON.stringify({ query: document.toString(), variables }),
   });
   expect(response.status).toBe(200);
   const { data } = await response.json();
-  return data;
+  return data as TResult;
 }
 
 // core の操作の結果は id と revision だけで、詳細は投影から読む。
@@ -47,7 +49,10 @@ export async function untilReached(
     .toBe(true);
 }
 
-// 成功の型でなければ、その型名を添えて落とす
-export function expectSuccess(result: { __typename: string }, success: string) {
+// 成功の型でなければ、その型名を添えて落とす。通れば result をその成功の型に絞る（以降は成功の項目を型つきで読める）
+export function expectSuccess<
+  T extends { __typename: string },
+  S extends T["__typename"],
+>(result: T, success: S): asserts result is Extract<T, { __typename: S }> {
   expect(result.__typename).toBe(success);
 }

@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { setStarterDeckCardCountsMutation } from "@/app/starter-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -39,31 +40,6 @@ const renameStarterDeckMutation = graphql(`
         errors {
           __typename
           ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
-
-const setStarterDeckCardCountsMutation = graphql(`
-  mutation SetStarterDeckCardCounts($input: SetStarterDeckCardCountsInput!) {
-    setStarterDeckCardCounts(input: $input) {
-      __typename
-      ... on SetStarterDeckCardCountsSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldOutOfRange {
-            min
-            max
-          }
-          ... on FieldTotalTooLarge {
             max
           }
         }

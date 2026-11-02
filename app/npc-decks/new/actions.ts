@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { registerNpcDeckMutation } from "@/app/npc-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import type { RegisterFromPresetDeckState } from "../../deck-form";
@@ -12,26 +13,6 @@ import {
   nameErrorMessage,
 } from "../../messages";
 import { waitNpcDeck } from "../wait-npc-deck";
-
-const registerNpcDeckMutation = graphql(`
-  mutation RegisterNpcDeck($input: RegisterNpcDeckInput!) {
-    registerNpcDeck(input: $input) {
-      __typename
-      ... on RegisterNpcDeckSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type RegisterNpcDeckState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残す）

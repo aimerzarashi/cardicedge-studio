@@ -1,4 +1,10 @@
 import type { Page } from "@playwright/test";
+import {
+  npcDeckRevisionQuery,
+  publishNpcDeckMutation,
+  registerNpcDeckMutation,
+  setNpcDeckCardCountsMutation,
+} from "@/app/npc-decks/operations";
 import { callCore, expectSuccess, untilReached } from "./core";
 import { createTenCreatures } from "./starter-deck";
 
@@ -6,13 +12,7 @@ import { createTenCreatures } from "./starter-deck";
 // ログインしてから呼ぶ。投影に届くまで待つため、返した URL をすぐ開ける
 async function untilNpcDeckReached(page: Page, id: string, revision: number) {
   await untilReached(`NPC のデッキ ${id} が詳細に届く`, async () => {
-    const data = await callCore(
-      page,
-      `query($id: UUID!) {
-        npcDeck(id: $id) { __typename ... on NpcDeck { revision } }
-      }`,
-      { id },
-    );
+    const data = await callCore(page, npcDeckRevisionQuery, { id });
     return (
       data.npcDeck.__typename === "NpcDeck" && data.npcDeck.revision >= revision
     );
@@ -20,18 +20,11 @@ async function untilNpcDeckReached(page: Page, id: string, revision: number) {
 }
 
 async function registerNpcDeckByCore(page: Page, name: string) {
-  const data = await callCore(
-    page,
-    `mutation($input: RegisterNpcDeckInput!) {
-      registerNpcDeck(input: $input) {
-        __typename
-        ... on RegisterNpcDeckSuccess { id revision }
-      }
-    }`,
-    { input: { name } },
-  );
+  const data = await callCore(page, registerNpcDeckMutation, {
+    input: { name },
+  });
   expectSuccess(data.registerNpcDeck, "RegisterNpcDeckSuccess");
-  return data.registerNpcDeck as { id: string; revision: number };
+  return data.registerNpcDeck;
 }
 
 // 空の NPC のデッキ（準備中）を登録して、詳細の URL（パス）を返す
@@ -48,22 +41,13 @@ export async function createFullNpcDeck(
 ): Promise<string> {
   const { cardIds } = await createTenCreatures(page);
   const deck = await registerNpcDeckByCore(page, name);
-  const data = await callCore(
-    page,
-    `mutation($input: SetNpcDeckCardCountsInput!) {
-      setNpcDeckCardCounts(input: $input) {
-        __typename
-        ... on SetNpcDeckCardCountsSuccess { revision }
-      }
-    }`,
-    {
-      input: {
-        id: deck.id,
-        revision: deck.revision,
-        cards: cardIds.map((cardId) => ({ cardId, count: 4 })),
-      },
+  const data = await callCore(page, setNpcDeckCardCountsMutation, {
+    input: {
+      id: deck.id,
+      revision: deck.revision,
+      cards: cardIds.map((cardId) => ({ cardId, count: 4 })),
     },
-  );
+  });
   expectSuccess(data.setNpcDeckCardCounts, "SetNpcDeckCardCountsSuccess");
   await untilNpcDeckReached(page, deck.id, data.setNpcDeckCardCounts.revision);
   return `/npc-decks/${deck.id}`;
@@ -75,23 +59,11 @@ export async function createPublishedNpcDeck(
   name: string,
 ): Promise<string> {
   const id = (await createFullNpcDeck(page, name)).replace("/npc-decks/", "");
-  const detail = await callCore(
-    page,
-    `query($id: UUID!) {
-      npcDeck(id: $id) { __typename ... on NpcDeck { revision } }
-    }`,
-    { id },
-  );
-  const data = await callCore(
-    page,
-    `mutation($input: PublishNpcDeckInput!) {
-      publishNpcDeck(input: $input) {
-        __typename
-        ... on PublishNpcDeckSuccess { revision }
-      }
-    }`,
-    { input: { id, revision: detail.npcDeck.revision } },
-  );
+  const detail = await callCore(page, npcDeckRevisionQuery, { id });
+  expectSuccess(detail.npcDeck, "NpcDeck");
+  const data = await callCore(page, publishNpcDeckMutation, {
+    input: { id, revision: detail.npcDeck.revision },
+  });
   expectSuccess(data.publishNpcDeck, "PublishNpcDeckSuccess");
   await untilNpcDeckReached(page, id, data.publishNpcDeck.revision);
   return id;

@@ -4,7 +4,7 @@ import type { CodegenConfig } from "@graphql-codegen/cli";
 // 生成物（graphql/）は手で直さない
 const config: CodegenConfig = {
   schema: "graphql/schema.graphql",
-  documents: ["app/**/*.{ts,tsx}", "lib/**/*.ts"],
+  documents: ["app/**/*.{ts,tsx}", "lib/**/*.ts", "tests/**/*.ts"],
   ignoreNoDocuments: true,
   generates: {
     "./graphql/": {
