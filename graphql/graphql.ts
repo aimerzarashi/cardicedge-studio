@@ -339,7 +339,9 @@ export type RegisterNpcAvatarInput = {
 
 /** NPC のデッキをプリセットデッキから写して登録する入力 */
 export type RegisterNpcDeckFromPresetDeckInput = {
-  /** 写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい） */
+  /** 名前（1〜50 文字。前後の空白は除いて保存する。元のプリセットデッキの名前は写さない） */
+  name: string;
+  /** 写す元のプリセットデッキの公開用の ID（カードと枚数を写す。合計が 40 枚でなくてもよい） */
   presetDeckId: string;
 };
 
@@ -363,7 +365,9 @@ export type RegisterSpellInput = {
 
 /** スターターデッキをプリセットデッキから写して登録する入力 */
 export type RegisterStarterDeckFromPresetDeckInput = {
-  /** 写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい） */
+  /** 名前（1〜50 文字。前後の空白は除いて保存する。元のプリセットデッキの名前は写さない） */
+  name: string;
+  /** 写す元のプリセットデッキの公開用の ID（カードと枚数を写す。合計が 40 枚でなくてもよい） */
   presetDeckId: string;
 };
 
@@ -1215,6 +1219,24 @@ export type RegisterNpcDeckFromPresetDeckMutation = { registerNpcDeckFromPresetD
     | { __typename: 'NpcDeckNameAlreadyInUseError' }
     | { __typename: 'PresetDeckNotFoundError' }
     | { __typename: 'RegisterNpcDeckFromPresetDeckSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
    };
 
 export type NpcDeckCopySourcePresetDecksQueryVariables = Exact<{
@@ -1627,6 +1649,24 @@ export type RegisterStarterDeckFromPresetDeckMutation = { registerStarterDeckFro
     | { __typename: 'PresetDeckNotFoundError' }
     | { __typename: 'RegisterStarterDeckFromPresetDeckSuccess', id: string, revision: number }
     | { __typename: 'StarterDeckNameAlreadyInUseError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
    };
 
 export type CopySourcePresetDecksQueryVariables = Exact<{
@@ -2378,6 +2418,14 @@ export const RegisterNpcDeckFromPresetDeckDocument = new TypedDocumentString(`
       id
       revision
     }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
   }
 }
     `) as unknown as TypedDocumentString<RegisterNpcDeckFromPresetDeckMutation, RegisterNpcDeckFromPresetDeckMutationVariables>;
@@ -2756,6 +2804,14 @@ export const RegisterStarterDeckFromPresetDeckDocument = new TypedDocumentString
     ... on RegisterStarterDeckFromPresetDeckSuccess {
       id
       revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
     }
   }
 }

@@ -57,7 +57,7 @@ test("使われている名前で登録すると名前の重複が表示され�
   await expect(empty.getByLabel("名前")).toHaveValue(name);
 });
 
-test("プリセットデッキから写して登録すると、名前とカードが写り、写した元が出る", async ({
+test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされ、コピー元が出る", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -67,10 +67,10 @@ test("プリセットデッキから写して登録すると、名前とカー�
   await expect(async () => {
     await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
     await expect(
-      page.getByRole("button", { name: `${name}を写して作る` }),
+      page.getByRole("button", { name: `${name}をコピーして作る` }),
     ).toBeVisible({ timeout: 1_000 });
   }).toPass();
-  await page.getByRole("button", { name: `${name}を写して作る` }).click();
+  await page.getByRole("button", { name: `${name}をコピーして作る` }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
   await expect(page).toHaveURL(/\/starter-decks\/[0-9a-f-]{36}$/);
@@ -78,16 +78,16 @@ test("プリセットデッキから写して登録すると、名前とカー�
   await expect(section(page, "入れたカード").locator("tbody tr")).toHaveCount(
     10,
   );
-  const source = section(page, "写した元");
+  const source = section(page, "コピー元");
   await expect(
-    source.getByRole("link", { name: "元のプリセットデッキ" }),
+    source.getByRole("link", { name: "コピー元のプリセットデッキ" }),
   ).toHaveAttribute("href", presetDeckURL);
   await expect(
     source.getByText("元のプリセットデッキが変わっています"),
   ).toHaveCount(0);
 });
 
-test("写した後に元のプリセットデッキを変えると「変わっています」が出て、写したデッキは変わらない", async ({
+test("コピーした後に元のプリセットデッキを変えると「変わっています」が出て、コピーしたデッキは変わらない", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -96,7 +96,7 @@ test("写した後に元のプリセットデッキを変えると「変わっ�
   await expect(async () => {
     await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
     await page
-      .getByRole("button", { name: `${name}を写して作る` })
+      .getByRole("button", { name: `${name}をコピーして作る` })
       .click({ timeout: 1_000 });
   }).toPass();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
@@ -112,7 +112,7 @@ test("写した後に元のプリセットデッキを変えると「変わっ�
   await expect(async () => {
     await page.goto(starterDeckURL);
     await expect(
-      section(page, "写した元").getByText(
+      section(page, "コピー元").getByText(
         "元のプリセットデッキが変わっています",
       ),
     ).toBeVisible({ timeout: 1_000 });
@@ -120,7 +120,7 @@ test("写した後に元のプリセットデッキを変えると「変わっ�
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
 });
 
-test("元のプリセットデッキを削除すると、写した元に「削除されています」が出る", async ({
+test("元のプリセットデッキを削除すると、コピー元に「削除されています」が出る", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -129,7 +129,7 @@ test("元のプリセットデッキを削除すると、写した元に「削�
   await expect(async () => {
     await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
     await page
-      .getByRole("button", { name: `${name}を写して作る` })
+      .getByRole("button", { name: `${name}をコピーして作る` })
       .click({ timeout: 1_000 });
   }).toPass();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
@@ -143,7 +143,7 @@ test("元のプリセットデッキを削除すると、写した元に「削�
   await expect(async () => {
     await page.goto(starterDeckURL);
     await expect(
-      section(page, "写した元").getByText(
+      section(page, "コピー元").getByText(
         "元のプリセットデッキは削除されています",
       ),
     ).toBeVisible({ timeout: 1_000 });

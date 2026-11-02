@@ -2425,14 +2425,18 @@ NPC のデッキをプリセットデッキから写して登録する入力
 """
 input RegisterNpcDeckFromPresetDeckInput {
 	"""
-	写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい）
+	写す元のプリセットデッキの公開用の ID（カードと枚数を写す。合計が 40 枚でなくてもよい）
 	"""
 	presetDeckId: UUID!
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する。元のプリセットデッキの名前は写さない）
+	"""
+	name: String!
 }
 """
 プリセットデッキから写した NPC のデッキの登録の結果
 """
-union RegisterNpcDeckFromPresetDeckResult = RegisterNpcDeckFromPresetDeckSuccess | PresetDeckNotFoundError | NpcDeckNameAlreadyInUseError | ForbiddenError
+union RegisterNpcDeckFromPresetDeckResult = RegisterNpcDeckFromPresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | NpcDeckNameAlreadyInUseError | ForbiddenError
 """
 プリセットデッキから写して NPC のデッキを登録した（準備中。写した元の公開 ID と revision を記録する）
 """
@@ -2525,14 +2529,18 @@ type RegisterSpellSuccess {
 """
 input RegisterStarterDeckFromPresetDeckInput {
 	"""
-	写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい）
+	写す元のプリセットデッキの公開用の ID（カードと枚数を写す。合計が 40 枚でなくてもよい）
 	"""
 	presetDeckId: UUID!
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する。元のプリセットデッキの名前は写さない）
+	"""
+	name: String!
 }
 """
 プリセットデッキから写したスターターデッキの登録の結果
 """
-union RegisterStarterDeckFromPresetDeckResult = RegisterStarterDeckFromPresetDeckSuccess | PresetDeckNotFoundError | StarterDeckNameAlreadyInUseError | ForbiddenError
+union RegisterStarterDeckFromPresetDeckResult = RegisterStarterDeckFromPresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | StarterDeckNameAlreadyInUseError | ForbiddenError
 """
 プリセットデッキから写してスターターデッキを登録した（準備中。写した元の公開 ID と revision を記録する）
 """

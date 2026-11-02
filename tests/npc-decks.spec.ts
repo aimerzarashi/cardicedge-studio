@@ -2,7 +2,12 @@ import type { Page } from "@playwright/test";
 import { loginAsOperator, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
 import { createFullNpcDeck, createNpcDeck } from "./npc-deck";
-import { createFullPresetDeck, searchCards, section } from "./preset-deck";
+import {
+  createFullPresetDeck,
+  createPresetDeck,
+  searchCards,
+  section,
+} from "./preset-deck";
 import { createTenCreatures } from "./starter-deck";
 
 // 前準備（カード・プリセットデッキ・NPC のデッキ）は GraphQL で入れ（tests/npc-deck.ts）、確かめる画面の操作だけを画面でする。
@@ -46,7 +51,7 @@ test("空から登録すると詳細の画面に移り、一覧に準備中・�
   await expect(deckRows(page).first().locator("td").nth(2)).toHaveText("0");
 });
 
-test("プリセットデッキから写して登録すると、名前とカードが写り、写した元が出る", async ({
+test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされ、コピー元が出る", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -56,10 +61,10 @@ test("プリセットデッキから写して登録すると、名前とカー�
   await expect(async () => {
     await page.goto(`/npc-decks/new?name=${encodeURIComponent(name)}`);
     await expect(
-      page.getByRole("button", { name: `${name}を写して作る` }),
+      page.getByRole("button", { name: `${name}をコピーして作る` }),
     ).toBeVisible({ timeout: 1_000 });
   }).toPass();
-  await page.getByRole("button", { name: `${name}を写して作る` }).click();
+  await page.getByRole("button", { name: `${name}をコピーして作る` }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
   await expect(page).toHaveURL(/\/npc-decks\/[0-9a-f-]{36}$/);
@@ -68,10 +73,45 @@ test("プリセットデッキから写して登録すると、名前とカー�
     10,
   );
   await expect(
-    section(page, "写した元").getByRole("link", {
-      name: "元のプリセットデッキ",
+    section(page, "コピー元").getByRole("link", {
+      name: "コピー元のプリセットデッキ",
     }),
   ).toHaveAttribute("href", presetDeckURL);
+});
+
+test("同じプリセットデッキから名前を変えて 2 つ目をコピーして作れ、使われている名前は入力欄の誤りになって入力した値が残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("火・地");
+  await createPresetDeck(page, name);
+  const copyPage = `/npc-decks/new?name=${encodeURIComponent(name)}`;
+  const nameInput = page.getByLabel(`${name}からコピーして作るデッキの名前`);
+  const copyButton = page.getByRole("button", {
+    name: `${name}をコピーして作る`,
+  });
+  await expect(async () => {
+    await page.goto(copyPage);
+    await expect(copyButton).toBeVisible({ timeout: 1_000 });
+  }).toPass();
+  await copyButton.click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
+
+  await page.goto(copyPage);
+  await expect(nameInput).toHaveValue(name);
+  await copyButton.click();
+  await expect(
+    section(page, "プリセットデッキからコピーして作る").getByText(
+      "この名前はすでに使われています",
+    ),
+  ).toBeVisible();
+  await expect(nameInput).toHaveValue(name);
+
+  const second = uniqueName("火・地2");
+  await nameInput.fill(second);
+  await copyButton.click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(second);
+  await expect(detail(page, "合計の枚数")).toHaveText("0");
 });
 
 test("名前を変えると詳細の見出しと入力欄が新しい名前になる", async ({

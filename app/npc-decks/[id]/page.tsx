@@ -191,19 +191,19 @@ export default async function NpcDeckPage({
 
       {deck.source && (
         <section aria-labelledby="source-heading">
-          <h2 id="source-heading">写した元</h2>
+          <h2 id="source-heading">コピー元</h2>
           {deck.source.presetDeckDeleted ? (
-            <p role="status">元のプリセットデッキは削除されています</p>
+            <p role="status">コピー元のプリセットデッキは削除されています</p>
           ) : (
             <p>
               <Link href={`/preset-decks/${deck.source.presetDeckId}`}>
-                元のプリセットデッキ
+                コピー元のプリセットデッキ
               </Link>
             </p>
           )}
           {deck.source.changedSinceCopied && (
             <p role="status">
-              写した後に、元のプリセットデッキが変わっています。反映するには、写して作り直してください
+              コピーした後に、コピー元のプリセットデッキが変わっています。反映するには、コピーして作り直してください
             </p>
           )}
         </section>

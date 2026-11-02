@@ -95,6 +95,14 @@ const registerNpcDeckFromPresetDeckMutation = graphql(`
         id
         revision
       }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          ... on FieldTooLong {
+            max
+          }
+        }
+      }
     }
   }
 `);
@@ -103,16 +111,18 @@ export async function registerNpcDeckFromPresetDeck(
   _previous: RegisterFromPresetDeckState,
   form: FormData,
 ): Promise<RegisterFromPresetDeckState> {
+  // 中身の正誤は core が判定するため、ここでは形（文字列であること）だけを確かめる
   const presetDeckId = form.get("presetDeckId");
-  if (typeof presetDeckId !== "string") {
+  const name = form.get("name");
+  if (typeof presetDeckId !== "string" || typeof name !== "string") {
     return { error: INVALID_TARGET };
   }
 
   const result = await callCore(registerNpcDeckFromPresetDeckMutation, {
-    input: { presetDeckId },
+    input: { presetDeckId, name },
   });
   if (!result.ok) {
-    return { error: CORE_UNAVAILABLE };
+    return { value: name, error: CORE_UNAVAILABLE };
   }
 
   const registered = result.data.registerNpcDeckFromPresetDeck;
@@ -124,14 +134,13 @@ export async function registerNpcDeckFromPresetDeck(
         return { registeredId: registered.id };
       }
       return redirect(`/npc-decks/${registered.id}`);
-    // 名前は元のプリセットデッキの名前がそのまま入るため、入力欄の誤りにはならない
+    case "ValidationErrors":
+      return { value: name, nameError: nameErrorMessage(registered.errors) };
     case "NpcDeckNameAlreadyInUseError":
-      return {
-        error: `元のプリセットデッキと同じ名前の NPC のデッキがすでにあります。${NAME_ALREADY_IN_USE}`,
-      };
+      return { value: name, nameError: NAME_ALREADY_IN_USE };
     case "PresetDeckNotFoundError":
-      return { error: "このプリセットデッキは見つかりません" };
+      return { value: name, error: "このプリセットデッキは見つかりません" };
     case "ForbiddenError":
-      return { error: FORBIDDEN };
+      return { value: name, error: FORBIDDEN };
   }
 }
