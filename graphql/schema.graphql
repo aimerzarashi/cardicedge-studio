@@ -866,6 +866,58 @@ type DeleteBoardSuccess {
 	id: UUID!
 }
 """
+NPC のアバターを削除する入力
+"""
+input DeleteNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteNpcAvatarResult = DeleteNpcAvatarSuccess | NpcAvatarNotFoundError | NpcAvatarNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターを削除した（名前はほかの NPC のアバターが使えるようになる）
+"""
+type DeleteNpcAvatarSuccess {
+	"""
+	削除した NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+}
+"""
+NPC のデッキを削除する入力
+"""
+input DeleteNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteNpcDeckResult = DeleteNpcDeckSuccess | NpcDeckNotFoundError | NpcDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキを削除した（名前はほかの NPC のデッキが使えるようになる）
+"""
+type DeleteNpcDeckSuccess {
+	"""
+	削除した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+}
+"""
 プリセットデッキを削除する入力
 """
 input DeletePresetDeckInput {
@@ -1130,6 +1182,24 @@ type InvalidCardStatusTransitionError {
 	message: String!
 }
 """
+準備中の NPC のアバターを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidNpcAvatarStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中の NPC のデッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidNpcDeckStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 準備中のスターターデッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidStarterDeckStatusTransitionError {
@@ -1302,6 +1372,114 @@ type Mutation {
 		input: RegisterItemInput!
 	): RegisterItemResult!
 	"""
+	NPC のアバターを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcAvatar(
+		"""
+		登録する NPC のアバター
+		"""
+		input: RegisterNpcAvatarInput!
+	): RegisterNpcAvatarResult!
+	"""
+	NPC のアバターの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameNpcAvatar(
+		"""
+		変える内容
+		"""
+		input: RenameNpcAvatarInput!
+	): RenameNpcAvatarResult!
+	"""
+	NPC のアバターを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteNpcAvatar(
+		"""
+		削除する NPC のアバター
+		"""
+		input: DeleteNpcAvatarInput!
+	): DeleteNpcAvatarResult!
+	"""
+	NPC のアバターを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishNpcAvatar(
+		"""
+		公開する NPC のアバター
+		"""
+		input: PublishNpcAvatarInput!
+	): PublishNpcAvatarResult!
+	"""
+	NPC のアバターを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireNpcAvatar(
+		"""
+		使用不可にする NPC のアバター
+		"""
+		input: RetireNpcAvatarInput!
+	): RetireNpcAvatarResult!
+	"""
+	NPC のデッキを空から登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcDeck(
+		"""
+		登録する NPC のデッキ
+		"""
+		input: RegisterNpcDeckInput!
+	): RegisterNpcDeckResult!
+	"""
+	プリセットデッキから写して NPC のデッキを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcDeckFromPresetDeck(
+		"""
+		写す元
+		"""
+		input: RegisterNpcDeckFromPresetDeckInput!
+	): RegisterNpcDeckFromPresetDeckResult!
+	"""
+	NPC のデッキの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameNpcDeck(
+		"""
+		変える内容
+		"""
+		input: RenameNpcDeckInput!
+	): RenameNpcDeckResult!
+	"""
+	NPC のデッキのカードの枚数を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setNpcDeckCardCounts(
+		"""
+		変える内容
+		"""
+		input: SetNpcDeckCardCountsInput!
+	): SetNpcDeckCardCountsResult!
+	"""
+	NPC のデッキを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteNpcDeck(
+		"""
+		削除する NPC のデッキ
+		"""
+		input: DeleteNpcDeckInput!
+	): DeleteNpcDeckResult!
+	"""
+	NPC のデッキを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishNpcDeck(
+		"""
+		公開する NPC のデッキ
+		"""
+		input: PublishNpcDeckInput!
+	): PublishNpcDeckResult!
+	"""
+	NPC のデッキを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireNpcDeck(
+		"""
+		使用不可にする NPC のデッキ
+		"""
+		input: RetireNpcDeckInput!
+	): RetireNpcDeckResult!
+	"""
 	プリセットデッキを登録する（紐づいたオペレーターだけ）
 	"""
 	registerPresetDeck(
@@ -1419,6 +1597,281 @@ type NoCheckpointProblem implements BoardPublishProblem {
 	"""
 	message: String!
 }
+"""
+NPC のアバター
+"""
+type NpcAvatar {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべての NPC のアバターの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: NpcAvatarStatus!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+NPC のアバターの一覧の 1 ページ（名前の順）
+"""
+type NpcAvatarConnection {
+	"""
+	このページの NPC のアバター
+	"""
+	edges: [NpcAvatarEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+NPC のアバターの一覧の 1 件と、その位置
+"""
+type NpcAvatarEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	NPC のアバター
+	"""
+	node: NpcAvatar!
+}
+"""
+NPC のアバターの一覧の絞り込み
+"""
+input NpcAvatarFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [NpcAvatarStatus!]
+}
+"""
+名前が、ほかの NPC のアバターですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type NpcAvatarNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でない NPC のアバターの名前を変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type NpcAvatarNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のアバターが無い（削除したものを含む）
+"""
+type NpcAvatarNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のアバターの詳細の結果
+"""
+union NpcAvatarResult = NpcAvatar | NpcAvatarNotFoundError | ForbiddenError
+"""
+NPC のアバターの状態。準備中は名前を自由に変えられる。公開中の数に上限は無く、公開の条件も無い。
+使用不可は新しい対戦に使わない
+"""
+enum NpcAvatarStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+NPC のアバターの一覧の結果
+"""
+union NpcAvatarsResult = NpcAvatarConnection | ValidationErrors | ForbiddenError
+"""
+NPC のデッキ
+"""
+type NpcDeck {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべての NPC のデッキの中で一意。スターターデッキ・プリセットデッキと同じ名前でもよい）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: NpcDeckStatus!
+	"""
+	入れたカードと枚数（カードの一覧と同じ並び: 種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
+	"""
+	cards: [DeckCard!]!
+	"""
+	カードの枚数の合計
+	"""
+	totalCount: Int!
+	"""
+	プリセットデッキから写して作ったときの写し元（空から作ったときは null）
+	"""
+	source: NpcDeckSource
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+NPC のデッキの一覧の 1 ページ（名前の順）
+"""
+type NpcDeckConnection {
+	"""
+	このページの NPC のデッキ
+	"""
+	edges: [NpcDeckEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+NPC のデッキの一覧の 1 件と、その位置
+"""
+type NpcDeckEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	NPC のデッキ
+	"""
+	node: NpcDeck!
+}
+"""
+NPC のデッキの一覧の絞り込み
+"""
+input NpcDeckFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [NpcDeckStatus!]
+}
+"""
+名前が、ほかの NPC のデッキですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type NpcDeckNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でない NPC のデッキの名前・枚数を変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type NpcDeckNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のデッキが無い（削除したものを含む）
+"""
+type NpcDeckNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のデッキの詳細の結果
+"""
+union NpcDeckResult = NpcDeck | NpcDeckNotFoundError | ForbiddenError
+"""
+写した元
+"""
+type NpcDeckSource {
+	"""
+	元のプリセットデッキの公開用の ID（消されていることもある）
+	"""
+	presetDeckId: UUID!
+	"""
+	写したときの、元のプリセットデッキの revision
+	"""
+	revision: Int!
+	"""
+	写した後に、元のプリセットデッキが変わっている（元が削除されていれば false）
+	"""
+	changedSinceCopied: Boolean!
+	"""
+	元のプリセットデッキが削除されている
+	"""
+	presetDeckDeleted: Boolean!
+}
+"""
+NPC のデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たす。
+公開中の数に上限は無い。使用不可は新しい対戦に使わない
+"""
+enum NpcDeckStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+NPC のデッキの一覧の結果
+"""
+union NpcDecksResult = NpcDeckConnection | ValidationErrors | ForbiddenError
 """
 ページの情報
 """
@@ -1608,6 +2061,66 @@ type PublishCardSuccess {
 	revision: Int!
 }
 """
+NPC のアバターを公開する入力
+"""
+input PublishNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの公開の結果（準備中・使用不可から公開中にできる。公開の条件は無い）
+"""
+union PublishNpcAvatarResult = PublishNpcAvatarSuccess | NpcAvatarNotFoundError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishNpcAvatarSuccess {
+	"""
+	公開した NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開した NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキを公開する入力
+"""
+input PublishNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの公開の結果（準備中・使用不可から公開中にできる）
+"""
+union PublishNpcDeckResult = PublishNpcDeckSuccess | ValidationErrors | NpcDeckNotFoundError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishNpcDeckSuccess {
+	"""
+	公開した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 スターターデッキを公開する入力
 """
 input PublishStarterDeckInput {
@@ -1694,6 +2207,62 @@ type Query {
 		"""
 		after: String
 	): CardsResult!
+	"""
+	NPC のアバターの一覧（紐づいたオペレーターだけ）
+	"""
+	npcAvatars(
+		"""
+		絞り込み
+		"""
+		filter: NpcAvatarFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): NpcAvatarsResult!
+	"""
+	NPC のアバターの詳細（紐づいたオペレーターだけ）
+	"""
+	npcAvatar(
+		"""
+		NPC のアバターの公開用の ID
+		"""
+		id: UUID!
+	): NpcAvatarResult!
+	"""
+	NPC のデッキの一覧（紐づいたオペレーターだけ）
+	"""
+	npcDecks(
+		"""
+		絞り込み
+		"""
+		filter: NpcDeckFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): NpcDecksResult!
+	"""
+	NPC のデッキの詳細（紐づいたオペレーターだけ）
+	"""
+	npcDeck(
+		"""
+		NPC のデッキの公開用の ID
+		"""
+		id: UUID!
+	): NpcDeckResult!
 	"""
 	プリセットデッキの一覧（紐づいたオペレーターだけ）
 	"""
@@ -1824,6 +2393,84 @@ type RegisterItemSuccess {
 	登録したアイテム
 	"""
 	item: Item!
+}
+"""
+NPC のアバターを登録する入力
+"""
+input RegisterNpcAvatarInput {
+	"""
+	名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のアバターの登録の結果
+"""
+union RegisterNpcAvatarResult = RegisterNpcAvatarSuccess | ValidationErrors | NpcAvatarNameAlreadyInUseError | ForbiddenError
+"""
+NPC のアバターを登録した（準備中）
+"""
+type RegisterNpcAvatarSuccess {
+	"""
+	登録した NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキをプリセットデッキから写して登録する入力
+"""
+input RegisterNpcDeckFromPresetDeckInput {
+	"""
+	写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい）
+	"""
+	presetDeckId: UUID!
+}
+"""
+プリセットデッキから写した NPC のデッキの登録の結果
+"""
+union RegisterNpcDeckFromPresetDeckResult = RegisterNpcDeckFromPresetDeckSuccess | PresetDeckNotFoundError | NpcDeckNameAlreadyInUseError | ForbiddenError
+"""
+プリセットデッキから写して NPC のデッキを登録した（準備中。写した元の公開 ID と revision を記録する）
+"""
+type RegisterNpcDeckFromPresetDeckSuccess {
+	"""
+	登録した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキを空から登録する入力
+"""
+input RegisterNpcDeckInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のデッキの登録の結果
+"""
+union RegisterNpcDeckResult = RegisterNpcDeckSuccess | ValidationErrors | NpcDeckNameAlreadyInUseError | ForbiddenError
+"""
+NPC のデッキを登録した（準備中）
+"""
+type RegisterNpcDeckSuccess {
+	"""
+	登録した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
 }
 """
 プリセットデッキを登録する入力
@@ -1960,6 +2607,74 @@ type RenameBoardSuccess {
 	revision: Int!
 }
 """
+NPC のアバターの名前を変える入力
+"""
+input RenameNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のアバターの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameNpcAvatarResult = RenameNpcAvatarSuccess | ValidationErrors | NpcAvatarNotFoundError | NpcAvatarNameAlreadyInUseError | NpcAvatarNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameNpcAvatarSuccess {
+	"""
+	変えた NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの名前を変える入力
+"""
+input RenameNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のデッキの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameNpcDeckResult = RenameNpcDeckSuccess | ValidationErrors | NpcDeckNotFoundError | NpcDeckNameAlreadyInUseError | NpcDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameNpcDeckSuccess {
+	"""
+	変えた NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 プリセットデッキの名前を変える入力
 """
 input RenamePresetDeckInput {
@@ -2088,6 +2803,66 @@ type RetireCardSuccess {
 	revision: Int!
 }
 """
+NPC のアバターを使用不可にする入力
+"""
+input RetireNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの使用不可の結果
+"""
+union RetireNpcAvatarResult = RetireNpcAvatarSuccess | NpcAvatarNotFoundError | InvalidNpcAvatarStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireNpcAvatarSuccess {
+	"""
+	使用不可にした NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にした NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキを使用不可にする入力
+"""
+input RetireNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの使用不可の結果
+"""
+union RetireNpcDeckResult = RetireNpcDeckSuccess | NpcDeckNotFoundError | InvalidNpcDeckStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireNpcDeckSuccess {
+	"""
+	使用不可にした NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にした NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 スターターデッキを使用不可にする入力
 """
 input RetireStarterDeckInput {
@@ -2138,6 +2913,40 @@ type SanctuaryTile implements BoardTile {
 	行
 	"""
 	y: Int!
+}
+"""
+NPC のデッキのカードの枚数を変える入力
+"""
+input SetNpcDeckCardCountsInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+	"""
+	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ）
+	"""
+	cards: [DeckCardCountInput!]!
+}
+"""
+NPC のデッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない。準備中のものだけ変えられる）
+"""
+union SetNpcDeckCardCountsResult = SetNpcDeckCardCountsSuccess | ValidationErrors | NpcDeckNotFoundError | NpcDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキのカードの枚数を変えた（1 回の操作で revision は 1 つ進む。何も変わらなければ進まない）
+"""
+type SetNpcDeckCardCountsSuccess {
+	"""
+	変えた NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
 }
 """
 プリセットデッキのカードの枚数を変える入力
