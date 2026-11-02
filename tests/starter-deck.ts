@@ -1,4 +1,9 @@
 import type { Page } from "@playwright/test";
+import {
+  registerStarterDeckMutation,
+  setStarterDeckCardCountsMutation,
+  starterDeckRevisionQuery,
+} from "@/app/starter-decks/operations";
 import { createPublishedCreatures } from "./card";
 import { callCore, expectSuccess, untilReached } from "./core";
 import { expect } from "./fixtures";
@@ -21,13 +26,7 @@ async function untilStarterDeckReached(
   revision: number,
 ) {
   await untilReached(`スターターデッキ ${id} が詳細に届く`, async () => {
-    const data = await callCore(
-      page,
-      `query($id: UUID!) {
-        starterDeck(id: $id) { __typename ... on StarterDeck { revision } }
-      }`,
-      { id },
-    );
+    const data = await callCore(page, starterDeckRevisionQuery, { id });
     return (
       data.starterDeck.__typename === "StarterDeck" &&
       data.starterDeck.revision >= revision
@@ -36,18 +35,11 @@ async function untilStarterDeckReached(
 }
 
 async function registerStarterDeckByCore(page: Page, name: string) {
-  const data = await callCore(
-    page,
-    `mutation($input: RegisterStarterDeckInput!) {
-      registerStarterDeck(input: $input) {
-        __typename
-        ... on RegisterStarterDeckSuccess { id revision }
-      }
-    }`,
-    { input: { name } },
-  );
+  const data = await callCore(page, registerStarterDeckMutation, {
+    input: { name },
+  });
   expectSuccess(data.registerStarterDeck, "RegisterStarterDeckSuccess");
-  return data.registerStarterDeck as { id: string; revision: number };
+  return data.registerStarterDeck;
 }
 
 // 空のスターターデッキ（準備中）を登録して、詳細の URL（パス）を返す
@@ -75,22 +67,13 @@ export async function createFullStarterDeck(
 ): Promise<{ deckURL: string; cards: string[] }> {
   const { names, cardIds } = await createTenCreatures(page);
   const deck = await registerStarterDeckByCore(page, name);
-  const data = await callCore(
-    page,
-    `mutation($input: SetStarterDeckCardCountsInput!) {
-      setStarterDeckCardCounts(input: $input) {
-        __typename
-        ... on SetStarterDeckCardCountsSuccess { revision }
-      }
-    }`,
-    {
-      input: {
-        id: deck.id,
-        revision: deck.revision,
-        cards: cardIds.map((cardId) => ({ cardId, count: 4 })),
-      },
+  const data = await callCore(page, setStarterDeckCardCountsMutation, {
+    input: {
+      id: deck.id,
+      revision: deck.revision,
+      cards: cardIds.map((cardId) => ({ cardId, count: 4 })),
     },
-  );
+  });
   expectSuccess(
     data.setStarterDeckCardCounts,
     "SetStarterDeckCardCountsSuccess",

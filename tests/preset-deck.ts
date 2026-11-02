@@ -1,4 +1,9 @@
 import type { Page } from "@playwright/test";
+import {
+  presetDeckRevisionQuery,
+  registerPresetDeckMutation,
+  setPresetDeckCardCountsMutation,
+} from "@/app/preset-decks/operations";
 import { createPublishedCreatures } from "./card";
 import { callCore, expectSuccess, untilReached } from "./core";
 import { expect } from "./fixtures";
@@ -42,13 +47,7 @@ async function untilPresetDeckReached(
   revision: number,
 ) {
   await untilReached(`プリセットデッキ ${id} が詳細に届く`, async () => {
-    const data = await callCore(
-      page,
-      `query($id: UUID!) {
-        presetDeck(id: $id) { __typename ... on PresetDeck { revision } }
-      }`,
-      { id },
-    );
+    const data = await callCore(page, presetDeckRevisionQuery, { id });
     return (
       data.presetDeck.__typename === "PresetDeck" &&
       data.presetDeck.revision >= revision
@@ -67,18 +66,11 @@ export async function createPresetDeck(
 }
 
 async function registerPresetDeckByCore(page: Page, name: string) {
-  const data = await callCore(
-    page,
-    `mutation($input: RegisterPresetDeckInput!) {
-      registerPresetDeck(input: $input) {
-        __typename
-        ... on RegisterPresetDeckSuccess { id revision }
-      }
-    }`,
-    { input: { name } },
-  );
+  const data = await callCore(page, registerPresetDeckMutation, {
+    input: { name },
+  });
   expectSuccess(data.registerPresetDeck, "RegisterPresetDeckSuccess");
-  return data.registerPresetDeck as { id: string; revision: number };
+  return data.registerPresetDeck;
 }
 
 // 合計がちょうど 40 枚のプリセットデッキ（4 枚ずつ 10 種類の公開中のクリーチャー）を入れ、詳細の URL を返す
@@ -93,22 +85,13 @@ export async function createFullPresetDeck(
     id,
   );
   const deck = await registerPresetDeckByCore(page, name);
-  const data = await callCore(
-    page,
-    `mutation($input: SetPresetDeckCardCountsInput!) {
-      setPresetDeckCardCounts(input: $input) {
-        __typename
-        ... on SetPresetDeckCardCountsSuccess { revision }
-      }
-    }`,
-    {
-      input: {
-        id: deck.id,
-        revision: deck.revision,
-        cards: cards.map(({ id: cardId }) => ({ cardId, count: 4 })),
-      },
+  const data = await callCore(page, setPresetDeckCardCountsMutation, {
+    input: {
+      id: deck.id,
+      revision: deck.revision,
+      cards: cards.map(({ id: cardId }) => ({ cardId, count: 4 })),
     },
-  );
+  });
   expectSuccess(data.setPresetDeckCardCounts, "SetPresetDeckCardCountsSuccess");
   await untilPresetDeckReached(
     page,

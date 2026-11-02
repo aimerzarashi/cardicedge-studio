@@ -2,6 +2,10 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  publishNpcDeckMutation,
+  setNpcDeckCardCountsMutation,
+} from "@/app/npc-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -46,55 +50,10 @@ const renameNpcDeckMutation = graphql(`
   }
 `);
 
-const setNpcDeckCardCountsMutation = graphql(`
-  mutation SetNpcDeckCardCounts($input: SetNpcDeckCardCountsInput!) {
-    setNpcDeckCardCounts(input: $input) {
-      __typename
-      ... on SetNpcDeckCardCountsSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldOutOfRange {
-            min
-            max
-          }
-          ... on FieldTotalTooLarge {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
-
 const deleteNpcDeckMutation = graphql(`
   mutation DeleteNpcDeck($input: DeleteNpcDeckInput!) {
     deleteNpcDeck(input: $input) {
       __typename
-    }
-  }
-`);
-
-const publishNpcDeckMutation = graphql(`
-  mutation PublishNpcDeck($input: PublishNpcDeckInput!) {
-    publishNpcDeck(input: $input) {
-      __typename
-      ... on PublishNpcDeckSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTotalMismatch {
-            required
-          }
-        }
-      }
     }
   }
 `);

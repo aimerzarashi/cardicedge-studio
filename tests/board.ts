@@ -1,5 +1,14 @@
 import type { Page } from "@playwright/test";
-import { callCore } from "./core";
+import {
+  boardRevisionQuery,
+  changeBoardLayoutMutation,
+} from "@/app/boards/operations";
+import type {
+  BoardConnectionInput,
+  BoardTileInput,
+  BoardTilePairInput,
+} from "@/graphql/graphql";
+import { callCore, expectSuccess } from "./core";
 import { expect } from "./fixtures";
 import { section } from "./preset-deck";
 
@@ -23,23 +32,10 @@ export type Tool =
   | "占い館"
   | "カード屋"
   | "消す";
-// core の入力（@oneOf）と同じ形で、種類ごとに 1 つだけ書く
-export type Tile =
-  | { land: { x: number; y: number; attribute: string } }
-  | { base: { x: number; y: number } }
-  | { checkpoint: { x: number; y: number } }
-  | { warp: { x: number; y: number } }
-  | { bridge: { x: number; y: number } }
-  | { sanctuary: { x: number; y: number } }
-  | { shrine: { x: number; y: number } }
-  | { prophecyShop: { x: number; y: number } }
-  | { cardShop: { x: number; y: number } };
-export type Connection = {
-  a: { x: number; y: number };
-  b: { x: number; y: number };
-};
-// 転送円どうし・橋どうしの対（つながりと同じ形）
-export type Pair = Connection;
+// core の入力（@oneOf。種類ごとに 1 つだけ書く）の型は、codegen の生成物をそのまま使う
+export type Tile = BoardTileInput;
+export type Connection = BoardConnectionInput;
+export type Pair = BoardTilePairInput;
 
 // 詳細の画面にいるボードのレイアウトを入れる（準備中のものだけ入れられる）
 export async function setBoardLayout(
@@ -54,20 +50,13 @@ export async function setBoardLayout(
   },
 ) {
   const id = new URL(page.url()).pathname.split("/").pop();
-  const read = await callCore(
-    page,
-    "query($id: UUID!) { board(id: $id) { __typename ... on Board { revision } } }",
-    { id },
-  );
-  expect(read.board.__typename).toBe("Board");
-  const changed = await callCore(
-    page,
-    `mutation($input: ChangeBoardLayoutInput!) {
-      changeBoardLayout(input: $input) { __typename }
-    }`,
-    { input: { id, revision: read.board.revision, pairs: [], ...layout } },
-  );
-  expect(changed.changeBoardLayout.__typename).toBe("ChangeBoardLayoutSuccess");
+  if (!id) throw new Error("ボードの詳細の URL ではありません");
+  const read = await callCore(page, boardRevisionQuery, { id });
+  expectSuccess(read.board, "Board");
+  const changed = await callCore(page, changeBoardLayoutMutation, {
+    input: { id, revision: read.board.revision, pairs: [], ...layout },
+  });
+  expectSuccess(changed.changeBoardLayout, "ChangeBoardLayoutSuccess");
   // 詳細は投影から読むため、入れたレイアウトが出るまで開き直す
   await expect(async () => {
     await page.reload();

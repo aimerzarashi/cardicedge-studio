@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { setPresetDeckCardCountsMutation } from "@/app/preset-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -35,31 +36,6 @@ const renamePresetDeckMutation = graphql(`
         errors {
           __typename
           ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
-
-const setPresetDeckCardCountsMutation = graphql(`
-  mutation SetPresetDeckCardCounts($input: SetPresetDeckCardCountsInput!) {
-    setPresetDeckCardCounts(input: $input) {
-      __typename
-      ... on SetPresetDeckCardCountsSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldOutOfRange {
-            min
-            max
-          }
-          ... on FieldTotalTooLarge {
             max
           }
         }

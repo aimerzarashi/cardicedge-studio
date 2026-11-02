@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import { setNpcAvatarDecksMutation } from "@/app/npc-avatars/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import { type Notice, type RenameDeckState, target } from "../../deck-form";
@@ -53,23 +54,6 @@ const publishNpcAvatarMutation = graphql(`
     publishNpcAvatar(input: $input) {
       __typename
       ... on PublishNpcAvatarSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-        }
-      }
-    }
-  }
-`);
-
-const setNpcAvatarDecksMutation = graphql(`
-  mutation SetNpcAvatarDecks($input: SetNpcAvatarDecksInput!) {
-    setNpcAvatarDecks(input: $input) {
-      __typename
-      ... on SetNpcAvatarDecksSuccess {
         id
         revision
       }

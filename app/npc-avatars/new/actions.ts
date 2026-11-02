@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { graphql } from "@/graphql";
+import { registerNpcAvatarMutation } from "@/app/npc-avatars/operations";
 import { callCore } from "@/lib/core";
 import {
   FORBIDDEN,
@@ -9,26 +9,6 @@ import {
   nameErrorMessage,
 } from "../../messages";
 import { waitNpcAvatar } from "../wait-npc-avatar";
-
-const registerNpcAvatarMutation = graphql(`
-  mutation RegisterNpcAvatar($input: RegisterNpcAvatarInput!) {
-    registerNpcAvatar(input: $input) {
-      __typename
-      ... on RegisterNpcAvatarSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type RegisterNpcAvatarState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残す）

@@ -94,7 +94,7 @@ function problemList(page: Page) {
 }
 
 // 座標のある理由を試すための、拠点から行けないマスが 2 つあるレイアウト
-const unreachableLayout = {
+const unreachableLayout: Parameters<typeof setBoardLayout>[1] = {
   width: 8,
   height: 8,
   tiles: [
