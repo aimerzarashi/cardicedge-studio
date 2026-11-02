@@ -174,6 +174,9 @@ export function boardPairErrorMessage(
   }
 }
 
+export const NPC_AVATAR_NOT_DRAFT =
+  "準備中でないため、変えられません。最新の状態を表示しています";
+
 export const BOARD_CHECK_FAILED =
   "公開できない理由を確かめられませんでした。一覧と印は直前のものです";
 

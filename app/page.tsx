@@ -39,6 +39,9 @@ export default async function Home() {
         <li>
           <Link href="/boards">ボードの一覧</Link>
         </li>
+        <li>
+          <Link href="/npc-avatars">NPC のアバターの一覧</Link>
+        </li>
       </ul>
       <LogoutButton />
     </main>
