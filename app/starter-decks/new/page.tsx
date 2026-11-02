@@ -7,7 +7,8 @@ import type {
 } from "@/graphql/graphql";
 import { type CoreResult, callCore } from "@/lib/core";
 import { first } from "@/lib/search-params";
-import { CopyPresetDeckButton } from "./copy-preset-deck-button";
+import { CopyPresetDeckButton } from "../../copy-preset-deck-button";
+import { registerStarterDeckFromPresetDeck } from "./actions";
 import { RegisterStarterDeckForm } from "./register-starter-deck-form";
 
 const copySourcePresetDecksQuery = graphql(`
@@ -138,6 +139,8 @@ function PresetDecks({
                     <td>{node.totalCount}</td>
                     <td>
                       <CopyPresetDeckButton
+                        action={registerStarterDeckFromPresetDeck}
+                        basePath="/starter-decks"
                         presetDeckId={node.id}
                         name={node.name}
                       />

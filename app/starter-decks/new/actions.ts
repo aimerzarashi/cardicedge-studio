@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
+import type { RegisterFromPresetDeckState } from "../../deck-form";
 import {
   CORE_UNAVAILABLE,
   FORBIDDEN,
@@ -98,12 +99,6 @@ const registerStarterDeckFromPresetDeckMutation = graphql(`
     }
   }
 `);
-
-export type RegisterFromPresetDeckState = {
-  // 登録できたが、詳細に反映されるのを待ちきれなかったときの、詳細の ID
-  registeredId?: string;
-  error?: string;
-};
 
 export async function registerStarterDeckFromPresetDeck(
   _previous: RegisterFromPresetDeckState,
