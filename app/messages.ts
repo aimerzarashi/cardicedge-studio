@@ -177,6 +177,44 @@ export function boardPairErrorMessage(
 export const NPC_AVATAR_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
 
+// NPC のアバターに使うデッキを割り当てられないときの誤り（項目は deckIds.<番号>。画面は 1 つずつ足し引きするため、番号は出さない）
+export function npcAvatarDeckErrorMessage(
+  errors: { __typename: string }[],
+): string {
+  return errors
+    .map((error) => {
+      switch (error.__typename) {
+        case "FieldDuplicated":
+          return "同じデッキが 2 回入っています";
+        case "FieldNotFound":
+          return "このデッキは見つかりません";
+        case "FieldUnavailable":
+          return "公開中でないデッキは割り当てられません";
+        default:
+          return "入力が正しくありません";
+      }
+    })
+    .join("。");
+}
+
+// NPC のアバターを公開できないときの誤り（項目は decks。使うデッキが無い・公開中のものが無い）
+export function npcAvatarPublishErrorMessage(
+  errors: { __typename: string }[],
+): string {
+  return errors
+    .map((error) => {
+      switch (error.__typename) {
+        case "FieldRequired":
+          return "使うデッキを割り当ててから公開してください";
+        case "FieldUnavailable":
+          return "使うデッキに公開中のものがありません。公開中のデッキを割り当ててから公開してください";
+        default:
+          return "入力が正しくありません";
+      }
+    })
+    .join("。");
+}
+
 export const NPC_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
 

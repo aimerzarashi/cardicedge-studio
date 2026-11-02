@@ -1,5 +1,6 @@
 import Form from "next/form";
 import Link from "next/link";
+import { Fragment } from "react";
 import { graphql } from "@/graphql";
 import type {
   CardStatus,
@@ -21,6 +22,10 @@ const npcAvatarsQuery = graphql(`
             id
             name
             status
+            decks {
+              id
+              name
+            }
             registeredAt
             updatedAt
           }
@@ -141,6 +146,7 @@ function NpcAvatarsResult({
                 <tr>
                   <th>名前</th>
                   <th>状態</th>
+                  <th>使うデッキ</th>
                   <th>登録日時</th>
                   <th>更新日時</th>
                 </tr>
@@ -152,6 +158,18 @@ function NpcAvatarsResult({
                       <Link href={`/npc-avatars/${node.id}`}>{node.name}</Link>
                     </td>
                     <td>{STATUS_LABELS[node.status]}</td>
+                    <td>
+                      {node.decks.length === 0
+                        ? "なし"
+                        : node.decks.map((deck, index) => (
+                            <Fragment key={deck.id}>
+                              {index > 0 && "、"}
+                              <Link href={`/npc-decks/${deck.id}`}>
+                                {deck.name}
+                              </Link>
+                            </Fragment>
+                          ))}
+                    </td>
                     <td>
                       {dateTimeFormat.format(new Date(node.registeredAt))}
                     </td>

@@ -14,6 +14,8 @@ import {
   NOT_REFLECTED,
   NPC_AVATAR_NOT_DRAFT,
   nameErrorMessage,
+  npcAvatarDeckErrorMessage,
+  npcAvatarPublishErrorMessage,
   REVISION_CONFLICT,
 } from "../../messages";
 import { waitNpcAvatar } from "../wait-npc-avatar";
@@ -53,6 +55,28 @@ const publishNpcAvatarMutation = graphql(`
       ... on PublishNpcAvatarSuccess {
         id
         revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+        }
+      }
+    }
+  }
+`);
+
+const setNpcAvatarDecksMutation = graphql(`
+  mutation SetNpcAvatarDecks($input: SetNpcAvatarDecksInput!) {
+    setNpcAvatarDecks(input: $input) {
+      __typename
+      ... on SetNpcAvatarDecksSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+        }
       }
     }
   }
@@ -180,6 +204,8 @@ export async function publishNpcAvatar(
   switch (published.__typename) {
     case "PublishNpcAvatarSuccess":
       return showChanged(published.id, published.revision, "公開しました");
+    case "ValidationErrors":
+      return { error: npcAvatarPublishErrorMessage(published.errors) };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
@@ -212,6 +238,56 @@ export async function retireNpcAvatar(
     case "InvalidNpcAvatarStatusTransitionError":
       refresh();
       return { error: INVALID_STATUS_TRANSITION };
+    case "RevisionConflictError":
+      refresh();
+      return { error: REVISION_CONFLICT };
+    case "NpcAvatarNotFoundError":
+      refresh();
+      return {};
+    case "ForbiddenError":
+      return { error: FORBIDDEN };
+  }
+}
+
+// 割り当てる・外すのどちらも、変えた後の一覧（deckId を並べた隠し項目）をまるごと送る（core の setNpcAvatarDecks が一覧に
+// そろえる操作のため）。並びは画面に出ている割り当てた順のまま
+export async function setNpcAvatarDecks(
+  _previous: Notice,
+  form: FormData,
+): Promise<Notice> {
+  const avatar = target(form);
+  const deckIds = form.getAll("deckId");
+  // 知らせの文言は、押したボタンの種類（割り当てる・外す）から作る
+  const kind = form.get("kind");
+  if (
+    avatar === undefined ||
+    !deckIds.every((deckId) => typeof deckId === "string") ||
+    (kind !== "assign" && kind !== "unassign")
+  ) {
+    return { error: INVALID_TARGET };
+  }
+
+  const result = await callCore(setNpcAvatarDecksMutation, {
+    input: { ...avatar, deckIds },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+
+  const changed = result.data.setNpcAvatarDecks;
+  switch (changed.__typename) {
+    case "SetNpcAvatarDecksSuccess":
+      return showChanged(
+        changed.id,
+        changed.revision,
+        kind === "assign" ? "割り当てました" : "外しました",
+      );
+    case "ValidationErrors":
+      refresh();
+      return { error: npcAvatarDeckErrorMessage(changed.errors) };
+    case "NpcAvatarNotDraftError":
+      refresh();
+      return { error: NPC_AVATAR_NOT_DRAFT };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };

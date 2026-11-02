@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 import { loginAsOperator, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
-import { createNpcAvatar } from "./npc-avatar";
+import { createNpcAvatar, createPublishableNpcAvatar } from "./npc-avatar";
+import { createPublishedNpcDeck } from "./npc-deck";
 import { section } from "./preset-deck";
 
 // 前準備の NPC のアバターは GraphQL で入れ（tests/npc-avatar.ts）、確かめる画面の操作だけを画面でする。
@@ -72,7 +73,9 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createNpcAvatar(page, uniqueName("炎の剣士")));
+  await page.goto(
+    await createPublishableNpcAvatar(page, uniqueName("炎の剣士")),
+  );
 
   const publish = section(page, "公開");
   await publish.getByRole("button", { name: "公開する" }).click();
@@ -89,6 +92,60 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
 
   await publish.getByRole("button", { name: "公開する" }).click();
   await expect(detail(page, "状態")).toHaveText("公開中");
+});
+
+test("公開中の NPC のデッキを探して割り当てると使うデッキと一覧に出て、外すと消える", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const deckName = uniqueName("火・地");
+  await createPublishedNpcDeck(page, deckName);
+  const avatarName = uniqueName("森の番人");
+  const avatarURL = await createNpcAvatar(page, avatarName);
+  const decks = section(page, "使うデッキ");
+  const candidates = section(page, "デッキを探す");
+  await expect(async () => {
+    await page.goto(`${avatarURL}?name=${encodeURIComponent(deckName)}`);
+    await expect(
+      candidates.getByRole("button", { name: `${deckName}を割り当てる` }),
+    ).toBeVisible({ timeout: 1_000 });
+  }).toPass();
+  await expect(decks.getByText("デッキを割り当てていません")).toBeVisible();
+
+  await candidates
+    .getByRole("button", { name: `${deckName}を割り当てる` })
+    .click();
+
+  // 押したボタンの行は「割り当て済み」に置き換わり、ボタンの知らせも消えるため、使うデッキの表に出たことで確かめる
+  await expect(decks.locator("tbody tr")).toHaveCount(1);
+  await expect(decks.locator("tbody tr").first()).toContainText(deckName);
+  await expect(candidates.getByText("割り当て済み")).toBeVisible();
+  await page.goto(`/npc-avatars?name=${encodeURIComponent(avatarName)}`);
+  await expect(avatarRows(page).first()).toContainText(deckName);
+  await page.goto(avatarURL);
+
+  await decks.getByRole("button", { name: `${deckName}を外す` }).click();
+
+  await expect(decks.getByText("デッキを割り当てていません")).toBeVisible();
+  await expect(
+    candidates.getByRole("button", { name: `${deckName}を割り当てる` }),
+  ).toBeVisible();
+});
+
+test("デッキを割り当てていない NPC のアバターを公開しようとすると、割り当ての誤りが出て準備中のまま", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await page.goto(await createNpcAvatar(page, uniqueName("見習い")));
+
+  await section(page, "公開").getByRole("button", { name: "公開する" }).click();
+
+  await expect(
+    section(page, "公開").getByText(
+      "使うデッキを割り当ててから公開してください",
+    ),
+  ).toBeVisible();
+  await expect(detail(page, "状態")).toHaveText("準備中");
 });
 
 test("状態で絞り込むと、その状態の NPC のアバターだけが出る", async ({
@@ -144,7 +201,7 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("炎の剣士");
-  const avatarURL = await createNpcAvatar(page, name);
+  const avatarURL = await createPublishableNpcAvatar(page, name);
   await page.goto(avatarURL);
   const other = await page.context().newPage();
   await other.goto(avatarURL);
