@@ -67,7 +67,7 @@ export function cardErrorMessage(error: FieldError): string {
   }
 }
 
-// スターターデッキを公開できないときの誤り（決まりの値は core が返したものを使う）
+// スターターデッキ・NPC のデッキを公開できないときの誤り（決まりの値は core が返したものを使う）
 export function publishErrorMessage(errors: FieldError[]): string {
   return errors
     .map((error) => {
@@ -175,6 +175,9 @@ export function boardPairErrorMessage(
 }
 
 export const NPC_AVATAR_NOT_DRAFT =
+  "準備中でないため、変えられません。最新の状態を表示しています";
+
+export const NPC_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
 
 export const BOARD_CHECK_FAILED =

@@ -1,7 +1,7 @@
 import type { PublishProblem } from "./boards/publish-problem";
 import { cardErrorMessage, formErrorMessage } from "./messages";
 
-// プリセットデッキとスターターデッキの詳細の画面で共通の、フォームの受け渡し
+// プリセットデッキ・スターターデッキ・NPC のデッキの画面で共通の、フォームの受け渡し
 
 // 操作した結果、画面で知らせること
 export type Notice = { status?: string; error?: string };
@@ -10,6 +10,13 @@ export type Notice = { status?: string; error?: string };
 export type PublishState = Notice & {
   revision?: number;
   problems?: PublishProblem[];
+};
+
+// プリセットデッキから写して登録するボタンの結果
+export type RegisterFromPresetDeckState = {
+  // 登録できたが、詳細に反映されるのを待ちきれなかったときの、詳細の ID
+  registeredId?: string;
+  error?: string;
 };
 
 // 入力した値と誤りは、画面で見た版（revision）に結びつける。ほかの操作で版が変わった後は、古い版で入力した値を残さない

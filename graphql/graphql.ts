@@ -193,6 +193,14 @@ export type DeleteNpcAvatarInput = {
   revision: number;
 };
 
+/** NPC のデッキを削除する入力 */
+export type DeleteNpcDeckInput = {
+  /** NPC のデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC のデッキの revision */
+  revision: number;
+};
+
 /** プリセットデッキを削除する入力 */
 export type DeletePresetDeckInput = {
   /** プリセットデッキの公開用の ID */
@@ -239,6 +247,26 @@ export type NpcAvatarStatus =
   /** 使用不可 */
   | 'RETIRED';
 
+/** NPC のデッキの一覧の絞り込み */
+export type NpcDeckFilter = {
+  /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
+  nameContains?: string | null | undefined;
+  /** 状態（指定が無ければすべて。空のリストは入力の誤り） */
+  statuses?: Array<NpcDeckStatus> | null | undefined;
+};
+
+/**
+ * NPC のデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たす。
+ * 公開中の数に上限は無い。使用不可は新しい対戦に使わない
+ */
+export type NpcDeckStatus =
+  /** 準備中（登録したときの状態） */
+  | 'DRAFT'
+  /** 公開中 */
+  | 'PUBLISHED'
+  /** 使用不可 */
+  | 'RETIRED';
+
 /** プリセットデッキの一覧の絞り込み */
 export type PresetDeckFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
@@ -266,6 +294,14 @@ export type PublishNpcAvatarInput = {
   /** NPC のアバターの公開用の ID */
   id: string;
   /** 画面が見ていた NPC のアバターの revision */
+  revision: number;
+};
+
+/** NPC のデッキを公開する入力 */
+export type PublishNpcDeckInput = {
+  /** NPC のデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC のデッキの revision */
   revision: number;
 };
 
@@ -298,6 +334,18 @@ export type RegisterItemInput = {
 /** NPC のアバターを登録する入力 */
 export type RegisterNpcAvatarInput = {
   /** 名前（1〜20 文字。前後の空白は除いて保存する） */
+  name: string;
+};
+
+/** NPC のデッキをプリセットデッキから写して登録する入力 */
+export type RegisterNpcDeckFromPresetDeckInput = {
+  /** 写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい） */
+  presetDeckId: string;
+};
+
+/** NPC のデッキを空から登録する入力 */
+export type RegisterNpcDeckInput = {
+  /** 名前（1〜50 文字。前後の空白は除いて保存する） */
   name: string;
 };
 
@@ -345,6 +393,16 @@ export type RenameNpcAvatarInput = {
   revision: number;
 };
 
+/** NPC のデッキの名前を変える入力 */
+export type RenameNpcDeckInput = {
+  /** NPC のデッキの公開用の ID */
+  id: string;
+  /** 新しい名前（1〜50 文字。前後の空白は除いて保存する） */
+  name: string;
+  /** 画面が見ていた NPC のデッキの revision */
+  revision: number;
+};
+
 /** プリセットデッキの名前を変える入力 */
 export type RenamePresetDeckInput = {
   /** プリセットデッキの公開用の ID */
@@ -389,11 +447,29 @@ export type RetireNpcAvatarInput = {
   revision: number;
 };
 
+/** NPC のデッキを使用不可にする入力 */
+export type RetireNpcDeckInput = {
+  /** NPC のデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC のデッキの revision */
+  revision: number;
+};
+
 /** スターターデッキを使用不可にする入力 */
 export type RetireStarterDeckInput = {
   /** スターターデッキの公開用の ID */
   id: string;
   /** 画面が見ていたスターターデッキの revision */
+  revision: number;
+};
+
+/** NPC のデッキのカードの枚数を変える入力 */
+export type SetNpcDeckCardCountsInput = {
+  /** 変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ） */
+  cards: Array<DeckCardCountInput>;
+  /** NPC のデッキの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC のデッキの revision */
   revision: number;
 };
 
@@ -948,6 +1024,232 @@ export type NpcAvatarRevisionQuery = { npcAvatar:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'NpcAvatar', revision: number }
     | { __typename: 'NpcAvatarNotFoundError' }
+   };
+
+export type RenameNpcDeckMutationVariables = Exact<{
+  input: RenameNpcDeckInput;
+}>;
+
+
+export type RenameNpcDeckMutation = { renameNpcDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckNameAlreadyInUseError' }
+    | { __typename: 'NpcDeckNotDraftError' }
+    | { __typename: 'NpcDeckNotFoundError' }
+    | { __typename: 'RenameNpcDeckSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type SetNpcDeckCardCountsMutationVariables = Exact<{
+  input: SetNpcDeckCardCountsInput;
+}>;
+
+
+export type SetNpcDeckCardCountsMutation = { setNpcDeckCardCounts:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckNotDraftError' }
+    | { __typename: 'NpcDeckNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'SetNpcDeckCardCountsSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldLessThan', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', max: number, field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type DeleteNpcDeckMutationVariables = Exact<{
+  input: DeleteNpcDeckInput;
+}>;
+
+
+export type DeleteNpcDeckMutation = { deleteNpcDeck:
+    | { __typename: 'DeleteNpcDeckSuccess' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckNotDraftError' }
+    | { __typename: 'NpcDeckNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type PublishNpcDeckMutationVariables = Exact<{
+  input: PublishNpcDeckInput;
+}>;
+
+
+export type PublishNpcDeckMutation = { publishNpcDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckNotFoundError' }
+    | { __typename: 'PublishNpcDeckSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong' }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch', required: number }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type RetireNpcDeckMutationVariables = Exact<{
+  input: RetireNpcDeckInput;
+}>;
+
+
+export type RetireNpcDeckMutation = { retireNpcDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'InvalidNpcDeckStatusTransitionError' }
+    | { __typename: 'NpcDeckNotFoundError' }
+    | { __typename: 'RetireNpcDeckSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type NpcDeckQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type NpcDeckQuery = { npcDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeck', id: string, name: string, status: NpcDeckStatus, totalCount: number, revision: number, registeredAt: string, updatedAt: string, cards: Array<{ count: number, card:
+          | { __typename: 'Creature', id: string, name: string }
+          | { __typename: 'Item', id: string, name: string }
+          | { __typename: 'Spell', id: string, name: string }
+         }>, source: { presetDeckId: string, changedSinceCopied: boolean, presetDeckDeleted: boolean } | null }
+    | { __typename: 'NpcDeckNotFoundError' }
+   };
+
+export type NpcDeckCandidateCardsQueryVariables = Exact<{
+  filter?: CardFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type NpcDeckCandidateCardsQuery = { cards:
+    | { __typename: 'CardConnection', edges: Array<{ node:
+          | { __typename: 'Creature', id: string, name: string }
+          | { __typename: 'Item', id: string, name: string }
+          | { __typename: 'Spell', id: string, name: string }
+         }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type RegisterNpcDeckMutationVariables = Exact<{
+  input: RegisterNpcDeckInput;
+}>;
+
+
+export type RegisterNpcDeckMutation = { registerNpcDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckNameAlreadyInUseError' }
+    | { __typename: 'RegisterNpcDeckSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldLessThan' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type RegisterNpcDeckFromPresetDeckMutationVariables = Exact<{
+  input: RegisterNpcDeckFromPresetDeckInput;
+}>;
+
+
+export type RegisterNpcDeckFromPresetDeckMutation = { registerNpcDeckFromPresetDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckNameAlreadyInUseError' }
+    | { __typename: 'PresetDeckNotFoundError' }
+    | { __typename: 'RegisterNpcDeckFromPresetDeckSuccess', id: string, revision: number }
+   };
+
+export type NpcDeckCopySourcePresetDecksQueryVariables = Exact<{
+  filter?: PresetDeckFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type NpcDeckCopySourcePresetDecksQuery = { presetDecks:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'PresetDeckConnection', edges: Array<{ node: { id: string, name: string, totalCount: number } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type NpcDecksQueryVariables = Exact<{
+  filter?: NpcDeckFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type NpcDecksQuery = { npcDecks:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeckConnection', edges: Array<{ node: { id: string, name: string, status: NpcDeckStatus, totalCount: number, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type NpcDeckRevisionQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type NpcDeckRevisionQuery = { npcDeck:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcDeck', revision: number }
+    | { __typename: 'NpcDeckNotFoundError' }
    };
 
 export type RenamePresetDeckMutationVariables = Exact<{
@@ -1920,6 +2222,218 @@ export const NpcAvatarRevisionDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<NpcAvatarRevisionQuery, NpcAvatarRevisionQueryVariables>;
+export const RenameNpcDeckDocument = new TypedDocumentString(`
+    mutation RenameNpcDeck($input: RenameNpcDeckInput!) {
+  renameNpcDeck(input: $input) {
+    __typename
+    ... on RenameNpcDeckSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RenameNpcDeckMutation, RenameNpcDeckMutationVariables>;
+export const SetNpcDeckCardCountsDocument = new TypedDocumentString(`
+    mutation SetNpcDeckCardCounts($input: SetNpcDeckCardCountsInput!) {
+  setNpcDeckCardCounts(input: $input) {
+    __typename
+    ... on SetNpcDeckCardCountsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldOutOfRange {
+          min
+          max
+        }
+        ... on FieldTotalTooLarge {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SetNpcDeckCardCountsMutation, SetNpcDeckCardCountsMutationVariables>;
+export const DeleteNpcDeckDocument = new TypedDocumentString(`
+    mutation DeleteNpcDeck($input: DeleteNpcDeckInput!) {
+  deleteNpcDeck(input: $input) {
+    __typename
+  }
+}
+    `) as unknown as TypedDocumentString<DeleteNpcDeckMutation, DeleteNpcDeckMutationVariables>;
+export const PublishNpcDeckDocument = new TypedDocumentString(`
+    mutation PublishNpcDeck($input: PublishNpcDeckInput!) {
+  publishNpcDeck(input: $input) {
+    __typename
+    ... on PublishNpcDeckSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTotalMismatch {
+          required
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PublishNpcDeckMutation, PublishNpcDeckMutationVariables>;
+export const RetireNpcDeckDocument = new TypedDocumentString(`
+    mutation RetireNpcDeck($input: RetireNpcDeckInput!) {
+  retireNpcDeck(input: $input) {
+    __typename
+    ... on RetireNpcDeckSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RetireNpcDeckMutation, RetireNpcDeckMutationVariables>;
+export const NpcDeckDocument = new TypedDocumentString(`
+    query NpcDeck($id: UUID!) {
+  npcDeck(id: $id) {
+    __typename
+    ... on NpcDeck {
+      id
+      name
+      cards {
+        count
+        card {
+          __typename
+          id
+          name
+        }
+      }
+      status
+      source {
+        presetDeckId
+        changedSinceCopied
+        presetDeckDeleted
+      }
+      totalCount
+      revision
+      registeredAt
+      updatedAt
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcDeckQuery, NpcDeckQueryVariables>;
+export const NpcDeckCandidateCardsDocument = new TypedDocumentString(`
+    query NpcDeckCandidateCards($filter: CardFilter, $after: String) {
+  cards(filter: $filter, after: $after) {
+    __typename
+    ... on CardConnection {
+      edges {
+        node {
+          __typename
+          id
+          name
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcDeckCandidateCardsQuery, NpcDeckCandidateCardsQueryVariables>;
+export const RegisterNpcDeckDocument = new TypedDocumentString(`
+    mutation RegisterNpcDeck($input: RegisterNpcDeckInput!) {
+  registerNpcDeck(input: $input) {
+    __typename
+    ... on RegisterNpcDeckSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterNpcDeckMutation, RegisterNpcDeckMutationVariables>;
+export const RegisterNpcDeckFromPresetDeckDocument = new TypedDocumentString(`
+    mutation RegisterNpcDeckFromPresetDeck($input: RegisterNpcDeckFromPresetDeckInput!) {
+  registerNpcDeckFromPresetDeck(input: $input) {
+    __typename
+    ... on RegisterNpcDeckFromPresetDeckSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterNpcDeckFromPresetDeckMutation, RegisterNpcDeckFromPresetDeckMutationVariables>;
+export const NpcDeckCopySourcePresetDecksDocument = new TypedDocumentString(`
+    query NpcDeckCopySourcePresetDecks($filter: PresetDeckFilter, $after: String) {
+  presetDecks(filter: $filter, after: $after) {
+    __typename
+    ... on PresetDeckConnection {
+      edges {
+        node {
+          id
+          name
+          totalCount
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcDeckCopySourcePresetDecksQuery, NpcDeckCopySourcePresetDecksQueryVariables>;
+export const NpcDecksDocument = new TypedDocumentString(`
+    query NpcDecks($filter: NpcDeckFilter, $after: String) {
+  npcDecks(filter: $filter, after: $after) {
+    __typename
+    ... on NpcDeckConnection {
+      edges {
+        node {
+          id
+          name
+          status
+          totalCount
+          registeredAt
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcDecksQuery, NpcDecksQueryVariables>;
+export const NpcDeckRevisionDocument = new TypedDocumentString(`
+    query NpcDeckRevision($id: UUID!) {
+  npcDeck(id: $id) {
+    __typename
+    ... on NpcDeck {
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcDeckRevisionQuery, NpcDeckRevisionQueryVariables>;
 export const RenamePresetDeckDocument = new TypedDocumentString(`
     mutation RenamePresetDeck($input: RenamePresetDeckInput!) {
   renamePresetDeck(input: $input) {
