@@ -1,6 +1,6 @@
 # 本番用イメージ。next build の standalone 出力だけを node で動かす。
 # make test のテスト用環境（compose.test.yaml）でも使う
-ARG NODE_IMAGE=node:24.21.0-bookworm-slim
+ARG NODE_IMAGE=node:26.13.0-bookworm-slim
 
 # pnpm の取得専用ステージ。curl はここでだけ使い、以降のステージには残さない
 FROM ${NODE_IMAGE} AS pnpm
@@ -8,7 +8,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends curl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 # package.json の packageManager と版を揃える
-ARG PNPM_VERSION=12.9.1
+ARG PNPM_VERSION=12.16.1
 ENV PNPM_HOME=/pnpm
 RUN curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=$PNPM_VERSION SHELL=bash sh -
 

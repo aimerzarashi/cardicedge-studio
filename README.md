@@ -46,7 +46,7 @@ core・game から studio に envoy を通らずに直接届くと、`x-client-i
 
 - studio のサーバーから core を呼ぶときは、studio-envoy の `/studio/graphql`（`http://studio-envoy:10000/studio/graphql`）を通す
 - core から studio（JWKS 等）を呼ぶときも、studio-envoy（`http://studio-envoy:10000/api/auth/jwks`）を通す
-core は game / studio で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
+  core は game / studio で1つを共有する。core が兄弟ディレクトリ（../core）に clone されている前提。
 
 studio が前提にする core の版は Makefile の `CORE_VERSION` に書く。`make gen-api` はその版のイメージから studio 用 GraphQL のスキーマを取り出し（`docker run --rm diecardomain/core:<版> schema studio`）、graphql-codegen で型を作る（生成物 graphql/ はコミットする）。マイルストーンの途中で、まだリリースしていない core を使うときは、`make core-local` で手元の ../core から `local` の版のイメージを作り、`make gen-api CORE_VERSION=local`・`make test CORE_VERSION=local` で使う（Makefile の `CORE_VERSION` は local にしない。studio#23）。
 
@@ -60,16 +60,16 @@ core の DB は、core と同じく studio 用・game 用の 2 つ（core_studio
 
 `make test` が落ちたときだけ、テスト用の環境を消す前に、`test-failures/<日時>/`（git 管理しない）に記録を移す（scripts/save-test-failure.sh。studio#46）。次に流しても消えない。要らなくなったら手で消す。
 
-| 場所 | 中身 | 見方 |
-|---|---|---|
-| `test-results/<テスト>/` | 落ちたテストの trace（`trace.zip`）・スクリーンショット・error-context.md | trace は https://trace.playwright.dev に `trace.zip` を開く（読み込みはブラウザの中だけで、ファイルは送られない）。画面の操作の順、送った通信（Server Action の応答を含む）、各時点の画面が見える |
-| `playwright-report/` | Playwright の HTML のレポート（すべてのテストの結果） | `index.html` をブラウザで開く。落ちたテストは「Failed」で絞り、テスト名を押すと、誤り・操作ごとの時間・スクリーンショット・trace と、「Annotations」の trace id が並ぶ。中の trace は、trace.playwright.dev か `trace.zip` で開く |
-| `logs/<サービス>.log` | 各コンテナのログ（時刻つき） | core のログで、操作のコマンド・投影の処理と誤り（ERROR）を時刻で追う |
-| `db/core_studio.sql`・`db/core_game.sql`・`db/studio.sql` | 各 DB の中身（pg_dump） | `domain_events` の行で、操作のイベントが保存されていたかを、read model の表（boards 等）で、反映していたかを見る。イベントは保存され read model にも反映していれば、投影の遅れでテストが待ちきれなかっただけと判断できる |
-| `test-results/<テスト>/trace-id.txt` | 落ちたテストの trace id（テストごとに W3C の traceparent を作り、ブラウザの通信と core を直接呼ぶ前準備の両方に付けている。tests/fixtures.ts） | そのテストの studio・core の処理が、この 1 つの trace id でつながっている |
-| `traces/<trace id>/tempo.json` | その trace id の Tempo のトレース（JSON）。studio と core のスパン | `batches[].resource` の `service.name`（studio / core）ごとに `scopeSpans[].spans[]`（`name`・開始と終了の時刻・親子）を読む。Grafana で開くなら http://localhost:3002 の Explore（Tempo）に trace id を入れる（受け手が動いていれば） |
-| `traces/<trace id>/loki.json` | その trace id を持つ core・studio のログと、その保存を処理した投影・ポリシーのログ（`eventdriven: event processed`。`lag_ms`・`duration_ms`・`result` つき。トレースの無い保存、seed 等の処理には付かない）（Loki の query_range の応答。JSON） | `data.result[]` の各 stream の `stream`（`event_id`・`trace_id` 等のメタデータ）と `values[]`（`[時刻(ns), メッセージ]`） |
-| `traces/<trace id>/test-dir.txt` | その trace id のテストの `test-results/` の下のディレクトリ名 | trace id とテストの対応 |
+| 場所                                                      | 中身                                                                                                                                                                                                                                            | 見方                                                                                                                                                                                                                                   |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test-results/<テスト>/`                                  | 落ちたテストの trace（`trace.zip`）・スクリーンショット・error-context.md                                                                                                                                                                       | trace は https://trace.playwright.dev に `trace.zip` を開く（読み込みはブラウザの中だけで、ファイルは送られない）。画面の操作の順、送った通信（Server Action の応答を含む）、各時点の画面が見える                                      |
+| `playwright-report/`                                      | Playwright の HTML のレポート（すべてのテストの結果）                                                                                                                                                                                           | `index.html` をブラウザで開く。落ちたテストは「Failed」で絞り、テスト名を押すと、誤り・操作ごとの時間・スクリーンショット・trace と、「Annotations」の trace id が並ぶ。中の trace は、trace.playwright.dev か `trace.zip` で開く      |
+| `logs/<サービス>.log`                                     | 各コンテナのログ（時刻つき）                                                                                                                                                                                                                    | core のログで、操作のコマンド・投影の処理と誤り（ERROR）を時刻で追う                                                                                                                                                                   |
+| `db/core_studio.sql`・`db/core_game.sql`・`db/studio.sql` | 各 DB の中身（pg_dump）                                                                                                                                                                                                                         | `domain_events` の行で、操作のイベントが保存されていたかを、read model の表（boards 等）で、反映していたかを見る。イベントは保存され read model にも反映していれば、投影の遅れでテストが待ちきれなかっただけと判断できる               |
+| `test-results/<テスト>/trace-id.txt`                      | 落ちたテストの trace id（テストごとに W3C の traceparent を作り、ブラウザの通信と core を直接呼ぶ前準備の両方に付けている。tests/fixtures.ts）                                                                                                  | そのテストの studio・core の処理が、この 1 つの trace id でつながっている                                                                                                                                                              |
+| `traces/<trace id>/tempo.json`                            | その trace id の Tempo のトレース（JSON）。studio と core のスパン                                                                                                                                                                              | `batches[].resource` の `service.name`（studio / core）ごとに `scopeSpans[].spans[]`（`name`・開始と終了の時刻・親子）を読む。Grafana で開くなら http://localhost:3002 の Explore（Tempo）に trace id を入れる（受け手が動いていれば） |
+| `traces/<trace id>/loki.json`                             | その trace id を持つ core・studio のログと、その保存を処理した投影・ポリシーのログ（`eventdriven: event processed`。`lag_ms`・`duration_ms`・`result` つき。トレースの無い保存、seed 等の処理には付かない）（Loki の query_range の応答。JSON） | `data.result[]` の各 stream の `stream`（`event_id`・`trace_id` 等のメタデータ）と `values[]`（`[時刻(ns), メッセージ]`）                                                                                                              |
+| `traces/<trace id>/test-dir.txt`                          | その trace id のテストの `test-results/` の下のディレクトリ名                                                                                                                                                                                   | trace id とテストの対応                                                                                                                                                                                                                |
 
 trace id の見つけ方は、落ちたテストの `test-results/<テスト>/trace-id.txt`、`traces/` の下のディレクトリ名と `test-dir.txt`、または HTML のレポートの「Annotations」。HTML のレポートには通ったテストの trace id も出るので、通ったが遅かったテストも受け手で調べられる。テストが通ったときのレポートは `playwright-report/`（git 管理しない。次に流すと作り直す）に残る。AI に調べさせるときは、`test-failures/<日時>/` のディレクトリごと渡す。受け手（core の compose の otel-lgtm）が動いていない・取れないときは、`traces/` は作られないか欠ける（`make test` の終了コードは変わらない）。ログは、`logs/core.log` でも `event_id` で引ける。
 
@@ -97,33 +97,32 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 
 ## リリースとイメージ配布（CI）
 
-| パイプライン | ジョブ | 内容 |
-|---|---|---|
-| マイルストーンのブランチに向かう MR（Issue の MR） | lint・test（手動） | ふだんは実行せず、手元の `make lint`・`make test` で確かめる。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる。CI の手順を変えたとき等、CI で確かめたいときだけ手で動かす（失敗するとマージできなくなる） |
-| main に向かう MR（マイルストーンの MR） | lint | `make lint` 相当 |
-| main に向かう MR | test | migrations を空の DB に Atlas で適用し、better-auth の設定とスキーマに差分が無いことを確かめる（Playwright のテストは CI では未実行） |
-| main に向かう MR | build-mr（手動） | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（lint・test が通った後） |
-| main | release | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない |
-| タグ（`v*`） | deploy | Docker Hub の `diecardomain/studio:<タグ>`・`:latest` と `diecardomain/studio-migrate:<タグ>`・`:latest` に push |
+| パイプライン                                       | ジョブ             | 内容                                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| マイルストーンのブランチに向かう MR（Issue の MR） | check（手動） | ふだんは実行せず、手元の `make lint`・`make test` で確かめる。パイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる。CI の手順を変えたとき等、CI で確かめたいときだけ手で動かす（失敗するとマージできなくなる） |
+| main に向かう MR（マイルストーンの MR） | check | `make lint` 相当（biome・型・migrations の検査）のあとに、単体テスト・migrations を空の DB に Atlas で適用・better-auth の設定とスキーマの差分の検査を、1 つのジョブで順に流す（GitLab のコンピューティング時間を短縮するため、ジョブごとの準備を 1 回にする。lint で落ちたら test は流さない。studio#55）。Playwright のテストは CI では未実行 |
+| main に向かう MR                                   | build-mr（手動）   | `registry.gitlab.com/aimerzarashi/diecardomain/studio:mr-<MR番号>` と `.../studio/migrate:mr-<MR番号>` に push（check が通った後）                                                                                                                                                                                           |
+| main                                               | release            | semantic-release がコミットからバージョンを決め、タグ（`v1.2.0`）と GitLab リリースを作る。リリース対象のコミットが無ければ何もしない。入った MR・Issue へのコメント（どの版で入ったか）は書かない（`.releaserc.json` の `successCommentCondition: false`。書くと GitLab の回数の制限にかかることがあるため。studio#53・core#77） |
+| タグ（`v*`）                                       | deploy             | Docker Hub の `diecardomain/studio:<タグ>`・`:latest` と `diecardomain/studio-migrate:<タグ>`・`:latest` に push                                                                                                                                                                                                                  |
 
 本番用イメージは Next.js の standalone 出力を `node server.js` で動かす（`.build/Dockerfile`）。
 バージョンは Conventional Commits で決まる（`feat:` → マイナー、`fix:` / `perf:` → パッチ、`BREAKING CHANGE` → メジャー）。
 
-Issue の MR では、何もしない手動のジョブだけを置いて実行しない（lint・test は手元の `make lint`・`make test` で確かめる。パイプラインを作らないと「パイプラインが成功する必要がある」の設定でマージできず、その設定は main に向かう MR の歯止めとして残すため）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため。main は直接 push できない設定にしている）。共有 Runner の時間を減らすため（core#30・studio#22）。
+マイルストーンのブランチに向かう Issue の MR では check のジョブを手動にして、ふだんは実行しない（手元の `make lint`・`make test` で確かめる。GitLab のコンピューティング時間を Issue ごとに使わないため）。手動のジョブだけのパイプラインは skipped になり、「スキップされたパイプラインを成功とみなす」の設定でマージできる（「パイプラインが成功する必要がある」の設定は、main に向かう MR の歯止めとして残す）。main への push では lint・test を流さない（直前の main に向かう MR で同じ中身を確かめているため）。main は直接 push できない設定（保護ブランチの push は No one）にして、すべての変更が main に向かう MR の check を通るようにしている（core#30・core#33）。
 
 ## 認証（better-auth）
 
 メールアドレス + パスワードでサインアップ・ログインする（better-auth の標準機能）。メールアドレスの確認が済むまでログインできない。
 誰をオペレーターにするかは core が決め、better-auth には認証のための情報（メールアドレス・パスワード・セッション）だけを置く（設計メモ「オペレーターの登録と権限」）。
 
-| 項目 | 内容 |
-|---|---|
-| データ | studio-db（PostgreSQL）。テーブルは migrations の SQL を Atlas で適用して作る（下の「DB マイグレーション」）。ホストからは `localhost:5433`（user: studio_user / password: studio_password / db: studio。ポートは STUDIO_DB_PORT で変更可） |
-| アカウントとオペレーター | 誰でもサインアップできるが、core にオペレーターとして登録されたメールアドレスを確認したアカウントだけが、初めて core を呼んだときにオペレーターに紐づく（下の「サインアップとオペレーター」） |
-| 開発・テスト用のオペレーター | `pnpm db:seed` で作る（operator@example.com / operator-password。メールアドレスは確認済み）。core の初期オペレーター（`STUDIO_INITIAL_OPERATOR_EMAIL`）と同じアドレスで、ログインして core を呼ぶと紐づく。本番では使わない |
-| 名前 | better-auth の `name` は必須の列だが使わず、空文字にする（オペレーターのプロフィールは core に持つ） |
-| JWT | `/api/auth/token` で取得。`iss` / `aud` は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須。開発・テストは `diecardomain-studio` / `diecardomain-core`）。`sub` は better-auth のユーザー ID。中身は `sub`・`iss`・`aud`・`iat`・`exp` と、`email`・`email_verified`（core が初めてのログインでオペレーターに紐づけるときにだけ使う。OIDC の標準のクレーム名）（有効期限 15 分）。**`JWT_ISSUER` は core がオペレーターを識別するキーの一部のため、運用を始めた環境では変えない** |
-| JWKS | `/api/auth/jwks`（EdDSA / Ed25519）。core が JWT の検証に使う |
+| 項目                         | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| データ                       | studio-db（PostgreSQL）。テーブルは migrations の SQL を Atlas で適用して作る（下の「DB マイグレーション」）。ホストからは `localhost:5433`（user: studio_user / password: studio_password / db: studio。ポートは STUDIO_DB_PORT で変更可）                                                                                                                                                                                                                                   |
+| アカウントとオペレーター     | 誰でもサインアップできるが、core にオペレーターとして登録されたメールアドレスを確認したアカウントだけが、初めて core を呼んだときにオペレーターに紐づく（下の「サインアップとオペレーター」）                                                                                                                                                                                                                                                                                 |
+| 開発・テスト用のオペレーター | `pnpm db:seed` で作る（operator@example.com / operator-password。メールアドレスは確認済み）。core の初期オペレーター（`STUDIO_INITIAL_OPERATOR_EMAIL`）と同じアドレスで、ログインして core を呼ぶと紐づく。本番では使わない                                                                                                                                                                                                                                                   |
+| 名前                         | better-auth の `name` は必須の列だが使わず、空文字にする（オペレーターのプロフィールは core に持つ）                                                                                                                                                                                                                                                                                                                                                                          |
+| JWT                          | `/api/auth/token` で取得。`iss` / `aud` は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須。開発・テストは `diecardomain-studio` / `diecardomain-core`）。`sub` は better-auth のユーザー ID。中身は `sub`・`iss`・`aud`・`iat`・`exp` と、`email`・`email_verified`（core が初めてのログインでオペレーターに紐づけるときにだけ使う。OIDC の標準のクレーム名）（有効期限 15 分）。**`JWT_ISSUER` は core がオペレーターを識別するキーの一部のため、運用を始めた環境では変えない** |
+| JWKS                         | `/api/auth/jwks`（EdDSA / Ed25519）。core が JWT の検証に使う                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 `make up` では、studio-migrate がマイグレーションを適用してから、開発サーバーの起動前に `db:seed`（冪等）を実行する。
 
@@ -146,10 +145,10 @@ studio-db のデータは名前付きのボリュームに置き、`make down` �
 
 メールは SMTP で送る（lib/mail.ts。nodemailer）。送り方をローカルと本番で同じにするため、配信サービスの SDK は使わない。
 
-| 環境変数 | 内容 |
-|---|---|
-| `SMTP_URL` | SMTP の接続先（例: 開発・テストは `smtp://studio-mailpit:1025`、本番は `smtps://<ユーザー>:<パスワード>@<ホスト>:465`） |
-| `MAIL_FROM` | 差出人（例: `diecardomain studio <no-reply@diecardomain.example>`） |
+| 環境変数    | 内容                                                                                                                    |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `SMTP_URL`  | SMTP の接続先（例: 開発・テストは `smtp://studio-mailpit:1025`、本番は `smtps://<ユーザー>:<パスワード>@<ホスト>:465`） |
+| `MAIL_FROM` | 差出人（例: `diecardomain studio <no-reply@diecardomain.example>`）                                                     |
 
 - 本番のメール配信サービスは、本番を用意するときに選ぶ
 - nodemailer には、細工した入力の解析による勧告が多い。そのため宛先は DB にあるアドレスだけを渡し、本文はテキストのみにする（HTML・添付・DKIM は使わない）。依存の更新はすぐ取り込む
@@ -161,9 +160,9 @@ better-auth のレート制限は本番モード（`NODE_ENV=production`）で�
 
 利用者の IP は、envoy が接続元から判定して `x-client-ip` に**上書き**で入れ、better-auth はそれだけを見る（better-auth 公式の推奨: プロキシが設定する信頼できるヘッダー 1 つ）。利用者が送った `X-Forwarded-For` や `x-client-ip` は無視される。
 
-| 入口 | 利用者の IP | 置く環境 |
-|---|---|---|
-| 公開の入口（envoy の 10000） | 接続元の IP | すべて |
+| 入口                                                       | 利用者の IP                     | 置く環境                                                                                         |
+| ---------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 公開の入口（envoy の 10000）                               | 接続元の IP                     | すべて                                                                                           |
 | 中継役用の入口（10001。`local/envoy/relay-listener.yaml`） | `X-Forwarded-For` の最後の 1 段 | **テスト用の環境（compose.test.yaml）だけ**。Playwright がテストごとに別の IP を名乗るために使う |
 
 - **studio には envoy を経由してしか届かないようにする**（studio の 3000 番を公開しない）。直接届くと `x-client-ip` を偽装できる
@@ -198,16 +197,16 @@ secret だけが漏れた場合、Cookie の署名は作れるが、セッショ
 
 開発中に、studio から core までのリクエストを 1 本のトレースで見られる（studio#50）。`instrumentation.ts` で `@vercel/otel` の `registerOTel` を呼び、Next.js の処理・better-auth の DB の呼び出し・core への fetch をスパンにして送る。
 
-| 項目 | 内容 |
-|---|---|
-| 送り先 | OpenTelemetry の標準の環境変数 `OTEL_EXPORTER_OTLP_ENDPOINT`（開発・テスト用の環境は `http://host.docker.internal:4318`）・`OTEL_EXPORTER_OTLP_PROTOCOL`・`OTEL_SERVICE_NAME`。任意で、渡さなければ送らない（リリース確認の環境・本番のように受け手が無くても、同じイメージのまま普通に動く）。受け手に届かなくても studio は普通に動く |
-| 受け手 | core の compose の otel-lgtm（`make up` で core と一緒に起動）。Grafana は http://127.0.0.1:3002（ログインなし）の Explore で Tempo を選ぶ。studio のコンテナは共有ネットワークに入れず、`extra_hosts` の `host.docker.internal` でホストの 4318 番に届ける |
-| core とのつながり | core を呼ぶ fetch に `traceparent` を付ける。@vercel/otel は既定では自分と同じ宛先への fetch にしか付けないため、instrumentation.ts の `propagateContextUrls` に `CORE_GRAPHQL_URL` を渡している（無いと studio と core が別々のトレースになる）。core は受けた `traceparent` を引き継ぐ |
-| 確かめ方 | `traceparent: 00-<32 桁の 16 進数>-<16 桁の 16 進数>-01` を付けて、ログイン後の Cookie でページ（例: `/boards`）を呼び、`curl http://127.0.0.1:3002/api/datasources/proxy/uid/tempo/api/traces/<trace id>` で studio と core のスパンが同じ trace id に並ぶことを見る |
+| 項目              | 内容                                                                                                                                                                                                                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 送り先            | OpenTelemetry の標準の環境変数 `OTEL_EXPORTER_OTLP_ENDPOINT`（開発・テスト用の環境は `http://host.docker.internal:4318`）・`OTEL_EXPORTER_OTLP_PROTOCOL`・`OTEL_SERVICE_NAME`。任意で、渡さなければ送らない（リリース確認の環境・本番のように受け手が無くても、同じイメージのまま普通に動く）。受け手に届かなくても studio は普通に動く |
+| 受け手            | core の compose の otel-lgtm（`make up` で core と一緒に起動）。Grafana は http://127.0.0.1:3002（ログインなし）の Explore で Tempo を選ぶ。studio のコンテナは共有ネットワークに入れず、`extra_hosts` の `host.docker.internal` でホストの 4318 番に届ける                                                                             |
+| core とのつながり | core を呼ぶ fetch に `traceparent` を付ける。@vercel/otel は既定では自分と同じ宛先への fetch にしか付けないため、instrumentation.ts の `propagateContextUrls` に `CORE_GRAPHQL_URL` を渡している（無いと studio と core が別々のトレースになる）。core は受けた `traceparent` を引き継ぐ                                                |
+| 確かめ方          | `traceparent: 00-<32 桁の 16 進数>-<16 桁の 16 進数>-01` を付けて、ログイン後の Cookie でページ（例: `/boards`）を呼び、`curl http://127.0.0.1:3002/api/datasources/proxy/uid/tempo/api/traces/<trace id>` で studio と core のスパンが同じ trace id に並ぶことを見る                                                                   |
 
 ## DB マイグレーション
 
-core・studio・game で同じ形式（Atlas Community Edition `arigaio/atlas:1.3.3-community`、`migrations/NNNN_name.sql` + `atlas.sum`）にそろえている（方針は core#5、決まりと Atlas の注意点の詳細は core の README）。
+core・studio・game で同じ形式（Atlas Community Edition `arigaio/atlas:1.3.5-community`、`migrations/NNNN_name.sql` + `atlas.sum`）にそろえている（方針は core#5、決まりと Atlas の注意点の詳細は core の README）。
 better-auth の CLI（`auth migrate`）で直接 DB を変えるのではなく、`auth generate` で差分 SQL をファイルに出し、レビューしてから Atlas で適用する。
 
 ### better-auth の設定を変えたとき（プラグインの追加等）
@@ -222,14 +221,14 @@ better-auth の CLI（`auth migrate`）で直接 DB を変えるのではなく�
 - 追加のみ。適用済みのファイルは変更・削除・改名しない。down は無い
 - 例外として、リリース前（本番の DB ができる前）に限り、並びを作り直してよい。作り直したら `migrations/BASELINE` の 1 行目を書き換える（`check-migrations.sh` は比較元とこの行が違えば比べ合わせを飛ばす。core#33）
 - ファイル名は `NNNN_name.sql`（番号は数字だけ）。`-- atlas:txmode none` 等の指示行の直後には空行を入れる
-- lib/auth.ts を変えたのにマイグレーションを作り忘れると、Atlas の適用は通るのに本番でテーブル・列が足りずに壊れる。`scripts/check-auth-schema.sh`（`auth generate` で差分が無いことを確かめる）で検査する（`make lint`・CI の test）
-- 上記と番号の重複・適用済みより小さい番号の追加は、Atlas が検出しないため `scripts/check-migrations.sh`（core と同じもの）で検査する（`make lint`・CI の lint）
+- lib/auth.ts を変えたのにマイグレーションを作り忘れると、Atlas の適用は通るのに本番でテーブル・列が足りずに壊れる。`scripts/check-auth-schema.sh`（`auth generate` で差分が無いことを確かめる）で検査する（`make lint`・CI の check のジョブ（test の手順））
+- 上記と番号の重複・適用済みより小さい番号の追加は、Atlas が検出しないため `scripts/check-migrations.sh`（core と同じもの）で検査する（`make lint`・CI の check のジョブ（lint の手順））
 
-| 環境 | 実行方法 |
-|---|---|
-| 開発（compose.yaml） | studio-migrate サービス（migrations をマウント）が studio の起動前に 1 回実行。`make migrate` |
-| テスト用（compose.test.yaml） | studio-migrate サービス（マイグレーション用イメージ） |
-| リリース・本番 | タグのパイプラインで `diecardomain/studio-migrate:<タグ>` を Docker Hub に push。本番では studio より先に `DATABASE_URL` を渡してジョブとして実行する |
+| 環境                          | 実行方法                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 開発（compose.yaml）          | studio-migrate サービス（migrations をマウント）が studio の起動前に 1 回実行。`make migrate`                                                         |
+| テスト用（compose.test.yaml） | studio-migrate サービス（マイグレーション用イメージ）                                                                                                 |
+| リリース・本番                | タグのパイプラインで `diecardomain/studio-migrate:<タグ>` を Docker Hub に push。本番では studio より先に `DATABASE_URL` を渡してジョブとして実行する |
 
 ## 依存パッケージ
 
