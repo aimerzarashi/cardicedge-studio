@@ -50,3 +50,20 @@ export const setNpcAvatarDecksMutation = graphql(`
     }
   }
 `);
+
+export const publishNpcAvatarMutation = graphql(`
+  mutation PublishNpcAvatar($input: PublishNpcAvatarInput!) {
+    publishNpcAvatar(input: $input) {
+      __typename
+      ... on PublishNpcAvatarSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+        }
+      }
+    }
+  }
+`);

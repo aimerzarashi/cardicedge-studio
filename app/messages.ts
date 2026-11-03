@@ -85,9 +85,6 @@ export function publishErrorMessage(errors: FieldError[]): string {
 
 export const GRANT_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
-export function grantDeckLimitReachedMessage(max: number): string {
-  return `公開中の配布デッキは ${max} 個までです。ほかのものを使用不可にすると公開できます`;
-}
 
 export const BOARD_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
@@ -213,6 +210,54 @@ export function npcAvatarPublishErrorMessage(
       }
     })
     .join("。");
+}
+
+export const STARTER_SET_NOT_DRAFT =
+  "準備中でないため、変えられません。最新の状態を表示しています";
+
+// スターターセットに配るデッキ・解放するボード・解放する NPC を指定できないときの誤り（項目は <項目名>.<番号>。画面は 1 つずつ足し引きするため、番号は出さない）。
+// what は指定するものの呼び方（「デッキ」など）
+export function starterSetItemErrorMessage(
+  errors: { __typename: string }[],
+  what: string,
+): string {
+  // 呼び方が英字（NPC）のときは、前後に空白を入れる（日本語と英字の間に空白を入れる書き方にそろえる）
+  const name = /^[A-Za-z]/.test(what) ? ` ${what} ` : what;
+  return errors
+    .map((error) => {
+      switch (error.__typename) {
+        case "FieldDuplicated":
+          return `同じ${name}が 2 回入っています`;
+        case "FieldNotFound":
+          return `この${name}は見つかりません`;
+        case "FieldUnavailable":
+          return `公開中でない${name}は割り当てられません`;
+        default:
+          return "入力が正しくありません";
+      }
+    })
+    .join("。");
+}
+
+// スターターセットを公開できないときの誤り（項目は grantDecks。配るデッキが無い）
+export function starterSetPublishErrorMessage(
+  errors: { __typename: string }[],
+): string {
+  return errors
+    .map((error) => {
+      switch (error.__typename) {
+        case "FieldRequired":
+          return "配るデッキを割り当ててから公開してください";
+        default:
+          return "入力が正しくありません";
+      }
+    })
+    .join("。");
+}
+
+// 上限は core が返した値を使う（決まりの値を studio に書き写さない）
+export function starterSetLimitReachedMessage(max: number): string {
+  return `公開中のスターターセットは ${max} 個までです。今のものを使用不可にすると公開できます`;
 }
 
 export const NPC_DECK_NOT_DRAFT =

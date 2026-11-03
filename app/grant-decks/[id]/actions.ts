@@ -2,7 +2,10 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { setGrantDeckCardCountsMutation } from "@/app/grant-decks/operations";
+import {
+  publishGrantDeckMutation,
+  setGrantDeckCardCountsMutation,
+} from "@/app/grant-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -17,7 +20,6 @@ import {
   CORE_UNAVAILABLE,
   FORBIDDEN,
   GRANT_DECK_NOT_DRAFT,
-  grantDeckLimitReachedMessage,
   INVALID_STATUS_TRANSITION,
   INVALID_TARGET,
   NAME_ALREADY_IN_USE,
@@ -52,29 +54,6 @@ const deleteGrantDeckMutation = graphql(`
   mutation DeleteGrantDeck($input: DeleteGrantDeckInput!) {
     deleteGrantDeck(input: $input) {
       __typename
-    }
-  }
-`);
-
-const publishGrantDeckMutation = graphql(`
-  mutation PublishGrantDeck($input: PublishGrantDeckInput!) {
-    publishGrantDeck(input: $input) {
-      __typename
-      ... on PublishGrantDeckSuccess {
-        id
-        revision
-      }
-      ... on GrantDeckLimitReachedError {
-        max
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTotalMismatch {
-            required
-          }
-        }
-      }
     }
   }
 `);
@@ -252,8 +231,6 @@ export async function publishGrantDeck(
       return showChanged(published.id, published.revision, "公開しました");
     case "ValidationErrors":
       return { error: publishErrorMessage(published.errors) };
-    case "GrantDeckLimitReachedError":
-      return { error: grantDeckLimitReachedMessage(published.max) };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };

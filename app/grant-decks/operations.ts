@@ -58,3 +58,23 @@ export const setGrantDeckCardCountsMutation = graphql(`
     }
   }
 `);
+
+export const publishGrantDeckMutation = graphql(`
+  mutation PublishGrantDeck($input: PublishGrantDeckInput!) {
+    publishGrantDeck(input: $input) {
+      __typename
+      ... on PublishGrantDeckSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          ... on FieldTotalMismatch {
+            required
+          }
+        }
+      }
+    }
+  }
+`);

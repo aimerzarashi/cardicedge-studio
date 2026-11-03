@@ -35,3 +35,58 @@ export const changeBoardLayoutMutation = graphql(`
     }
   }
 `);
+
+export const publishBoardMutation = graphql(`
+  mutation PublishBoard($input: PublishBoardInput!) {
+    publishBoard(input: $input) {
+      __typename
+      ... on PublishBoardSuccess {
+        id
+        revision
+      }
+      ... on BoardNotPublishableError {
+        problems {
+          __typename
+          ... on BaseCountProblem {
+            positions {
+              x
+              y
+            }
+          }
+          ... on UnreachableTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
+          ... on UnpairedTilesProblem {
+            positions {
+              x
+              y
+            }
+          }
+        }
+      }
+    }
+  }
+`);
+
+export const registerBoardMutation = graphql(`
+  mutation RegisterBoard($input: RegisterBoardInput!) {
+    registerBoard(input: $input) {
+      __typename
+      ... on RegisterBoardSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          ... on FieldTooLong {
+            max
+          }
+        }
+      }
+    }
+  }
+`);

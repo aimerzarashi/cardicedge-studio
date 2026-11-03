@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import {
   npcAvatarRevisionQuery,
+  publishNpcAvatarMutation,
   registerNpcAvatarMutation,
   setNpcAvatarDecksMutation,
 } from "@/app/npc-avatars/operations";
@@ -53,4 +54,30 @@ export async function createPublishableNpcAvatar(
     );
   });
   return avatarURL;
+}
+
+// 公開中の NPC のアバターを入れ、公開用の ID を返す。スターターセットに割り当てる前準備に使う
+export async function createPublishedNpcAvatar(
+  page: Page,
+  name: string,
+): Promise<string> {
+  const id = (await createPublishableNpcAvatar(page, name)).replace(
+    "/npc-avatars/",
+    "",
+  );
+  const detail = await callCore(page, npcAvatarRevisionQuery, { id });
+  expectSuccess(detail.npcAvatar, "NpcAvatar");
+  const data = await callCore(page, publishNpcAvatarMutation, {
+    input: { id, revision: detail.npcAvatar.revision },
+  });
+  expectSuccess(data.publishNpcAvatar, "PublishNpcAvatarSuccess");
+  const revision = data.publishNpcAvatar.revision;
+  await untilReached(`NPC のアバター ${id} が詳細に届く`, async () => {
+    const reached = await callCore(page, npcAvatarRevisionQuery, { id });
+    return (
+      reached.npcAvatar.__typename === "NpcAvatar" &&
+      reached.npcAvatar.revision >= revision
+    );
+  });
+  return id;
 }

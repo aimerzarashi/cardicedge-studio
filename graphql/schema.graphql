@@ -970,6 +970,32 @@ type DeletePresetDeckSuccess {
 	id: UUID!
 }
 """
+スターターセットを削除する入力
+"""
+input DeleteStarterSetInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+}
+"""
+スターターセットの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteStarterSetResult = DeleteStarterSetSuccess | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットを削除した（名前はほかのスターターセットが使えるようになる）
+"""
+type DeleteStarterSetSuccess {
+	"""
+	削除したスターターセットの公開用の ID
+	"""
+	id: UUID!
+}
+"""
 一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
 """
 type FieldDuplicated implements FieldError {
@@ -1257,19 +1283,6 @@ input GrantDeckFilter {
 	statuses: [GrantDeckStatus!]
 }
 """
-公開中の配布デッキの数が上限に達している（ほかのものを使用不可にすると公開できる）
-"""
-type GrantDeckLimitReachedError {
-	"""
-	開発者向けの説明（画面にそのまま出す文言ではない）
-	"""
-	message: String!
-	"""
-	公開中の配布デッキの数の上限（そのときのゲーム全体のルールの値。画面が文言に出す）
-	"""
-	max: Int!
-}
-"""
 名前が、ほかの配布デッキですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
 """
 type GrantDeckNameAlreadyInUseError {
@@ -1383,6 +1396,15 @@ type InvalidNpcAvatarStatusTransitionError {
 準備中の NPC のデッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidNpcDeckStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中のスターターセットを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidStarterSetStatusTransitionError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
@@ -1793,6 +1815,78 @@ type Mutation {
 		"""
 		input: RegisterSpellInput!
 	): RegisterSpellResult!
+	"""
+	スターターセットを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerStarterSet(
+		"""
+		登録するスターターセット
+		"""
+		input: RegisterStarterSetInput!
+	): RegisterStarterSetResult!
+	"""
+	スターターセットの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameStarterSet(
+		"""
+		変える内容
+		"""
+		input: RenameStarterSetInput!
+	): RenameStarterSetResult!
+	"""
+	スターターセットの配るデッキを指定する（今の指定を、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setStarterSetGrantDecks(
+		"""
+		変える内容
+		"""
+		input: SetStarterSetGrantDecksInput!
+	): SetStarterSetGrantDecksResult!
+	"""
+	スターターセットの解放するボードを指定する（今の指定を、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setStarterSetUnlockBoards(
+		"""
+		変える内容
+		"""
+		input: SetStarterSetUnlockBoardsInput!
+	): SetStarterSetUnlockBoardsResult!
+	"""
+	スターターセットの解放する NPC のアバターを指定する（今の指定を、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setStarterSetUnlockNpcAvatars(
+		"""
+		変える内容
+		"""
+		input: SetStarterSetUnlockNpcAvatarsInput!
+	): SetStarterSetUnlockNpcAvatarsResult!
+	"""
+	スターターセットを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteStarterSet(
+		"""
+		削除するスターターセット
+		"""
+		input: DeleteStarterSetInput!
+	): DeleteStarterSetResult!
+	"""
+	スターターセットを公開中にする（配るデッキが 1 つ以上要り、公開中は同時に 1 つだけ。紐づいたオペレーターだけ）
+	"""
+	publishStarterSet(
+		"""
+		公開するスターターセット
+		"""
+		input: PublishStarterSetInput!
+	): PublishStarterSetResult!
+	"""
+	スターターセットを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireStarterSet(
+		"""
+		使用不可にするスターターセット
+		"""
+		input: RetireStarterSetInput!
+	): RetireStarterSetResult!
 }
 """
 チェックポイントが 1 つも無い（公開するボードのチェックポイントは 1 つ以上）
@@ -2284,9 +2378,9 @@ input PublishGrantDeckInput {
 	revision: Int!
 }
 """
-配布デッキの公開の結果（準備中・使用不可から公開中にできる。公開中の数が上限なら公開できない）
+配布デッキの公開の結果（準備中・使用不可から公開中にできる。公開中の数に上限は無い。どれを配るかはスターターセットが決める）
 """
-union PublishGrantDeckResult = PublishGrantDeckSuccess | ValidationErrors | GrantDeckNotFoundError | GrantDeckLimitReachedError | RevisionConflictError | ForbiddenError
+union PublishGrantDeckResult = PublishGrantDeckSuccess | ValidationErrors | GrantDeckNotFoundError | RevisionConflictError | ForbiddenError
 """
 配布デッキを公開中にした（すでに公開中なら何も変えず、revision も進まない）
 """
@@ -2359,6 +2453,39 @@ type PublishNpcDeckSuccess {
 	id: UUID!
 	"""
 	公開した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットを公開する入力
+"""
+input PublishStarterSetInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+}
+"""
+スターターセットの公開の結果（準備中・使用不可から公開中にできる）。
+公開するときは、配るデッキが 1 つ以上あること（無ければ ValidationErrors の grantDecks が必須）と、
+ほかに公開中のスターターセットが無いこと（あれば StarterSetLimitReachedError）を確かめる。解放するボードは 0 件でもよい。
+すでに公開中なら確かめない。公開した後は、配るデッキと解放するボードを変えられない
+"""
+union PublishStarterSetResult = PublishStarterSetSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetLimitReachedError | RevisionConflictError | ForbiddenError
+"""
+スターターセットを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishStarterSetSuccess {
+	"""
+	公開したスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開したスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -2535,6 +2662,34 @@ type Query {
 		"""
 		id: UUID!
 	): PresetDeckResult!
+	"""
+	スターターセットの一覧（紐づいたオペレーターだけ）
+	"""
+	starterSets(
+		"""
+		絞り込み
+		"""
+		filter: StarterSetFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): StarterSetsResult!
+	"""
+	スターターセットの詳細（紐づいたオペレーターだけ）
+	"""
+	starterSet(
+		"""
+		スターターセットの公開用の ID
+		"""
+		id: UUID!
+	): StarterSetResult!
 	"""
 	studio でマスタを作るときの決まり（紐づいたオペレーターだけ）
 	"""
@@ -2797,6 +2952,32 @@ type RegisterSpellSuccess {
 	spell: Spell!
 }
 """
+スターターセットを登録する入力
+"""
+input RegisterStarterSetInput {
+	"""
+	名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+スターターセットの登録の結果
+"""
+union RegisterStarterSetResult = RegisterStarterSetSuccess | ValidationErrors | StarterSetNameAlreadyInUseError | ForbiddenError
+"""
+スターターセットを登録した（準備中。配るデッキと解放するボードは登録の後に指定する）
+"""
+type RegisterStarterSetSuccess {
+	"""
+	登録したスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録したスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 ボードの名前を変える入力
 """
 input RenameBoardInput {
@@ -2967,6 +3148,40 @@ type RenamePresetDeckSuccess {
 	revision: Int!
 }
 """
+スターターセットの名前を変える入力
+"""
+input RenameStarterSetInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+スターターセットの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameStarterSetResult = RenameStarterSetSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNameAlreadyInUseError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameStarterSetSuccess {
+	"""
+	変えたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 ボードを使用不可にする入力
 """
 input RetireBoardInput {
@@ -3113,6 +3328,36 @@ type RetireNpcDeckSuccess {
 	id: UUID!
 	"""
 	使用不可にした NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットを使用不可にする入力
+"""
+input RetireStarterSetInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+}
+"""
+スターターセットの使用不可の結果
+"""
+union RetireStarterSetResult = RetireStarterSetSuccess | StarterSetNotFoundError | InvalidStarterSetStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+スターターセットを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireStarterSetSuccess {
+	"""
+	使用不可にしたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にしたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -3277,6 +3522,114 @@ type SetPresetDeckCardCountsSuccess {
 	revision: Int!
 }
 """
+スターターセットの配るデッキを指定する入力
+"""
+input SetStarterSetGrantDecksInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+	"""
+	配るデッキ（配布デッキ）の公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じデッキは 2 回入れられない。新しく入れるデッキは公開中のものだけ）
+	"""
+	grantDeckIds: [UUID!]!
+}
+"""
+スターターセットの配るデッキの指定の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は grantDeckIds.<番号>。同じデッキの 2 つ目以降は重複、無い・削除した・配布デッキでないものは存在しない、
+新しく入れる公開中でないデッキは使えない）
+"""
+union SetStarterSetGrantDecksResult = SetStarterSetGrantDecksSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットの配るデッキを指定した（同じデッキの集まりなら何も変えず、revision も進まない）
+"""
+type SetStarterSetGrantDecksSuccess {
+	"""
+	変えたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットの解放するボードを指定する入力
+"""
+input SetStarterSetUnlockBoardsInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+	"""
+	解放するボードの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じボードは 2 回入れられない。新しく入れるボードは公開中のものだけ）
+	"""
+	unlockBoardIds: [UUID!]!
+}
+"""
+スターターセットの解放するボードの指定の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は unlockBoardIds.<番号>。同じボードの 2 つ目以降は重複、無い・削除した・ボードでないものは存在しない、
+新しく入れる公開中でないボードは使えない）
+"""
+union SetStarterSetUnlockBoardsResult = SetStarterSetUnlockBoardsSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットの解放するボードを指定した（同じボードの集まりなら何も変えず、revision も進まない）
+"""
+type SetStarterSetUnlockBoardsSuccess {
+	"""
+	変えたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットの解放する NPC のアバターを指定する入力
+"""
+input SetStarterSetUnlockNpcAvatarsInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+	"""
+	解放する NPC のアバターの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じアバターは 2 回入れられない。新しく入れるアバターは公開中のものだけ）
+	"""
+	unlockNpcAvatarIds: [UUID!]!
+}
+"""
+スターターセットの解放する NPC のアバターの指定の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は unlockNpcAvatarIds.<番号>。同じアバターの 2 つ目以降は重複、無い・削除した・NPC のアバターでないものは存在しない、
+新しく入れる公開中でないアバターは使えない）
+"""
+union SetStarterSetUnlockNpcAvatarsResult = SetStarterSetUnlockNpcAvatarsSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットの解放する NPC のアバターを指定した（同じアバターの集まりなら何も変えず、revision も進まない）
+"""
+type SetStarterSetUnlockNpcAvatarsSuccess {
+	"""
+	変えたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 ほこら（止まると、ランダムで特別なことが起きる）。属性は持たない
 """
 type ShrineTile implements BoardTile {
@@ -3318,6 +3671,152 @@ type Spell implements Card {
 	"""
 	updatedAt: DateTime!
 }
+"""
+スターターセット
+"""
+type StarterSet {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべてのスターターセットの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: StarterSetStatus!
+	"""
+	配るデッキ（配布デッキ。割り当てた順。準備中のあいだは 0 件でもよく、公開中にするには 1 つ以上要る。使用不可にしたデッキも、外すまで含まれる）
+	"""
+	grantDecks: [GrantDeck!]!
+	"""
+	解放するボード（割り当てた順。0 件でもよい。使用不可にしたボードも、外すまで含まれる）
+	"""
+	unlockBoards: [Board!]!
+	"""
+	解放する NPC のアバター（割り当てた順。0 件でもよい。使用不可にしたアバターも、外すまで含まれる）
+	"""
+	unlockNpcAvatars: [NpcAvatar!]!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+スターターセットの一覧の 1 ページ（名前の順）
+"""
+type StarterSetConnection {
+	"""
+	このページのスターターセット
+	"""
+	edges: [StarterSetEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+スターターセットの一覧の 1 件と、その位置
+"""
+type StarterSetEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	スターターセット
+	"""
+	node: StarterSet!
+}
+"""
+スターターセットの一覧の絞り込み
+"""
+input StarterSetFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [StarterSetStatus!]
+}
+"""
+公開中のスターターセットの数が上限（1 つ）に達している（今の公開中のセットを使用不可にすると公開できる）
+"""
+type StarterSetLimitReachedError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+	"""
+	公開中のスターターセットの数の上限（画面が文言に出す）
+	"""
+	max: Int!
+}
+"""
+名前が、ほかのスターターセットですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type StarterSetNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でないスターターセットの名前・配るデッキ・解放するボードを変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type StarterSetNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+スターターセットが無い（削除したものを含む）
+"""
+type StarterSetNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+スターターセットの詳細の結果
+"""
+union StarterSetResult = StarterSet | StarterSetNotFoundError | ForbiddenError
+"""
+スターターセットの状態。準備中は名前・配るデッキ・解放するボードを自由に変えられる。公開中にできるのは同時に 1 つだけで、
+配るデッキが 1 つ以上あるとき。公開中は中身を変えられない（変えたいときは使用不可にして新しく作る）
+"""
+enum StarterSetStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+スターターセットの一覧の結果
+"""
+union StarterSetsResult = StarterSetConnection | ValidationErrors | ForbiddenError
 """
 studio でマスタを作るときの決まり
 """

@@ -2,7 +2,10 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { changeBoardLayoutMutation } from "@/app/boards/operations";
+import {
+  changeBoardLayoutMutation,
+  publishBoardMutation,
+} from "@/app/boards/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -127,41 +130,6 @@ const deleteBoardMutation = graphql(`
   mutation DeleteBoard($input: DeleteBoardInput!) {
     deleteBoard(input: $input) {
       __typename
-    }
-  }
-`);
-
-const publishBoardMutation = graphql(`
-  mutation PublishBoard($input: PublishBoardInput!) {
-    publishBoard(input: $input) {
-      __typename
-      ... on PublishBoardSuccess {
-        id
-        revision
-      }
-      ... on BoardNotPublishableError {
-        problems {
-          __typename
-          ... on BaseCountProblem {
-            positions {
-              x
-              y
-            }
-          }
-          ... on UnreachableTilesProblem {
-            positions {
-              x
-              y
-            }
-          }
-          ... on UnpairedTilesProblem {
-            positions {
-              x
-              y
-            }
-          }
-        }
-      }
     }
   }
 `);

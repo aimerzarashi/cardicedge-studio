@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import {
   grantDeckRevisionQuery,
+  publishGrantDeckMutation,
   registerGrantDeckMutation,
   setGrantDeckCardCountsMutation,
 } from "@/app/grant-decks/operations";
@@ -77,4 +78,21 @@ export async function createFullGrantDeck(
     data.setGrantDeckCardCounts.revision,
   );
   return { deckURL: `/grant-decks/${deck.id}`, cards: names };
+}
+
+// 公開中の配布デッキ（40 枚）を入れ、公開用の ID を返す。スターターセットに割り当てる前準備に使う
+export async function createPublishedGrantDeck(
+  page: Page,
+  name: string,
+): Promise<string> {
+  const { deckURL } = await createFullGrantDeck(page, name);
+  const id = deckURL.replace("/grant-decks/", "");
+  const detail = await callCore(page, grantDeckRevisionQuery, { id });
+  expectSuccess(detail.grantDeck, "GrantDeck");
+  const data = await callCore(page, publishGrantDeckMutation, {
+    input: { id, revision: detail.grantDeck.revision },
+  });
+  expectSuccess(data.publishGrantDeck, "PublishGrantDeckSuccess");
+  await untilGrantDeckReached(page, id, data.publishGrantDeck.revision);
+  return id;
 }
