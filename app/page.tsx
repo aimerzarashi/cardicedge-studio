@@ -45,6 +45,9 @@ export default async function Home() {
         <li>
           <Link href="/npc-decks">NPC のデッキの一覧</Link>
         </li>
+        <li>
+          <Link href="/starter-sets">スターターセットの一覧</Link>
+        </li>
       </ul>
       <LogoutButton />
     </main>

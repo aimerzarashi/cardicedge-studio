@@ -2,13 +2,15 @@ import type { Page } from "@playwright/test";
 import {
   boardRevisionQuery,
   changeBoardLayoutMutation,
+  publishBoardMutation,
+  registerBoardMutation,
 } from "@/app/boards/operations";
 import type {
   BoardConnectionInput,
   BoardTileInput,
   BoardTilePairInput,
 } from "@/graphql/graphql";
-import { callCore, expectSuccess } from "./core";
+import { callCore, expectSuccess, untilReached } from "./core";
 import { expect } from "./fixtures";
 import { section } from "./preset-deck";
 
@@ -117,4 +119,55 @@ export async function savePublishableLayout(page: Page) {
   await putTiles(page, "火属性の土地", [[1, 0]]);
   await putTiles(page, "チェックポイント", [[2, 0]]);
   await saveLayout(page);
+}
+
+// 公開できるレイアウト（拠点 1 つ・チェックポイント 1 つが、土地を通ってつながった横一列）の公開中のボードを、画面を使わずに入れ、
+// 公開用の ID を返す。スターターセットに割り当てる前準備に使う
+export async function createPublishedBoard(
+  page: Page,
+  name: string,
+): Promise<string> {
+  const registered = await callCore(page, registerBoardMutation, {
+    input: { name },
+  });
+  expectSuccess(registered.registerBoard, "RegisterBoardSuccess");
+  const { id } = registered.registerBoard;
+  const reached = (revision: number) =>
+    untilReached(`ボード ${id} が詳細に届く`, async () => {
+      const read = await callCore(page, boardRevisionQuery, { id });
+      return (
+        read.board.__typename === "Board" && read.board.revision >= revision
+      );
+    });
+  await reached(registered.registerBoard.revision);
+
+  const read = await callCore(page, boardRevisionQuery, { id });
+  expectSuccess(read.board, "Board");
+  const changed = await callCore(page, changeBoardLayoutMutation, {
+    input: {
+      id,
+      revision: read.board.revision,
+      width: 8,
+      height: 8,
+      tiles: [
+        { base: { x: 0, y: 0 } },
+        { land: { x: 1, y: 0, attribute: "FIRE" } },
+        { checkpoint: { x: 2, y: 0 } },
+      ],
+      connections: [
+        { a: { x: 0, y: 0 }, b: { x: 1, y: 0 } },
+        { a: { x: 1, y: 0 }, b: { x: 2, y: 0 } },
+      ],
+      pairs: [],
+    },
+  });
+  expectSuccess(changed.changeBoardLayout, "ChangeBoardLayoutSuccess");
+  await reached(changed.changeBoardLayout.revision);
+
+  const published = await callCore(page, publishBoardMutation, {
+    input: { id, revision: changed.changeBoardLayout.revision },
+  });
+  expectSuccess(published.publishBoard, "PublishBoardSuccess");
+  await reached(published.publishBoard.revision);
+  return id;
 }

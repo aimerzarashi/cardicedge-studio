@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { graphql } from "@/graphql";
+import { registerBoardMutation } from "@/app/boards/operations";
 import { callCore } from "@/lib/core";
 import {
   FORBIDDEN,
@@ -9,26 +9,6 @@ import {
   nameErrorMessage,
 } from "../../messages";
 import { waitBoard } from "../wait-board";
-
-const registerBoardMutation = graphql(`
-  mutation RegisterBoard($input: RegisterBoardInput!) {
-    registerBoard(input: $input) {
-      __typename
-      ... on RegisterBoardSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type RegisterBoardState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残す）
