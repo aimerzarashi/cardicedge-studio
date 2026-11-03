@@ -8,8 +8,8 @@ import type {
 import { type CoreResult, callCore } from "@/lib/core";
 import { first } from "@/lib/search-params";
 import { CopyPresetDeckForm } from "../../copy-preset-deck-form";
-import { registerStarterDeckFromPresetDeck } from "./actions";
-import { RegisterStarterDeckForm } from "./register-starter-deck-form";
+import { registerGrantDeckFromPresetDeck } from "./actions";
+import { RegisterGrantDeckForm } from "./register-grant-deck-form";
 
 const copySourcePresetDecksQuery = graphql(`
   query CopySourcePresetDecks($filter: PresetDeckFilter, $after: String) {
@@ -42,12 +42,12 @@ function pageURL(name: string, after?: string): string {
     params.set("after", after);
   }
   const query = params.toString();
-  return query === "" ? "/starter-decks/new" : `/starter-decks/new?${query}`;
+  return query === "" ? "/grant-decks/new" : `/grant-decks/new?${query}`;
 }
 
-export default async function NewStarterDeckPage({
+export default async function NewGrantDeckPage({
   searchParams,
-}: PageProps<"/starter-decks/new">) {
+}: PageProps<"/grant-decks/new">) {
   const params = await searchParams;
   const name = first(params.name) ?? "";
   const after = first(params.after);
@@ -63,18 +63,18 @@ export default async function NewStarterDeckPage({
 
   return (
     <main>
-      <h1>スターターデッキを登録</h1>
+      <h1>配布デッキを登録</h1>
       <section aria-labelledby="empty-heading">
         <h2 id="empty-heading">空から作る</h2>
         <p>名前を決めて登録し、カードは登録した後の詳細の画面で入れます。</p>
-        <RegisterStarterDeckForm />
+        <RegisterGrantDeckForm />
       </section>
       <section aria-labelledby="copy-heading">
         <h2 id="copy-heading">プリセットデッキからコピーして作る</h2>
         <p>
           カード・枚数をコピーし、名前を決めて作ります。コピーした後に元を直しても変わりません。
         </p>
-        <Form action="/starter-decks/new">
+        <Form action="/grant-decks/new">
           <label>
             名前
             <input name="name" defaultValue={name} />
@@ -84,7 +84,7 @@ export default async function NewStarterDeckPage({
         <PresetDecks result={result} name={name} />
       </section>
       <p>
-        <Link href="/starter-decks">スターターデッキの一覧へ</Link>
+        <Link href="/grant-decks">配布デッキの一覧へ</Link>
       </p>
     </main>
   );
@@ -113,7 +113,7 @@ function PresetDecks({
       return (
         <p role="alert">
           条件が正しくありません。{" "}
-          <Link href="/starter-decks/new">条件を外す</Link>
+          <Link href="/grant-decks/new">条件を外す</Link>
         </p>
       );
     case "PresetDeckConnection":
@@ -139,8 +139,8 @@ function PresetDecks({
                     <td>{node.totalCount}</td>
                     <td>
                       <CopyPresetDeckForm
-                        action={registerStarterDeckFromPresetDeck}
-                        basePath="/starter-decks"
+                        action={registerGrantDeckFromPresetDeck}
+                        basePath="/grant-decks"
                         presetDeckId={node.id}
                         name={node.name}
                       />

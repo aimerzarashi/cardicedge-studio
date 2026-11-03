@@ -6,7 +6,7 @@ import {
   setNpcDeckCardCountsMutation,
 } from "@/app/npc-decks/operations";
 import { callCore, expectSuccess, untilReached } from "./core";
-import { createTenCreatures } from "./starter-deck";
+import { createTenCreatures } from "./grant-deck";
 
 // 確かめたいことの前準備として NPC のデッキを入れる道具。画面で空から登録する流れは npc-decks.spec.ts で確かめている。
 // ログインしてから呼ぶ。投影に届くまで待つため、返した URL をすぐ開ける

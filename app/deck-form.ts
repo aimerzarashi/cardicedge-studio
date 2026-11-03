@@ -1,7 +1,7 @@
 import type { PublishProblem } from "./boards/publish-problem";
 import { cardErrorMessage, formErrorMessage } from "./messages";
 
-// プリセットデッキ・スターターデッキ・NPC のデッキの画面で共通の、フォームの受け渡し
+// プリセットデッキ・配布デッキ・NPC のデッキの画面で共通の、フォームの受け渡し
 
 // 操作した結果、画面で知らせること
 export type Notice = { status?: string; error?: string };

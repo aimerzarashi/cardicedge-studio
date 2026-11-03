@@ -3,22 +3,22 @@
 // 操作の名前は全体で一意にする（codegen の決まり）
 import { graphql } from "@/graphql";
 
-export const starterDeckRevisionQuery = graphql(`
-  query StarterDeckRevision($id: UUID!) {
-    starterDeck(id: $id) {
+export const grantDeckRevisionQuery = graphql(`
+  query GrantDeckRevision($id: UUID!) {
+    grantDeck(id: $id) {
       __typename
-      ... on StarterDeck {
+      ... on GrantDeck {
         revision
       }
     }
   }
 `);
 
-export const registerStarterDeckMutation = graphql(`
-  mutation RegisterStarterDeck($input: RegisterStarterDeckInput!) {
-    registerStarterDeck(input: $input) {
+export const registerGrantDeckMutation = graphql(`
+  mutation RegisterGrantDeck($input: RegisterGrantDeckInput!) {
+    registerGrantDeck(input: $input) {
       __typename
-      ... on RegisterStarterDeckSuccess {
+      ... on RegisterGrantDeckSuccess {
         id
         revision
       }
@@ -34,11 +34,11 @@ export const registerStarterDeckMutation = graphql(`
   }
 `);
 
-export const setStarterDeckCardCountsMutation = graphql(`
-  mutation SetStarterDeckCardCounts($input: SetStarterDeckCardCountsInput!) {
-    setStarterDeckCardCounts(input: $input) {
+export const setGrantDeckCardCountsMutation = graphql(`
+  mutation SetGrantDeckCardCounts($input: SetGrantDeckCardCountsInput!) {
+    setGrantDeckCardCounts(input: $input) {
       __typename
-      ... on SetStarterDeckCardCountsSuccess {
+      ... on SetGrantDeckCardCountsSuccess {
         id
         revision
       }

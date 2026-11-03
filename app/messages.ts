@@ -67,7 +67,7 @@ export function cardErrorMessage(error: FieldError): string {
   }
 }
 
-// スターターデッキ・NPC のデッキを公開できないときの誤り（決まりの値は core が返したものを使う）
+// 配布デッキ・NPC のデッキを公開できないときの誤り（決まりの値は core が返したものを使う）
 export function publishErrorMessage(errors: FieldError[]): string {
   return errors
     .map((error) => {
@@ -83,10 +83,10 @@ export function publishErrorMessage(errors: FieldError[]): string {
     .join("。");
 }
 
-export const STARTER_DECK_NOT_DRAFT =
+export const GRANT_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
-export function starterDeckLimitReachedMessage(max: number): string {
-  return `公開中のスターターデッキは ${max} 個までです。ほかのものを使用不可にすると公開できます`;
+export function grantDeckLimitReachedMessage(max: number): string {
+  return `公開中の配布デッキは ${max} 個までです。ほかのものを使用不可にすると公開できます`;
 }
 
 export const BOARD_NOT_DRAFT =

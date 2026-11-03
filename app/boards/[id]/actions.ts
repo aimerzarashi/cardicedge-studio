@@ -371,7 +371,7 @@ export async function deleteBoard(
 
   const deleted = result.data.deleteBoard;
   switch (deleted.__typename) {
-    // 一覧は投影から読むため、移った直後は少し残ることがある。消えるまでは待たない（スターターデッキと同じ）
+    // 一覧は投影から読むため、移った直後は少し残ることがある。消えるまでは待たない（配布デッキと同じ）
     case "DeleteBoardSuccess":
       return redirect("/boards");
     case "BoardNotDraftError":
