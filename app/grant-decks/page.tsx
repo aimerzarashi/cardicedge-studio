@@ -3,19 +3,19 @@ import Link from "next/link";
 import { graphql } from "@/graphql";
 import type {
   CardStatus,
-  StarterDecksQuery,
-  StarterDecksQueryVariables,
+  GrantDecksQuery,
+  GrantDecksQueryVariables,
 } from "@/graphql/graphql";
 import { type CoreResult, callCore } from "@/lib/core";
 import { dateTimeFormat } from "@/lib/format";
 import { all, first } from "@/lib/search-params";
 import { isStatus, STATUS_LABELS, STATUSES } from "@/lib/status";
 
-const starterDecksQuery = graphql(`
-  query StarterDecks($filter: StarterDeckFilter, $after: String) {
-    starterDecks(filter: $filter, after: $after) {
+const grantDecksQuery = graphql(`
+  query GrantDecks($filter: GrantDeckFilter, $after: String) {
+    grantDecks(filter: $filter, after: $after) {
       __typename
-      ... on StarterDeckConnection {
+      ... on GrantDeckConnection {
         edges {
           node {
             id
@@ -48,19 +48,19 @@ function pageURL(name: string, statuses: CardStatus[], after?: string): string {
     params.set("after", after);
   }
   const query = params.toString();
-  return query === "" ? "/starter-decks" : `/starter-decks?${query}`;
+  return query === "" ? "/grant-decks" : `/grant-decks?${query}`;
 }
 
-export default async function StarterDecksPage({
+export default async function GrantDecksPage({
   searchParams,
-}: PageProps<"/starter-decks">) {
+}: PageProps<"/grant-decks">) {
   const params = await searchParams;
   const name = first(params.name) ?? "";
   // 形だけを確かめる（知らない値を core に渡すと GraphQL の誤りになり、想定外として扱われるため）
   const statuses = all(params.status).filter(isStatus);
   const after = first(params.after);
 
-  const variables: StarterDecksQueryVariables = {
+  const variables: GrantDecksQueryVariables = {
     filter: {
       // 空の入力欄は「絞り込まない」。空白だけは core が入力の誤りにする
       ...(name !== "" && { nameContains: name }),
@@ -69,15 +69,15 @@ export default async function StarterDecksPage({
     },
     after,
   };
-  const result = await callCore(starterDecksQuery, variables);
+  const result = await callCore(grantDecksQuery, variables);
 
   return (
     <main>
-      <h1>スターターデッキの一覧</h1>
+      <h1>配布デッキの一覧</h1>
       <p>
-        <Link href="/starter-decks/new">スターターデッキを登録</Link>
+        <Link href="/grant-decks/new">配布デッキを登録</Link>
       </p>
-      <Form action="/starter-decks">
+      <Form action="/grant-decks">
         <label>
           名前
           <input name="name" defaultValue={name} />
@@ -98,17 +98,17 @@ export default async function StarterDecksPage({
         </fieldset>
         <button type="submit">絞り込む</button>
       </Form>
-      <StarterDecksResult result={result} name={name} statuses={statuses} />
+      <GrantDecksResult result={result} name={name} statuses={statuses} />
     </main>
   );
 }
 
-function StarterDecksResult({
+function GrantDecksResult({
   result,
   name,
   statuses,
 }: {
-  result: CoreResult<StarterDecksQuery>;
+  result: CoreResult<GrantDecksQuery>;
   name: string;
   statuses: CardStatus[];
 }) {
@@ -120,7 +120,7 @@ function StarterDecksResult({
       </p>
     );
   }
-  const decks = result.data.starterDecks;
+  const decks = result.data.grantDecks;
   switch (decks.__typename) {
     case "ForbiddenError":
       return <p role="alert">この操作をする権限がありません</p>;
@@ -128,14 +128,14 @@ function StarterDecksResult({
       return (
         <p role="alert">
           条件が正しくありません。{" "}
-          <Link href="/starter-decks">最初のページへ</Link>
+          <Link href="/grant-decks">最初のページへ</Link>
         </p>
       );
-    case "StarterDeckConnection":
+    case "GrantDeckConnection":
       return (
         <>
           {decks.edges.length === 0 ? (
-            <p>スターターデッキがありません</p>
+            <p>配布デッキがありません</p>
           ) : (
             <table>
               <thead>
@@ -151,9 +151,7 @@ function StarterDecksResult({
                 {decks.edges.map(({ node }) => (
                   <tr key={node.id}>
                     <td>
-                      <Link href={`/starter-decks/${node.id}`}>
-                        {node.name}
-                      </Link>
+                      <Link href={`/grant-decks/${node.id}`}>{node.name}</Link>
                     </td>
                     <td>{STATUS_LABELS[node.status]}</td>
                     <td>{node.totalCount}</td>

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { loginAsOperator, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
+import { createTenCreatures } from "./grant-deck";
 import { createFullNpcDeck, createNpcDeck } from "./npc-deck";
 import {
   createFullPresetDeck,
@@ -8,11 +9,10 @@ import {
   searchCards,
   section,
 } from "./preset-deck";
-import { createTenCreatures } from "./starter-deck";
 
 // 前準備（カード・プリセットデッキ・NPC のデッキ）は GraphQL で入れ（tests/npc-deck.ts）、確かめる画面の操作だけを画面でする。
 // 画面で空から登録する流れは、1 本目のテストで確かめている。公開中の NPC のデッキの数に上限は無いため、公開したまま終わってよい。
-// 部品を共有するスターターデッキの画面で確かめている流れ（名前の重複・先に変えられたとき・写した元が変わった・消えたとき）は重ねない
+// 部品を共有する配布デッキの画面で確かめている流れ（名前の重複・先に変えられたとき・写した元が変わった・消えたとき）は重ねない
 
 function deckRows(page: Page) {
   return page.locator("tbody tr");

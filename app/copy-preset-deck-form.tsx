@@ -18,7 +18,7 @@ export function CopyPresetDeckForm({
     previous: RegisterFromPresetDeckState,
     form: FormData,
   ) => Promise<RegisterFromPresetDeckState>;
-  // 登録したデッキの詳細の親のパス（/starter-decks 等）
+  // 登録したデッキの詳細の親のパス（/grant-decks 等）
   basePath: string;
   presetDeckId: string;
   name: string;

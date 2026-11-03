@@ -3,8 +3,8 @@ import Link from "next/link";
 import { graphql } from "@/graphql";
 import type {
   CardType,
-  StarterDeckCandidateCardsQuery,
-  StarterDeckCandidateCardsQueryVariables,
+  GrantDeckCandidateCardsQuery,
+  GrantDeckCandidateCardsQueryVariables,
 } from "@/graphql/graphql";
 import { CARD_TYPE_LABELS, CARD_TYPES, isCardType } from "@/lib/card-type";
 import { type CoreResult, callCore } from "@/lib/core";
@@ -16,18 +16,18 @@ import { DeleteDeck } from "../../delete-deck";
 import { RenameDeckForm } from "../../rename-deck-form";
 import { StatusButton } from "../../status-button";
 import {
-  deleteStarterDeck,
-  publishStarterDeck,
-  renameStarterDeck,
-  retireStarterDeck,
-  setStarterDeckCardCounts,
+  deleteGrantDeck,
+  publishGrantDeck,
+  renameGrantDeck,
+  retireGrantDeck,
+  setGrantDeckCardCounts,
 } from "./actions";
 
-const starterDeckQuery = graphql(`
-  query StarterDeck($id: UUID!) {
-    starterDeck(id: $id) {
+const grantDeckQuery = graphql(`
+  query GrantDeck($id: UUID!) {
+    grantDeck(id: $id) {
       __typename
-      ... on StarterDeck {
+      ... on GrantDeck {
         id
         name
         cards {
@@ -54,7 +54,7 @@ const starterDeckQuery = graphql(`
 `);
 
 const deckCandidateCardsQuery = graphql(`
-  query StarterDeckCandidateCards($filter: CardFilter, $after: String) {
+  query GrantDeckCandidateCards($filter: CardFilter, $after: String) {
     cards(filter: $filter, after: $after) {
       __typename
       ... on CardConnection {
@@ -96,27 +96,25 @@ function pageURL(
     params.set("after", after);
   }
   const query = params.toString();
-  return query === ""
-    ? `/starter-decks/${id}`
-    : `/starter-decks/${id}?${query}`;
+  return query === "" ? `/grant-decks/${id}` : `/grant-decks/${id}?${query}`;
 }
 
 function NotFound() {
   return (
     <main>
-      <h1>スターターデッキ</h1>
-      <p role="alert">このスターターデッキは見つかりません</p>
+      <h1>配布デッキ</h1>
+      <p role="alert">この配布デッキは見つかりません</p>
       <p>
-        <Link href="/starter-decks">スターターデッキの一覧へ</Link>
+        <Link href="/grant-decks">配布デッキの一覧へ</Link>
       </p>
     </main>
   );
 }
 
-export default async function StarterDeckPage({
+export default async function GrantDeckPage({
   params,
   searchParams,
-}: PageProps<"/starter-decks/[id]">) {
+}: PageProps<"/grant-decks/[id]">) {
   const { id } = await params;
   if (!UUID_PATTERN.test(id)) {
     return <NotFound />;
@@ -127,7 +125,7 @@ export default async function StarterDeckPage({
   const types = all(search.type).filter(isCardType);
   const after = first(search.after);
 
-  const variables: StarterDeckCandidateCardsQueryVariables = {
+  const variables: GrantDeckCandidateCardsQueryVariables = {
     filter: {
       // 空の入力欄は「絞り込まない」。空白だけは core が入力の誤りにする
       ...(name !== "" && { nameContains: name }),
@@ -139,14 +137,14 @@ export default async function StarterDeckPage({
     after,
   };
   const [deckResult, candidates] = await Promise.all([
-    callCore(starterDeckQuery, { id }),
+    callCore(grantDeckQuery, { id }),
     callCore(deckCandidateCardsQuery, variables),
   ]);
 
   if (!deckResult.ok) {
     return (
       <main>
-        <h1>スターターデッキ</h1>
+        <h1>配布デッキ</h1>
         <p role="alert">
           core に接続できません。時間をおいて再読み込みしてください。{" "}
           <Link href={pageURL(id, name, types, after)}>再読み込み</Link>
@@ -154,18 +152,18 @@ export default async function StarterDeckPage({
       </main>
     );
   }
-  const deck = deckResult.data.starterDeck;
+  const deck = deckResult.data.grantDeck;
   switch (deck.__typename) {
     case "ForbiddenError":
       return (
         <main>
-          <h1>スターターデッキ</h1>
+          <h1>配布デッキ</h1>
           <p role="alert">この操作をする権限がありません</p>
         </main>
       );
-    case "StarterDeckNotFoundError":
+    case "GrantDeckNotFoundError":
       return <NotFound />;
-    case "StarterDeck":
+    case "GrantDeck":
       break;
   }
 
@@ -215,14 +213,14 @@ export default async function StarterDeckPage({
         <h2 id="status-heading">公開</h2>
         {deck.status === "PUBLISHED" ? (
           <StatusButton
-            action={retireStarterDeck}
+            action={retireGrantDeck}
             label="使用不可にする"
             id={deck.id}
             revision={deck.revision}
           />
         ) : (
           <StatusButton
-            action={publishStarterDeck}
+            action={publishGrantDeck}
             label="公開する"
             id={deck.id}
             revision={deck.revision}
@@ -235,7 +233,7 @@ export default async function StarterDeckPage({
           <section aria-labelledby="rename-heading">
             <h2 id="rename-heading">名前の変更</h2>
             <RenameDeckForm
-              action={renameStarterDeck}
+              action={renameGrantDeck}
               id={deck.id}
               revision={deck.revision}
               name={deck.name}
@@ -250,7 +248,7 @@ export default async function StarterDeckPage({
               </p>
             ) : (
               <CardCountsForm
-                action={setStarterDeckCardCounts}
+                action={setGrantDeckCardCounts}
                 id={deck.id}
                 revision={deck.revision}
                 rows={deckRows}
@@ -260,7 +258,7 @@ export default async function StarterDeckPage({
 
           <section aria-labelledby="candidates-heading">
             <h2 id="candidates-heading">カードを探す</h2>
-            <Form action={`/starter-decks/${deck.id}`}>
+            <Form action={`/grant-decks/${deck.id}`}>
               <label>
                 名前
                 <input name="name" defaultValue={name} />
@@ -294,7 +292,7 @@ export default async function StarterDeckPage({
           <section aria-labelledby="delete-heading">
             <h2 id="delete-heading">削除</h2>
             <DeleteDeck
-              action={deleteStarterDeck}
+              action={deleteGrantDeck}
               id={deck.id}
               revision={deck.revision}
               name={deck.name}
@@ -304,7 +302,7 @@ export default async function StarterDeckPage({
       ) : (
         <section aria-labelledby="deck-cards-heading">
           <h2 id="deck-cards-heading">入れたカード</h2>
-          <p>公開中・使用不可のスターターデッキは変えられません</p>
+          <p>公開中・使用不可の配布デッキは変えられません</p>
           {deckRows.length === 0 ? (
             <p>カードが入っていません</p>
           ) : (
@@ -331,7 +329,7 @@ export default async function StarterDeckPage({
       )}
 
       <p>
-        <Link href="/starter-decks">スターターデッキの一覧へ</Link>
+        <Link href="/grant-decks">配布デッキの一覧へ</Link>
       </p>
     </main>
   );
@@ -345,7 +343,7 @@ function Candidates({
   name,
   types,
 }: {
-  result: CoreResult<StarterDeckCandidateCardsQuery>;
+  result: CoreResult<GrantDeckCandidateCardsQuery>;
   deckId: string;
   revision: number;
   counts: Map<string, number>;
@@ -368,7 +366,7 @@ function Candidates({
       return (
         <p role="alert">
           条件が正しくありません。{" "}
-          <Link href={`/starter-decks/${deckId}`}>条件を外す</Link>
+          <Link href={`/grant-decks/${deckId}`}>条件を外す</Link>
         </p>
       );
     case "CardConnection":
@@ -378,7 +376,7 @@ function Candidates({
             <p>カードがありません</p>
           ) : (
             <CardCountsForm
-              action={setStarterDeckCardCounts}
+              action={setGrantDeckCardCounts}
               id={deckId}
               revision={revision}
               rows={cards.edges.map(({ node }) => ({

@@ -1,6 +1,6 @@
 import type { CardStatus } from "@/graphql/graphql";
 
-// カード・スターターデッキ・ボード・NPC のアバター・NPC のデッキの状態は、値も表示名も同じため共通にする（core の enum は別々だが、値は同じ文字列）
+// カード・配布デッキ・ボード・NPC のアバター・NPC のデッキの状態は、値も表示名も同じため共通にする（core の enum は別々だが、値は同じ文字列）
 // Record<string, string> にしないのは、状態が core に加わったときに足し忘れると、型検査に引っかからず状態の欄が黙って空になるため
 export const STATUS_LABELS: Record<CardStatus, string> = {
   DRAFT: "準備中",

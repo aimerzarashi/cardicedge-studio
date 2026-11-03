@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { registerStarterDeckMutation } from "@/app/starter-decks/operations";
+import { registerGrantDeckMutation } from "@/app/grant-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import type { RegisterFromPresetDeckState } from "../../deck-form";
@@ -12,9 +12,9 @@ import {
   NAME_ALREADY_IN_USE,
   nameErrorMessage,
 } from "../../messages";
-import { waitStarterDeck } from "../wait-starter-deck";
+import { waitGrantDeck } from "../wait-grant-deck";
 
-export type RegisterStarterDeckState = {
+export type RegisterGrantDeckState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残す）
   value: string;
   // 登録できたが、詳細に反映されるのを待ちきれなかったときの、詳細の ID
@@ -25,17 +25,17 @@ export type RegisterStarterDeckState = {
   error?: string;
 };
 
-export async function registerStarterDeck(
-  _previous: RegisterStarterDeckState,
+export async function registerGrantDeck(
+  _previous: RegisterGrantDeckState,
   form: FormData,
-): Promise<RegisterStarterDeckState> {
+): Promise<RegisterGrantDeckState> {
   // 中身の正誤は core が判定するため、ここでは形（文字列であること）だけを確かめる
   const name = form.get("name");
   if (typeof name !== "string") {
     return { value: "", nameError: "名前を入力してください" };
   }
 
-  const result = await callCore(registerStarterDeckMutation, {
+  const result = await callCore(registerGrantDeckMutation, {
     input: { name },
   });
   if (!result.ok) {
@@ -45,19 +45,18 @@ export async function registerStarterDeck(
     };
   }
 
-  const registered = result.data.registerStarterDeck;
+  const registered = result.data.registerGrantDeck;
   switch (registered.__typename) {
-    case "RegisterStarterDeckSuccess":
+    case "RegisterGrantDeckSuccess":
       if (
-        (await waitStarterDeck(registered.id, registered.revision)) ===
-        "timeout"
+        (await waitGrantDeck(registered.id, registered.revision)) === "timeout"
       ) {
         return { value: "", registeredId: registered.id };
       }
-      return redirect(`/starter-decks/${registered.id}`);
+      return redirect(`/grant-decks/${registered.id}`);
     case "ValidationErrors":
       return { value: name, nameError: nameErrorMessage(registered.errors) };
-    case "StarterDeckNameAlreadyInUseError":
+    case "GrantDeckNameAlreadyInUseError":
       return {
         value: name,
         nameError: NAME_ALREADY_IN_USE,
@@ -67,13 +66,13 @@ export async function registerStarterDeck(
   }
 }
 
-const registerStarterDeckFromPresetDeckMutation = graphql(`
-  mutation RegisterStarterDeckFromPresetDeck(
-    $input: RegisterStarterDeckFromPresetDeckInput!
+const registerGrantDeckFromPresetDeckMutation = graphql(`
+  mutation RegisterGrantDeckFromPresetDeck(
+    $input: RegisterGrantDeckFromPresetDeckInput!
   ) {
-    registerStarterDeckFromPresetDeck(input: $input) {
+    registerGrantDeckFromPresetDeck(input: $input) {
       __typename
-      ... on RegisterStarterDeckFromPresetDeckSuccess {
+      ... on RegisterGrantDeckFromPresetDeckSuccess {
         id
         revision
       }
@@ -89,7 +88,7 @@ const registerStarterDeckFromPresetDeckMutation = graphql(`
   }
 `);
 
-export async function registerStarterDeckFromPresetDeck(
+export async function registerGrantDeckFromPresetDeck(
   _previous: RegisterFromPresetDeckState,
   form: FormData,
 ): Promise<RegisterFromPresetDeckState> {
@@ -100,26 +99,25 @@ export async function registerStarterDeckFromPresetDeck(
     return { error: INVALID_TARGET };
   }
 
-  const result = await callCore(registerStarterDeckFromPresetDeckMutation, {
+  const result = await callCore(registerGrantDeckFromPresetDeckMutation, {
     input: { presetDeckId, name },
   });
   if (!result.ok) {
     return { value: name, error: CORE_UNAVAILABLE };
   }
 
-  const registered = result.data.registerStarterDeckFromPresetDeck;
+  const registered = result.data.registerGrantDeckFromPresetDeck;
   switch (registered.__typename) {
-    case "RegisterStarterDeckFromPresetDeckSuccess":
+    case "RegisterGrantDeckFromPresetDeckSuccess":
       if (
-        (await waitStarterDeck(registered.id, registered.revision)) ===
-        "timeout"
+        (await waitGrantDeck(registered.id, registered.revision)) === "timeout"
       ) {
         return { registeredId: registered.id };
       }
-      return redirect(`/starter-decks/${registered.id}`);
+      return redirect(`/grant-decks/${registered.id}`);
     case "ValidationErrors":
       return { value: name, nameError: nameErrorMessage(registered.errors) };
-    case "StarterDeckNameAlreadyInUseError":
+    case "GrantDeckNameAlreadyInUseError":
       return { value: name, nameError: NAME_ALREADY_IN_USE };
     case "PresetDeckNotFoundError":
       return { value: name, error: "このプリセットデッキは見つかりません" };

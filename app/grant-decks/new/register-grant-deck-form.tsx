@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { type RegisterStarterDeckState, registerStarterDeck } from "./actions";
+import { type RegisterGrantDeckState, registerGrantDeck } from "./actions";
 
-const initialState: RegisterStarterDeckState = { value: "" };
+const initialState: RegisterGrantDeckState = { value: "" };
 
-export function RegisterStarterDeckForm() {
+export function RegisterGrantDeckForm() {
   const [state, formAction, isPending] = useActionState(
-    registerStarterDeck,
+    registerGrantDeck,
     initialState,
   );
 
@@ -17,7 +17,7 @@ export function RegisterStarterDeckForm() {
       {state.registeredId !== undefined && (
         <p role="status">
           登録しました。詳細に反映されるまで時間がかかっています。{" "}
-          <Link href={`/starter-decks/${state.registeredId}`}>詳細へ</Link>
+          <Link href={`/grant-decks/${state.registeredId}`}>詳細へ</Link>
         </p>
       )}
       {state.error && <p role="alert">{state.error}</p>}
