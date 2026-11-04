@@ -120,14 +120,14 @@ describe("boardRuleErrorMessage", () => {
     );
   });
 
-  it("サイコロの目の最大が最小を下回ったときは、比べる相手の項目名から文言を作る", () => {
+  it("サイコロの目の最大が最小以下のときは、比べる相手の項目名から文言を作る", () => {
     assert.equal(
       boardRuleErrorMessage({
-        __typename: "FieldLessThan",
+        __typename: "FieldNotGreaterThan",
         field: "diceMax",
         than: "diceMin",
       }),
-      "サイコロの目（最大）はサイコロの目（最小）以上にしてください",
+      "サイコロの目（最大）はサイコロの目（最小）より大きくしてください",
     );
   });
 
