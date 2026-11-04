@@ -594,7 +594,8 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
   await rules.getByLabel("周回のボーナス").fill("-100");
   await rules.getByLabel("ラウンドの上限").fill("0");
   await rules.getByLabel("サイコロの目（最小）").fill("4");
-  await rules.getByLabel("サイコロの目（最大）").fill("3");
+  // 目が 1 種類だと対戦の順番が決まらないので、最大と最小が同じでも誤り
+  await rules.getByLabel("サイコロの目（最大）").fill("4");
   await save.click();
   await expect(
     rules.getByText("周回のボーナスは 0 以上にしてください"),
@@ -604,7 +605,7 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
   ).toBeVisible();
   await expect(
     rules.getByText(
-      "サイコロの目（最大）はサイコロの目（最小）以上にしてください",
+      "サイコロの目（最大）はサイコロの目（最小）より大きくしてください",
     ),
   ).toBeVisible();
 

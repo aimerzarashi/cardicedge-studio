@@ -313,8 +313,6 @@ export function boardRuleErrorMessage(error: {
       return `${label}は ${error.min} 以上にしてください`;
     case "FieldNotGreaterThan":
       return `${label}は${ruleLabel(error.than ?? "")}より大きくしてください`;
-    case "FieldLessThan":
-      return `${label}は${ruleLabel(error.than ?? "")}以上にしてください`;
     default:
       return `${label}の入力が正しくありません`;
   }

@@ -640,7 +640,6 @@ export type RenameBoardMutation = { renameBoard:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -671,7 +670,6 @@ export type ChangeBoardDefaultRulesMutation = { changeBoardDefaultRules:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldLessThan', than: string, field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', than: string, field: string }
@@ -704,7 +702,6 @@ export type CheckBoardLayoutQuery = { checkBoardLayout:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -801,7 +798,6 @@ export type ChangeBoardLayoutMutation = { changeBoardLayout:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -848,7 +844,6 @@ export type RegisterBoardMutation = { registerBoard:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -935,7 +930,6 @@ export type RegisterCreatureMutation = { registerCreature:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -983,7 +977,6 @@ export type RenameGrantDeckMutation = { renameGrantDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1070,7 +1063,6 @@ export type RegisterGrantDeckFromPresetDeckMutation = { registerGrantDeckFromPre
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1122,7 +1114,6 @@ export type RegisterGrantDeckMutation = { registerGrantDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1153,7 +1144,6 @@ export type SetGrantDeckCardCountsMutation = { setGrantDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -1183,7 +1173,6 @@ export type PublishGrantDeckMutation = { publishGrantDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1224,7 +1213,6 @@ export type RegisterItemMutation = { registerItem:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1256,7 +1244,6 @@ export type RenameNpcAvatarMutation = { renameNpcAvatar:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1345,7 +1332,6 @@ export type RegisterNpcAvatarMutation = { registerNpcAvatar:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1376,7 +1362,6 @@ export type SetNpcAvatarDecksMutation = { setNpcAvatarDecks:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1406,7 +1391,6 @@ export type PublishNpcAvatarMutation = { publishNpcAvatar:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1450,7 +1434,6 @@ export type RenameNpcDeckMutation = { renameNpcDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1537,7 +1520,6 @@ export type RegisterNpcDeckFromPresetDeckMutation = { registerNpcDeckFromPresetD
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1589,7 +1571,6 @@ export type RegisterNpcDeckMutation = { registerNpcDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1620,7 +1601,6 @@ export type SetNpcDeckCardCountsMutation = { setNpcDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -1650,7 +1630,6 @@ export type PublishNpcDeckMutation = { publishNpcDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1693,7 +1672,6 @@ export type RenamePresetDeckMutation = { renamePresetDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1776,7 +1754,6 @@ export type RegisterPresetDeckMutation = { registerPresetDeck:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1806,7 +1783,6 @@ export type SetPresetDeckCardCountsMutation = { setPresetDeckCardCounts:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated', field: string }
         | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldLessThan', field: string }
         | { __typename: 'FieldNotAdjacent', field: string }
         | { __typename: 'FieldNotFound', field: string }
         | { __typename: 'FieldNotGreaterThan', field: string }
@@ -1847,7 +1823,6 @@ export type RegisterSpellMutation = { registerSpell:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1879,7 +1854,6 @@ export type RenameStarterSetMutation = { renameStarterSet:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -1923,7 +1897,6 @@ export type PublishStarterSetMutation = { publishStarterSet:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -2023,7 +1996,6 @@ export type RegisterStarterSetMutation = { registerStarterSet:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -2054,7 +2026,6 @@ export type SetStarterSetGrantDecksMutation = { setStarterSetGrantDecks:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -2085,7 +2056,6 @@ export type SetStarterSetUnlockBoardsMutation = { setStarterSetUnlockBoards:
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -2116,7 +2086,6 @@ export type SetStarterSetUnlockNpcAvatarsMutation = { setStarterSetUnlockNpcAvat
     | { __typename: 'ValidationErrors', errors: Array<
         | { __typename: 'FieldDuplicated' }
         | { __typename: 'FieldInvalidFormat' }
-        | { __typename: 'FieldLessThan' }
         | { __typename: 'FieldNotAdjacent' }
         | { __typename: 'FieldNotFound' }
         | { __typename: 'FieldNotGreaterThan' }
@@ -2199,9 +2168,6 @@ export const ChangeBoardDefaultRulesDocument = new TypedDocumentString(`
           min
         }
         ... on FieldNotGreaterThan {
-          than
-        }
-        ... on FieldLessThan {
           than
         }
       }
