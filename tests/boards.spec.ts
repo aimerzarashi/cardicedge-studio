@@ -594,7 +594,7 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
   await rules.getByLabel("周回のボーナス").fill("-100");
   await rules.getByLabel("ラウンドの上限").fill("0");
   await rules.getByLabel("サイコロの目（最小）").fill("4");
-  // 目が 1 種類だと対戦の順番が決まらないので、最大と最小が同じでも誤り
+  // 最大と最小が同じだとサイコロを振る意味が無いので、同じでも誤り
   await rules.getByLabel("サイコロの目（最大）").fill("4");
   await save.click();
   await expect(
