@@ -54,12 +54,12 @@ test("使われている名前で登録すると名前の重複が表示され�
   await expect(empty.getByLabel("名前")).toHaveValue(name);
 });
 
-test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされ、コピー元が出る", async ({
+test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされる", async ({
   page,
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const presetDeckURL = await createFullPresetDeck(page, name);
+  await createFullPresetDeck(page, name);
 
   await expect(async () => {
     await page.goto(`/grant-decks/new?name=${encodeURIComponent(name)}`);
@@ -75,16 +75,9 @@ test("プリセットデッキからコピーして登録すると、入れて�
   await expect(section(page, "入れたカード").locator("tbody tr")).toHaveCount(
     10,
   );
-  const source = section(page, "コピー元");
-  await expect(
-    source.getByRole("link", { name: "コピー元のプリセットデッキ" }),
-  ).toHaveAttribute("href", presetDeckURL);
-  await expect(
-    source.getByText("元のプリセットデッキが変わっています"),
-  ).toHaveCount(0);
 });
 
-test("コピーした後に元のプリセットデッキを変えると「変わっています」が出て、コピーしたデッキは変わらない", async ({
+test("コピーした後に元のプリセットデッキを変えても、コピーしたデッキは変わらない", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -105,19 +98,11 @@ test("コピーした後に元のプリセットデッキを変えると「変�
   await rename.getByRole("button", { name: "名前を変える" }).click();
   await expect(rename.getByText("名前を変えました")).toBeVisible();
 
-  // 投影されるまで開き直す
-  await expect(async () => {
-    await page.goto(grantDeckURL);
-    await expect(
-      section(page, "コピー元").getByText(
-        "元のプリセットデッキが変わっています",
-      ),
-    ).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await page.goto(grantDeckURL);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
 });
 
-test("元のプリセットデッキを削除すると、コピー元に「削除されています」が出る", async ({
+test("元のプリセットデッキを削除しても、コピーしたデッキは残る", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -137,14 +122,9 @@ test("元のプリセットデッキを削除すると、コピー元に「削�
   await del.getByRole("button", { name: "削除する" }).click();
   await expect(page).toHaveURL(/\/preset-decks$/);
 
-  await expect(async () => {
-    await page.goto(grantDeckURL);
-    await expect(
-      section(page, "コピー元").getByText(
-        "元のプリセットデッキは削除されています",
-      ),
-    ).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await page.goto(grantDeckURL);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
+  await expect(page.getByRole("definition").nth(1)).toHaveText("40");
 });
 
 test("名前を変えると詳細の見出しと入力欄が新しい名前になる", async ({

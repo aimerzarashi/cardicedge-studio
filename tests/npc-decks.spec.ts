@@ -51,12 +51,12 @@ test("空から登録すると詳細の画面に移り、一覧に準備中・�
   await expect(deckRows(page).first().locator("td").nth(2)).toHaveText("0");
 });
 
-test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされ、コピー元が出る", async ({
+test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされる", async ({
   page,
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const presetDeckURL = await createFullPresetDeck(page, name);
+  await createFullPresetDeck(page, name);
 
   await expect(async () => {
     await page.goto(`/npc-decks/new?name=${encodeURIComponent(name)}`);
@@ -72,11 +72,6 @@ test("プリセットデッキからコピーして登録すると、入れて�
   await expect(section(page, "入れたカード").locator("tbody tr")).toHaveCount(
     10,
   );
-  await expect(
-    section(page, "コピー元").getByRole("link", {
-      name: "コピー元のプリセットデッキ",
-    }),
-  ).toHaveAttribute("href", presetDeckURL);
 });
 
 test("同じプリセットデッキから名前を変えて 2 つ目をコピーして作れ、使われている名前は入力欄の誤りになって入力した値が残る", async ({
