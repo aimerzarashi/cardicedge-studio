@@ -1037,7 +1037,7 @@ export type GrantDeckQuery = { grantDeck:
           | { __typename: 'Creature', id: string, name: string }
           | { __typename: 'Item', id: string, name: string }
           | { __typename: 'Spell', id: string, name: string }
-         }>, source: { presetDeckId: string, changedSinceCopied: boolean, presetDeckDeleted: boolean } | null }
+         }> }
     | { __typename: 'GrantDeckNotFoundError' }
    };
 
@@ -1504,7 +1504,7 @@ export type NpcDeckQuery = { npcDeck:
           | { __typename: 'Creature', id: string, name: string }
           | { __typename: 'Item', id: string, name: string }
           | { __typename: 'Spell', id: string, name: string }
-         }>, source: { presetDeckId: string, changedSinceCopied: boolean, presetDeckDeleted: boolean } | null }
+         }> }
     | { __typename: 'NpcDeckNotFoundError' }
    };
 
@@ -2624,11 +2624,6 @@ export const GrantDeckDocument = new TypedDocumentString(`
         }
       }
       status
-      source {
-        presetDeckId
-        changedSinceCopied
-        presetDeckDeleted
-      }
       totalCount
       revision
       registeredAt
@@ -3028,11 +3023,6 @@ export const NpcDeckDocument = new TypedDocumentString(`
         }
       }
       status
-      source {
-        presetDeckId
-        changedSinceCopied
-        presetDeckDeleted
-      }
       totalCount
       revision
       registeredAt

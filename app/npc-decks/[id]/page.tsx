@@ -39,11 +39,6 @@ const npcDeckQuery = graphql(`
           }
         }
         status
-        source {
-          presetDeckId
-          changedSinceCopied
-          presetDeckDeleted
-        }
         totalCount
         revision
         registeredAt
@@ -188,26 +183,6 @@ export default async function NpcDeckPage({
         <dt>更新日時</dt>
         <dd>{dateTimeFormat.format(new Date(deck.updatedAt))}</dd>
       </dl>
-
-      {deck.source && (
-        <section aria-labelledby="source-heading">
-          <h2 id="source-heading">コピー元</h2>
-          {deck.source.presetDeckDeleted ? (
-            <p role="status">コピー元のプリセットデッキは削除されています</p>
-          ) : (
-            <p>
-              <Link href={`/preset-decks/${deck.source.presetDeckId}`}>
-                コピー元のプリセットデッキ
-              </Link>
-            </p>
-          )}
-          {deck.source.changedSinceCopied && (
-            <p role="status">
-              コピーした後に、コピー元のプリセットデッキが変わっています。反映するには、コピーして作り直してください
-            </p>
-          )}
-        </section>
-      )}
 
       <section aria-labelledby="status-heading">
         <h2 id="status-heading">公開</h2>

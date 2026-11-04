@@ -1227,10 +1227,6 @@ type GrantDeck {
 	"""
 	totalCount: Int!
 	"""
-	プリセットデッキから写して作ったときの写し元（空から作ったときは null）
-	"""
-	source: GrantDeckSource
-	"""
 	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -1313,27 +1309,6 @@ type GrantDeckNotFoundError {
 配布デッキの詳細の結果
 """
 union GrantDeckResult = GrantDeck | GrantDeckNotFoundError | ForbiddenError
-"""
-写した元
-"""
-type GrantDeckSource {
-	"""
-	元のプリセットデッキの公開用の ID（消されていることもある）
-	"""
-	presetDeckId: UUID!
-	"""
-	写したときの、元のプリセットデッキの revision
-	"""
-	revision: Int!
-	"""
-	写した後に、元のプリセットデッキが変わっている（元が削除されていれば false）
-	"""
-	changedSinceCopied: Boolean!
-	"""
-	元のプリセットデッキが削除されている
-	"""
-	presetDeckDeleted: Boolean!
-}
 """
 配布デッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たし、
 新しいプレイヤーに配る。使用不可は配らない（配り済みのデッキはプレイヤーの持ち物なので変わらない）
@@ -2047,10 +2022,6 @@ type NpcDeck {
 	"""
 	totalCount: Int!
 	"""
-	プリセットデッキから写して作ったときの写し元（空から作ったときは null）
-	"""
-	source: NpcDeckSource
-	"""
 	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -2133,27 +2104,6 @@ type NpcDeckNotFoundError {
 NPC のデッキの詳細の結果
 """
 union NpcDeckResult = NpcDeck | NpcDeckNotFoundError | ForbiddenError
-"""
-写した元
-"""
-type NpcDeckSource {
-	"""
-	元のプリセットデッキの公開用の ID（消されていることもある）
-	"""
-	presetDeckId: UUID!
-	"""
-	写したときの、元のプリセットデッキの revision
-	"""
-	revision: Int!
-	"""
-	写した後に、元のプリセットデッキが変わっている（元が削除されていれば false）
-	"""
-	changedSinceCopied: Boolean!
-	"""
-	元のプリセットデッキが削除されている
-	"""
-	presetDeckDeleted: Boolean!
-}
 """
 NPC のデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たす。
 公開中の数に上限は無い。使用不可は新しい対戦に使わない
@@ -2761,7 +2711,7 @@ input RegisterGrantDeckFromPresetDeckInput {
 """
 union RegisterGrantDeckFromPresetDeckResult = RegisterGrantDeckFromPresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | GrantDeckNameAlreadyInUseError | ForbiddenError
 """
-プリセットデッキから写して配布デッキを登録した（準備中。写した元の公開 ID と revision を記録する）
+プリセットデッキから写して配布デッキを登録した（準備中。写した元の内部 ID と revision は登録のイベントにだけ記録する）
 """
 type RegisterGrantDeckFromPresetDeckSuccess {
 	"""
@@ -2865,7 +2815,7 @@ input RegisterNpcDeckFromPresetDeckInput {
 """
 union RegisterNpcDeckFromPresetDeckResult = RegisterNpcDeckFromPresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | NpcDeckNameAlreadyInUseError | ForbiddenError
 """
-プリセットデッキから写して NPC のデッキを登録した（準備中。写した元の公開 ID と revision を記録する）
+プリセットデッキから写して NPC のデッキを登録した（準備中。写した元の内部 ID と revision は登録のイベントにだけ記録する）
 """
 type RegisterNpcDeckFromPresetDeckSuccess {
 	"""
