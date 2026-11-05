@@ -10,13 +10,8 @@ services:
       # pnpm のキャッシュ（メタデータ・パッケージ）。down しても残す
       - node-cache:/home/node/.cache
     # ホストには公開せず、studio-envoy 経由でアクセスする
-    # 開発用オペレーターの seed（冪等）を済ませてから開発サーバーを起動する。テーブルは studio-migrate が先に作る
-    command:
-      [
-        "sh",
-        "-c",
-        "pnpm install --frozen-lockfile && pnpm db:seed && exec pnpm dev --hostname 0.0.0.0",
-      ]
+    # 起動の手順は local/studio/dev.sh。テーブルは studio-migrate が先に作る
+    command: ["sh", "local/studio/dev.sh"]
     environment:
       DATABASE_URL: postgres://studio_user:studio_password@studio-db:5432/studio
       # 開発用の固定値（本番では環境ごとに安全な値を渡す）

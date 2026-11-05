@@ -43,6 +43,14 @@ down:
 clean:
 	docker compose --profile '*' down -v
 
+# 開発用の Turbopack のキャッシュ（.next/dev）を作り直す。画面が全体の読み直しを繰り返し、再起動でも直らないときに使う。
+# キャッシュの指紋の控えを消して再起動し、起動の手順（local/studio/dev.sh）にキャッシュを消させる（消す処理を dev.sh の 1 か所に置くため）。
+# 依存か Next.js の設定が変わったときは、起動のときに自動で消える（studio#66・game#39）
+.PHONY: dev-cache-reset
+dev-cache-reset:
+	docker compose exec studio rm -f .next/dev-cache-key.sha256
+	docker compose restart studio
+
 # マイグレーション
 
 # 未適用のマイグレーションだけを Atlas で適用する（DB を作り直さずに、追加した migrations を反映する）
