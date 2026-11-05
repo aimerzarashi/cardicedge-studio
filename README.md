@@ -25,6 +25,7 @@ make url     # （任意）起動中の Tunnel の URL を再表示
 make migrate # 未適用の migrations だけを Atlas で適用（DB を作り直さない）
 make migrate-generate NAME=<name> # better-auth の設定と DB の差分 SQL を次の番号で生成
 make migrate-hash # migrations を手で足したら atlas.sum を作り直す
+make dev-cache-reset # 開発用の Turbopack のキャッシュ（.next/dev）を作り直して再起動（下の注意）
 make down    # studio を停止（tunnel を含む。core は game も使うため止めない。studio-db のデータは残す）
 make clean   # down に加えて studio-db のデータも消す（core も作り直すこと。下の注意）
 ```
@@ -32,6 +33,8 @@ make clean   # down に加えて studio-db のデータも消す（core も作�
 http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバーはホストに公開していない）。
 送ったメール（パスワードの設定等）は http://localhost:8025 の Mailpit で読む（外には送らない。ポートは STUDIO_MAILPIT_PORT で変更可）。
 ポートが他と衝突する場合は `STUDIO_PORT=13001 make up` のように変更できる。
+
+開発の画面がページ全体の読み直しを繰り返すとき（ブラウザの console に `[Fast Refresh] rebuilding` が出続ける）は、まず `docker compose restart studio`、直らなければ `make dev-cache-reset` で開発用のキャッシュを作り直す。依存（`pnpm-lock.yaml` から入れたもの）か `next.config.ts` が前回の起動から変わっていれば、起動のとき（`make up`・再起動）に自動で作り直す（local/studio/dev.sh。studio#66・game#39）。
 
 ### 構成
 
