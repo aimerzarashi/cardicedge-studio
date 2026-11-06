@@ -5,10 +5,10 @@ export default function NewStarterSetPage() {
   return (
     <main>
       <h1>スターターセットを登録</h1>
-      <RegisterStarterSetForm />
       <p>
         <Link href="/starter-sets">スターターセットの一覧へ</Link>
       </p>
+      <RegisterStarterSetForm />
     </main>
   );
 }

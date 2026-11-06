@@ -98,10 +98,10 @@ function NotFound() {
   return (
     <main>
       <h1>NPC のデッキ</h1>
-      <p role="alert">この NPC のデッキは見つかりません</p>
       <p>
         <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
       </p>
+      <p role="alert">この NPC のデッキは見つかりません</p>
     </main>
   );
 }
@@ -173,6 +173,9 @@ export default async function NpcDeckPage({
   return (
     <main>
       <h1>{deck.name}</h1>
+      <p>
+        <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
+      </p>
       <dl>
         <dt>状態</dt>
         <dd>{STATUS_LABELS[deck.status]}</dd>
@@ -302,10 +305,6 @@ export default async function NpcDeckPage({
           )}
         </section>
       )}
-
-      <p>
-        <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
-      </p>
     </main>
   );
 }

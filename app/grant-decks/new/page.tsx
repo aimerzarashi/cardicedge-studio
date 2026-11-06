@@ -64,6 +64,9 @@ export default async function NewGrantDeckPage({
   return (
     <main>
       <h1>配布デッキを登録</h1>
+      <p>
+        <Link href="/grant-decks">配布デッキの一覧へ</Link>
+      </p>
       <section aria-labelledby="empty-heading">
         <h2 id="empty-heading">空から作る</h2>
         <p>名前を決めて登録し、カードは登録した後の詳細の画面で入れます。</p>
@@ -83,9 +86,6 @@ export default async function NewGrantDeckPage({
         </Form>
         <PresetDecks result={result} name={name} />
       </section>
-      <p>
-        <Link href="/grant-decks">配布デッキの一覧へ</Link>
-      </p>
     </main>
   );
 }

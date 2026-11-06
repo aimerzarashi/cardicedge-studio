@@ -83,10 +83,10 @@ function NotFound() {
   return (
     <main>
       <h1>NPC のアバター</h1>
-      <p role="alert">この NPC のアバターは見つかりません</p>
       <p>
         <Link href="/npc-avatars">NPC のアバターの一覧へ</Link>
       </p>
+      <p role="alert">この NPC のアバターは見つかりません</p>
     </main>
   );
 }
@@ -145,6 +145,9 @@ export default async function NpcAvatarPage({
   return (
     <main>
       <h1>{avatar.name}</h1>
+      <p>
+        <Link href="/npc-avatars">NPC のアバターの一覧へ</Link>
+      </p>
       <dl>
         <dt>状態</dt>
         <dd>{STATUS_LABELS[avatar.status]}</dd>
@@ -262,10 +265,6 @@ export default async function NpcAvatarPage({
           </section>
         </>
       )}
-
-      <p>
-        <Link href="/npc-avatars">NPC のアバターの一覧へ</Link>
-      </p>
     </main>
   );
 }

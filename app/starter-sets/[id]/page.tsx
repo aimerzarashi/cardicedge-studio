@@ -152,10 +152,10 @@ function NotFound() {
   return (
     <main>
       <h1>スターターセット</h1>
-      <p role="alert">このスターターセットは見つかりません</p>
       <p>
         <Link href="/starter-sets">スターターセットの一覧へ</Link>
       </p>
+      <p role="alert">このスターターセットは見つかりません</p>
     </main>
   );
 }
@@ -250,6 +250,9 @@ export default async function StarterSetPage({
   return (
     <main>
       <h1>{set.name}</h1>
+      <p>
+        <Link href="/starter-sets">スターターセットの一覧へ</Link>
+      </p>
       <dl>
         <dt>状態</dt>
         <dd>{STATUS_LABELS[set.status]}</dd>
@@ -337,10 +340,6 @@ export default async function StarterSetPage({
           </section>
         </>
       )}
-
-      <p>
-        <Link href="/starter-sets">スターターセットの一覧へ</Link>
-      </p>
     </main>
   );
 }
