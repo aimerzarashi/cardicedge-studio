@@ -3,8 +3,8 @@ import Link from "next/link";
 import { graphql } from "@/graphql";
 import type {
   CardType,
-  StarterDeckCandidateCardsQuery,
-  StarterDeckCandidateCardsQueryVariables,
+  NpcDeckCandidateCardsQuery,
+  NpcDeckCandidateCardsQueryVariables,
 } from "@/graphql/graphql";
 import { CARD_TYPE_LABELS, CARD_TYPES, isCardType } from "@/lib/card-type";
 import { type CoreResult, callCore } from "@/lib/core";
@@ -16,18 +16,18 @@ import { DeleteDeck } from "../../delete-deck";
 import { RenameDeckForm } from "../../rename-deck-form";
 import { StatusButton } from "../../status-button";
 import {
-  deleteStarterDeck,
-  publishStarterDeck,
-  renameStarterDeck,
-  retireStarterDeck,
-  setStarterDeckCardCounts,
+  deleteNpcDeck,
+  publishNpcDeck,
+  renameNpcDeck,
+  retireNpcDeck,
+  setNpcDeckCardCounts,
 } from "./actions";
 
-const starterDeckQuery = graphql(`
-  query StarterDeck($id: UUID!) {
-    starterDeck(id: $id) {
+const npcDeckQuery = graphql(`
+  query NpcDeck($id: UUID!) {
+    npcDeck(id: $id) {
       __typename
-      ... on StarterDeck {
+      ... on NpcDeck {
         id
         name
         cards {
@@ -39,11 +39,6 @@ const starterDeckQuery = graphql(`
           }
         }
         status
-        source {
-          presetDeckId
-          changedSinceCopied
-          presetDeckDeleted
-        }
         totalCount
         revision
         registeredAt
@@ -54,7 +49,7 @@ const starterDeckQuery = graphql(`
 `);
 
 const deckCandidateCardsQuery = graphql(`
-  query StarterDeckCandidateCards($filter: CardFilter, $after: String) {
+  query NpcDeckCandidateCards($filter: CardFilter, $after: String) {
     cards(filter: $filter, after: $after) {
       __typename
       ... on CardConnection {
@@ -96,27 +91,25 @@ function pageURL(
     params.set("after", after);
   }
   const query = params.toString();
-  return query === ""
-    ? `/starter-decks/${id}`
-    : `/starter-decks/${id}?${query}`;
+  return query === "" ? `/npc-decks/${id}` : `/npc-decks/${id}?${query}`;
 }
 
 function NotFound() {
   return (
     <main>
-      <h1>スターターデッキ</h1>
-      <p role="alert">このスターターデッキは見つかりません</p>
+      <h1>NPC のデッキ</h1>
       <p>
-        <Link href="/starter-decks">スターターデッキの一覧へ</Link>
+        <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
       </p>
+      <p role="alert">この NPC のデッキは見つかりません</p>
     </main>
   );
 }
 
-export default async function StarterDeckPage({
+export default async function NpcDeckPage({
   params,
   searchParams,
-}: PageProps<"/starter-decks/[id]">) {
+}: PageProps<"/npc-decks/[id]">) {
   const { id } = await params;
   if (!UUID_PATTERN.test(id)) {
     return <NotFound />;
@@ -127,7 +120,7 @@ export default async function StarterDeckPage({
   const types = all(search.type).filter(isCardType);
   const after = first(search.after);
 
-  const variables: StarterDeckCandidateCardsQueryVariables = {
+  const variables: NpcDeckCandidateCardsQueryVariables = {
     filter: {
       // 空の入力欄は「絞り込まない」。空白だけは core が入力の誤りにする
       ...(name !== "" && { nameContains: name }),
@@ -139,14 +132,14 @@ export default async function StarterDeckPage({
     after,
   };
   const [deckResult, candidates] = await Promise.all([
-    callCore(starterDeckQuery, { id }),
+    callCore(npcDeckQuery, { id }),
     callCore(deckCandidateCardsQuery, variables),
   ]);
 
   if (!deckResult.ok) {
     return (
       <main>
-        <h1>スターターデッキ</h1>
+        <h1>NPC のデッキ</h1>
         <p role="alert">
           core に接続できません。時間をおいて再読み込みしてください。{" "}
           <Link href={pageURL(id, name, types, after)}>再読み込み</Link>
@@ -154,18 +147,18 @@ export default async function StarterDeckPage({
       </main>
     );
   }
-  const deck = deckResult.data.starterDeck;
+  const deck = deckResult.data.npcDeck;
   switch (deck.__typename) {
     case "ForbiddenError":
       return (
         <main>
-          <h1>スターターデッキ</h1>
+          <h1>NPC のデッキ</h1>
           <p role="alert">この操作をする権限がありません</p>
         </main>
       );
-    case "StarterDeckNotFoundError":
+    case "NpcDeckNotFoundError":
       return <NotFound />;
-    case "StarterDeck":
+    case "NpcDeck":
       break;
   }
 
@@ -180,6 +173,9 @@ export default async function StarterDeckPage({
   return (
     <main>
       <h1>{deck.name}</h1>
+      <p>
+        <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
+      </p>
       <dl>
         <dt>状態</dt>
         <dd>{STATUS_LABELS[deck.status]}</dd>
@@ -191,38 +187,18 @@ export default async function StarterDeckPage({
         <dd>{dateTimeFormat.format(new Date(deck.updatedAt))}</dd>
       </dl>
 
-      {deck.source && (
-        <section aria-labelledby="source-heading">
-          <h2 id="source-heading">写した元</h2>
-          {deck.source.presetDeckDeleted ? (
-            <p role="status">元のプリセットデッキは削除されています</p>
-          ) : (
-            <p>
-              <Link href={`/preset-decks/${deck.source.presetDeckId}`}>
-                元のプリセットデッキ
-              </Link>
-            </p>
-          )}
-          {deck.source.changedSinceCopied && (
-            <p role="status">
-              写した後に、元のプリセットデッキが変わっています。反映するには、写して作り直してください
-            </p>
-          )}
-        </section>
-      )}
-
       <section aria-labelledby="status-heading">
         <h2 id="status-heading">公開</h2>
         {deck.status === "PUBLISHED" ? (
           <StatusButton
-            action={retireStarterDeck}
+            action={retireNpcDeck}
             label="使用不可にする"
             id={deck.id}
             revision={deck.revision}
           />
         ) : (
           <StatusButton
-            action={publishStarterDeck}
+            action={publishNpcDeck}
             label="公開する"
             id={deck.id}
             revision={deck.revision}
@@ -235,7 +211,7 @@ export default async function StarterDeckPage({
           <section aria-labelledby="rename-heading">
             <h2 id="rename-heading">名前の変更</h2>
             <RenameDeckForm
-              action={renameStarterDeck}
+              action={renameNpcDeck}
               id={deck.id}
               revision={deck.revision}
               name={deck.name}
@@ -250,7 +226,7 @@ export default async function StarterDeckPage({
               </p>
             ) : (
               <CardCountsForm
-                action={setStarterDeckCardCounts}
+                action={setNpcDeckCardCounts}
                 id={deck.id}
                 revision={deck.revision}
                 rows={deckRows}
@@ -260,7 +236,7 @@ export default async function StarterDeckPage({
 
           <section aria-labelledby="candidates-heading">
             <h2 id="candidates-heading">カードを探す</h2>
-            <Form action={`/starter-decks/${deck.id}`}>
+            <Form action={`/npc-decks/${deck.id}`}>
               <label>
                 名前
                 <input name="name" defaultValue={name} />
@@ -294,7 +270,7 @@ export default async function StarterDeckPage({
           <section aria-labelledby="delete-heading">
             <h2 id="delete-heading">削除</h2>
             <DeleteDeck
-              action={deleteStarterDeck}
+              action={deleteNpcDeck}
               id={deck.id}
               revision={deck.revision}
               name={deck.name}
@@ -304,7 +280,7 @@ export default async function StarterDeckPage({
       ) : (
         <section aria-labelledby="deck-cards-heading">
           <h2 id="deck-cards-heading">入れたカード</h2>
-          <p>公開中・使用不可のスターターデッキは変えられません</p>
+          <p>公開中・使用不可の NPC のデッキは変えられません</p>
           {deckRows.length === 0 ? (
             <p>カードが入っていません</p>
           ) : (
@@ -329,10 +305,6 @@ export default async function StarterDeckPage({
           )}
         </section>
       )}
-
-      <p>
-        <Link href="/starter-decks">スターターデッキの一覧へ</Link>
-      </p>
     </main>
   );
 }
@@ -345,7 +317,7 @@ function Candidates({
   name,
   types,
 }: {
-  result: CoreResult<StarterDeckCandidateCardsQuery>;
+  result: CoreResult<NpcDeckCandidateCardsQuery>;
   deckId: string;
   revision: number;
   counts: Map<string, number>;
@@ -368,7 +340,7 @@ function Candidates({
       return (
         <p role="alert">
           条件が正しくありません。{" "}
-          <Link href={`/starter-decks/${deckId}`}>条件を外す</Link>
+          <Link href={`/npc-decks/${deckId}`}>条件を外す</Link>
         </p>
       );
     case "CardConnection":
@@ -378,7 +350,7 @@ function Candidates({
             <p>カードがありません</p>
           ) : (
             <CardCountsForm
-              action={setStarterDeckCardCounts}
+              action={setNpcDeckCardCounts}
               id={deckId}
               revision={revision}
               rows={cards.edges.map(({ node }) => ({

@@ -7,8 +7,9 @@ import type {
 } from "@/graphql/graphql";
 import { type CoreResult, callCore } from "@/lib/core";
 import { first } from "@/lib/search-params";
-import { CopyPresetDeckButton } from "./copy-preset-deck-button";
-import { RegisterStarterDeckForm } from "./register-starter-deck-form";
+import { CopyPresetDeckForm } from "../../copy-preset-deck-form";
+import { registerGrantDeckFromPresetDeck } from "./actions";
+import { RegisterGrantDeckForm } from "./register-grant-deck-form";
 
 const copySourcePresetDecksQuery = graphql(`
   query CopySourcePresetDecks($filter: PresetDeckFilter, $after: String) {
@@ -31,7 +32,7 @@ const copySourcePresetDecksQuery = graphql(`
   }
 `);
 
-// 写し元を探す条件は URL に持つ（再読み込み・共有で同じ画面に戻るため）
+// コピー元を探す条件は URL に持つ（再読み込み・共有で同じ画面に戻るため）
 function pageURL(name: string, after?: string): string {
   const params = new URLSearchParams();
   if (name !== "") {
@@ -41,12 +42,12 @@ function pageURL(name: string, after?: string): string {
     params.set("after", after);
   }
   const query = params.toString();
-  return query === "" ? "/starter-decks/new" : `/starter-decks/new?${query}`;
+  return query === "" ? "/grant-decks/new" : `/grant-decks/new?${query}`;
 }
 
-export default async function NewStarterDeckPage({
+export default async function NewGrantDeckPage({
   searchParams,
-}: PageProps<"/starter-decks/new">) {
+}: PageProps<"/grant-decks/new">) {
   const params = await searchParams;
   const name = first(params.name) ?? "";
   const after = first(params.after);
@@ -62,18 +63,21 @@ export default async function NewStarterDeckPage({
 
   return (
     <main>
-      <h1>スターターデッキを登録</h1>
+      <h1>配布デッキを登録</h1>
+      <p>
+        <Link href="/grant-decks">配布デッキの一覧へ</Link>
+      </p>
       <section aria-labelledby="empty-heading">
         <h2 id="empty-heading">空から作る</h2>
         <p>名前を決めて登録し、カードは登録した後の詳細の画面で入れます。</p>
-        <RegisterStarterDeckForm />
+        <RegisterGrantDeckForm />
       </section>
       <section aria-labelledby="copy-heading">
-        <h2 id="copy-heading">プリセットデッキから写して作る</h2>
+        <h2 id="copy-heading">プリセットデッキからコピーして作る</h2>
         <p>
-          名前・カード・枚数を写して作ります。写した後に元を直しても変わりません。
+          カード・枚数をコピーし、名前を決めて作ります。コピーした後に元を直しても変わりません。
         </p>
-        <Form action="/starter-decks/new">
+        <Form action="/grant-decks/new">
           <label>
             名前
             <input name="name" defaultValue={name} />
@@ -82,9 +86,6 @@ export default async function NewStarterDeckPage({
         </Form>
         <PresetDecks result={result} name={name} />
       </section>
-      <p>
-        <Link href="/starter-decks">スターターデッキの一覧へ</Link>
-      </p>
     </main>
   );
 }
@@ -112,7 +113,7 @@ function PresetDecks({
       return (
         <p role="alert">
           条件が正しくありません。{" "}
-          <Link href="/starter-decks/new">条件を外す</Link>
+          <Link href="/grant-decks/new">条件を外す</Link>
         </p>
       );
     case "PresetDeckConnection":
@@ -137,7 +138,9 @@ function PresetDecks({
                     </td>
                     <td>{node.totalCount}</td>
                     <td>
-                      <CopyPresetDeckButton
+                      <CopyPresetDeckForm
+                        action={registerGrantDeckFromPresetDeck}
+                        basePath="/grant-decks"
                         presetDeckId={node.id}
                         name={node.name}
                       />

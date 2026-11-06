@@ -866,6 +866,84 @@ type DeleteBoardSuccess {
 	id: UUID!
 }
 """
+配布デッキを削除する入力
+"""
+input DeleteGrantDeckInput {
+	"""
+	配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた配布デッキの revision
+	"""
+	revision: Int!
+}
+"""
+配布デッキの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteGrantDeckResult = DeleteGrantDeckSuccess | GrantDeckNotFoundError | GrantDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+配布デッキを削除した（名前はほかの配布デッキが使えるようになる）
+"""
+type DeleteGrantDeckSuccess {
+	"""
+	削除した配布デッキの公開用の ID
+	"""
+	id: UUID!
+}
+"""
+NPC のアバターを削除する入力
+"""
+input DeleteNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteNpcAvatarResult = DeleteNpcAvatarSuccess | NpcAvatarNotFoundError | NpcAvatarNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターを削除した（名前はほかの NPC のアバターが使えるようになる）
+"""
+type DeleteNpcAvatarSuccess {
+	"""
+	削除した NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+}
+"""
+NPC のデッキを削除する入力
+"""
+input DeleteNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteNpcDeckResult = DeleteNpcDeckSuccess | NpcDeckNotFoundError | NpcDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキを削除した（名前はほかの NPC のデッキが使えるようになる）
+"""
+type DeleteNpcDeckSuccess {
+	"""
+	削除した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+}
+"""
 プリセットデッキを削除する入力
 """
 input DeletePresetDeckInput {
@@ -892,28 +970,28 @@ type DeletePresetDeckSuccess {
 	id: UUID!
 }
 """
-スターターデッキを削除する入力
+スターターセットを削除する入力
 """
-input DeleteStarterDeckInput {
+input DeleteStarterSetInput {
 	"""
-	スターターデッキの公開用の ID
+	スターターセットの公開用の ID
 	"""
 	id: UUID!
 	"""
-	画面が見ていたスターターデッキの revision
+	画面が見ていたスターターセットの revision
 	"""
 	revision: Int!
 }
 """
-スターターデッキの削除の結果（準備中のものだけ消せる）
+スターターセットの削除の結果（準備中のものだけ消せる）
 """
-union DeleteStarterDeckResult = DeleteStarterDeckSuccess | StarterDeckNotFoundError | StarterDeckNotDraftError | RevisionConflictError | ForbiddenError
+union DeleteStarterSetResult = DeleteStarterSetSuccess | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
 """
-スターターデッキを削除した（名前はほかのスターターデッキが使えるようになる）
+スターターセットを削除した（名前はほかのスターターセットが使えるようになる）
 """
-type DeleteStarterDeckSuccess {
+type DeleteStarterSetSuccess {
 	"""
-	削除したスターターデッキの公開用の ID
+	削除したスターターセットの公開用の ID
 	"""
 	id: UUID!
 }
@@ -945,19 +1023,6 @@ type FieldInvalidFormat implements FieldError {
 	field: String!
 }
 """
-入力が、別の入力の項目の値より小さい（等しいのは誤りでない。例: サイコロの目の最大が最小より小さい）
-"""
-type FieldLessThan implements FieldError {
-	"""
-	誤りのある入力の項目
-	"""
-	field: String!
-	"""
-	下回ってはいけない相手の入力の項目（例: diceMin）
-	"""
-	than: String!
-}
-"""
 つながりの両端が隣どうし（上下左右に 1 マス）でない（同じ座標を指すものを含む）
 """
 type FieldNotAdjacent implements FieldError {
@@ -976,7 +1041,7 @@ type FieldNotFound implements FieldError {
 	field: String!
 }
 """
-入力が、別の入力の項目の値より大きくない（等しいのも含む。例: 目標の魔力が開始時の魔力以下）
+入力が、別の入力の項目の値より大きくない（等しいのも含む。例: 目標の魔力が開始時の魔力以下、サイコロの目の最大が最小以下）
 """
 type FieldNotGreaterThan implements FieldError {
 	"""
@@ -1068,7 +1133,7 @@ type FieldTooSmall implements FieldError {
 	min: Int!
 }
 """
-合計がちょうど決まった値でない（公開するスターターデッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
+合計がちょうど決まった値でない（公開する配布デッキの枚数の合計等。多すぎるのも足りないのも同じ理由）
 """
 type FieldTotalMismatch implements FieldError {
 	"""
@@ -1112,6 +1177,148 @@ type ForbiddenError {
 	message: String!
 }
 """
+ゲーム全体のルール
+"""
+type GameRules {
+	"""
+	対戦の決まり
+	"""
+	match: MatchRules!
+}
+"""
+ゲーム全体のルールの結果
+"""
+union GameRulesResult = GameRules | ForbiddenError
+"""
+配布デッキ
+"""
+type GrantDeck {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべての配布デッキの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: GrantDeckStatus!
+	"""
+	入れたカードと枚数（カードの一覧と同じ並び: 種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
+	"""
+	cards: [DeckCard!]!
+	"""
+	カードの枚数の合計
+	"""
+	totalCount: Int!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+配布デッキの一覧の 1 ページ（名前の順）
+"""
+type GrantDeckConnection {
+	"""
+	このページの配布デッキ
+	"""
+	edges: [GrantDeckEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+配布デッキの一覧の 1 件と、その位置
+"""
+type GrantDeckEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	配布デッキ
+	"""
+	node: GrantDeck!
+}
+"""
+配布デッキの一覧の絞り込み
+"""
+input GrantDeckFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [GrantDeckStatus!]
+}
+"""
+名前が、ほかの配布デッキですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type GrantDeckNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でない配布デッキの名前・枚数を変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type GrantDeckNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+配布デッキが無い（削除したものを含む）
+"""
+type GrantDeckNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+配布デッキの詳細の結果
+"""
+union GrantDeckResult = GrantDeck | GrantDeckNotFoundError | ForbiddenError
+"""
+配布デッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たし、
+新しいプレイヤーに配る。使用不可は配らない（配り済みのデッキはプレイヤーの持ち物なので変わらない）
+"""
+enum GrantDeckStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+配布デッキの一覧の結果
+"""
+union GrantDecksResult = GrantDeckConnection | ValidationErrors | ForbiddenError
+"""
 準備中のボードを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidBoardStatusTransitionError {
@@ -1130,9 +1337,36 @@ type InvalidCardStatusTransitionError {
 	message: String!
 }
 """
-準備中のスターターデッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
+準備中の配布デッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
-type InvalidStarterDeckStatusTransitionError {
+type InvalidGrantDeckStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中の NPC のアバターを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidNpcAvatarStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中の NPC のデッキを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidNpcDeckStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中のスターターセットを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidStarterSetStatusTransitionError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
@@ -1200,6 +1434,27 @@ input LandTileInput {
 	属性
 	"""
 	attribute: BoardTileAttribute!
+}
+"""
+対戦の決まり（盤面や部屋によらず、ゲーム全体で同じ値）
+"""
+type MatchRules {
+	"""
+	対戦に参加できる人数の下限（この値を含む）
+	"""
+	minPlayers: Int!
+	"""
+	対戦に参加できる人数の上限（この値を含む）
+	"""
+	maxPlayers: Int!
+	"""
+	手札の上限の枚数
+	"""
+	maxHandCards: Int!
+	"""
+	対戦の始めに配る手札の枚数
+	"""
+	startingHandCards: Int!
 }
 type Mutation {
 	"""
@@ -1293,6 +1548,69 @@ type Mutation {
 		input: RegisterCreatureInput!
 	): RegisterCreatureResult!
 	"""
+	配布デッキを空から登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerGrantDeck(
+		"""
+		登録する配布デッキ
+		"""
+		input: RegisterGrantDeckInput!
+	): RegisterGrantDeckResult!
+	"""
+	プリセットデッキから写して配布デッキを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerGrantDeckFromPresetDeck(
+		"""
+		写す元
+		"""
+		input: RegisterGrantDeckFromPresetDeckInput!
+	): RegisterGrantDeckFromPresetDeckResult!
+	"""
+	配布デッキの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameGrantDeck(
+		"""
+		変える内容
+		"""
+		input: RenameGrantDeckInput!
+	): RenameGrantDeckResult!
+	"""
+	配布デッキのカードの枚数を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setGrantDeckCardCounts(
+		"""
+		変える内容
+		"""
+		input: SetGrantDeckCardCountsInput!
+	): SetGrantDeckCardCountsResult!
+	"""
+	配布デッキを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteGrantDeck(
+		"""
+		削除する配布デッキ
+		"""
+		input: DeleteGrantDeckInput!
+	): DeleteGrantDeckResult!
+	"""
+	配布デッキを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishGrantDeck(
+		"""
+		公開する配布デッキ
+		"""
+		input: PublishGrantDeckInput!
+	): PublishGrantDeckResult!
+	"""
+	配布デッキを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireGrantDeck(
+		"""
+		使用不可にする配布デッキ
+		"""
+		input: RetireGrantDeckInput!
+	): RetireGrantDeckResult!
+	"""
 	アイテムを登録する（紐づいたオペレーターだけ）
 	"""
 	registerItem(
@@ -1301,6 +1619,123 @@ type Mutation {
 		"""
 		input: RegisterItemInput!
 	): RegisterItemResult!
+	"""
+	NPC のアバターを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcAvatar(
+		"""
+		登録する NPC のアバター
+		"""
+		input: RegisterNpcAvatarInput!
+	): RegisterNpcAvatarResult!
+	"""
+	NPC のアバターの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameNpcAvatar(
+		"""
+		変える内容
+		"""
+		input: RenameNpcAvatarInput!
+	): RenameNpcAvatarResult!
+	"""
+	NPC のアバターに使うデッキを割り当てる（今の割り当てを、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setNpcAvatarDecks(
+		"""
+		変える内容
+		"""
+		input: SetNpcAvatarDecksInput!
+	): SetNpcAvatarDecksResult!
+	"""
+	NPC のアバターを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteNpcAvatar(
+		"""
+		削除する NPC のアバター
+		"""
+		input: DeleteNpcAvatarInput!
+	): DeleteNpcAvatarResult!
+	"""
+	NPC のアバターを公開中にする（使うデッキに公開中のものが 1 つ以上要る。紐づいたオペレーターだけ）
+	"""
+	publishNpcAvatar(
+		"""
+		公開する NPC のアバター
+		"""
+		input: PublishNpcAvatarInput!
+	): PublishNpcAvatarResult!
+	"""
+	NPC のアバターを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireNpcAvatar(
+		"""
+		使用不可にする NPC のアバター
+		"""
+		input: RetireNpcAvatarInput!
+	): RetireNpcAvatarResult!
+	"""
+	NPC のデッキを空から登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcDeck(
+		"""
+		登録する NPC のデッキ
+		"""
+		input: RegisterNpcDeckInput!
+	): RegisterNpcDeckResult!
+	"""
+	プリセットデッキから写して NPC のデッキを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcDeckFromPresetDeck(
+		"""
+		写す元
+		"""
+		input: RegisterNpcDeckFromPresetDeckInput!
+	): RegisterNpcDeckFromPresetDeckResult!
+	"""
+	NPC のデッキの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameNpcDeck(
+		"""
+		変える内容
+		"""
+		input: RenameNpcDeckInput!
+	): RenameNpcDeckResult!
+	"""
+	NPC のデッキのカードの枚数を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setNpcDeckCardCounts(
+		"""
+		変える内容
+		"""
+		input: SetNpcDeckCardCountsInput!
+	): SetNpcDeckCardCountsResult!
+	"""
+	NPC のデッキを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteNpcDeck(
+		"""
+		削除する NPC のデッキ
+		"""
+		input: DeleteNpcDeckInput!
+	): DeleteNpcDeckResult!
+	"""
+	NPC のデッキを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishNpcDeck(
+		"""
+		公開する NPC のデッキ
+		"""
+		input: PublishNpcDeckInput!
+	): PublishNpcDeckResult!
+	"""
+	NPC のデッキを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireNpcDeck(
+		"""
+		使用不可にする NPC のデッキ
+		"""
+		input: RetireNpcDeckInput!
+	): RetireNpcDeckResult!
 	"""
 	プリセットデッキを登録する（紐づいたオペレーターだけ）
 	"""
@@ -1347,68 +1782,77 @@ type Mutation {
 		input: RegisterSpellInput!
 	): RegisterSpellResult!
 	"""
-	スターターデッキを空から登録する（準備中。紐づいたオペレーターだけ）
+	スターターセットを登録する（準備中。紐づいたオペレーターだけ）
 	"""
-	registerStarterDeck(
+	registerStarterSet(
 		"""
-		登録するスターターデッキ
+		登録するスターターセット
 		"""
-		input: RegisterStarterDeckInput!
-	): RegisterStarterDeckResult!
+		input: RegisterStarterSetInput!
+	): RegisterStarterSetResult!
 	"""
-	プリセットデッキから写してスターターデッキを登録する（準備中。紐づいたオペレーターだけ）
+	スターターセットの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
 	"""
-	registerStarterDeckFromPresetDeck(
-		"""
-		写す元
-		"""
-		input: RegisterStarterDeckFromPresetDeckInput!
-	): RegisterStarterDeckFromPresetDeckResult!
-	"""
-	スターターデッキの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
-	"""
-	renameStarterDeck(
+	renameStarterSet(
 		"""
 		変える内容
 		"""
-		input: RenameStarterDeckInput!
-	): RenameStarterDeckResult!
+		input: RenameStarterSetInput!
+	): RenameStarterSetResult!
 	"""
-	スターターデッキのカードの枚数を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	スターターセットの配るデッキを指定する（今の指定を、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
 	"""
-	setStarterDeckCardCounts(
+	setStarterSetGrantDecks(
 		"""
 		変える内容
 		"""
-		input: SetStarterDeckCardCountsInput!
-	): SetStarterDeckCardCountsResult!
+		input: SetStarterSetGrantDecksInput!
+	): SetStarterSetGrantDecksResult!
 	"""
-	スターターデッキを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	スターターセットの解放するボードを指定する（今の指定を、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
 	"""
-	deleteStarterDeck(
+	setStarterSetUnlockBoards(
 		"""
-		削除するスターターデッキ
+		変える内容
 		"""
-		input: DeleteStarterDeckInput!
-	): DeleteStarterDeckResult!
+		input: SetStarterSetUnlockBoardsInput!
+	): SetStarterSetUnlockBoardsResult!
 	"""
-	スターターデッキを公開中にする（紐づいたオペレーターだけ）
+	スターターセットの解放する NPC のアバターを指定する（今の指定を、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
 	"""
-	publishStarterDeck(
+	setStarterSetUnlockNpcAvatars(
 		"""
-		公開するスターターデッキ
+		変える内容
 		"""
-		input: PublishStarterDeckInput!
-	): PublishStarterDeckResult!
+		input: SetStarterSetUnlockNpcAvatarsInput!
+	): SetStarterSetUnlockNpcAvatarsResult!
 	"""
-	スターターデッキを使用不可にする（紐づいたオペレーターだけ）
+	スターターセットを削除する（準備中のものだけ。紐づいたオペレーターだけ）
 	"""
-	retireStarterDeck(
+	deleteStarterSet(
 		"""
-		使用不可にするスターターデッキ
+		削除するスターターセット
 		"""
-		input: RetireStarterDeckInput!
-	): RetireStarterDeckResult!
+		input: DeleteStarterSetInput!
+	): DeleteStarterSetResult!
+	"""
+	スターターセットを公開中にする（配るデッキが 1 つ以上要り、公開中は同時に 1 つだけ。紐づいたオペレーターだけ）
+	"""
+	publishStarterSet(
+		"""
+		公開するスターターセット
+		"""
+		input: PublishStarterSetInput!
+	): PublishStarterSetResult!
+	"""
+	スターターセットを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireStarterSet(
+		"""
+		使用不可にするスターターセット
+		"""
+		input: RetireStarterSetInput!
+	): RetireStarterSetResult!
 }
 """
 チェックポイントが 1 つも無い（公開するボードのチェックポイントは 1 つ以上）
@@ -1419,6 +1863,260 @@ type NoCheckpointProblem implements BoardPublishProblem {
 	"""
 	message: String!
 }
+"""
+NPC のアバター
+"""
+type NpcAvatar {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべての NPC のアバターの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: NpcAvatarStatus!
+	"""
+	使う NPC のデッキ（割り当てた順。準備中のあいだは 0 件でもよく、公開中にするには公開中のデッキが 1 つ以上要る。使用不可にしたデッキも、外すまで含まれる）
+	"""
+	decks: [NpcDeck!]!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+NPC のアバターの一覧の 1 ページ（名前の順）
+"""
+type NpcAvatarConnection {
+	"""
+	このページの NPC のアバター
+	"""
+	edges: [NpcAvatarEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+NPC のアバターの一覧の 1 件と、その位置
+"""
+type NpcAvatarEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	NPC のアバター
+	"""
+	node: NpcAvatar!
+}
+"""
+NPC のアバターの一覧の絞り込み
+"""
+input NpcAvatarFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [NpcAvatarStatus!]
+}
+"""
+名前が、ほかの NPC のアバターですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type NpcAvatarNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でない NPC のアバターの名前・使うデッキを変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type NpcAvatarNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のアバターが無い（削除したものを含む）
+"""
+type NpcAvatarNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のアバターの詳細の結果
+"""
+union NpcAvatarResult = NpcAvatar | NpcAvatarNotFoundError | ForbiddenError
+"""
+NPC のアバターの状態。準備中は名前と使うデッキを自由に変えられる。公開中の数に上限は無い。
+公開中にできるのは、使うデッキに公開中のものが 1 つ以上あるとき。使用不可は新しい対戦に使わない
+"""
+enum NpcAvatarStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+NPC のアバターの一覧の結果
+"""
+union NpcAvatarsResult = NpcAvatarConnection | ValidationErrors | ForbiddenError
+"""
+NPC のデッキ
+"""
+type NpcDeck {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべての NPC のデッキの中で一意。配布デッキ・プリセットデッキと同じ名前でもよい）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: NpcDeckStatus!
+	"""
+	入れたカードと枚数（カードの一覧と同じ並び: 種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
+	"""
+	cards: [DeckCard!]!
+	"""
+	カードの枚数の合計
+	"""
+	totalCount: Int!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+NPC のデッキの一覧の 1 ページ（名前の順）
+"""
+type NpcDeckConnection {
+	"""
+	このページの NPC のデッキ
+	"""
+	edges: [NpcDeckEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+NPC のデッキの一覧の 1 件と、その位置
+"""
+type NpcDeckEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	NPC のデッキ
+	"""
+	node: NpcDeck!
+}
+"""
+NPC のデッキの一覧の絞り込み
+"""
+input NpcDeckFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [NpcDeckStatus!]
+}
+"""
+名前が、ほかの NPC のデッキですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type NpcDeckNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でない NPC のデッキの名前・枚数を変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type NpcDeckNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のデッキが無い（削除したものを含む）
+"""
+type NpcDeckNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC のデッキの詳細の結果
+"""
+union NpcDeckResult = NpcDeck | NpcDeckNotFoundError | ForbiddenError
+"""
+NPC のデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たす。
+公開中の数に上限は無い。使用不可は新しい対戦に使わない
+"""
+enum NpcDeckStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+NPC のデッキの一覧の結果
+"""
+union NpcDecksResult = NpcDeckConnection | ValidationErrors | ForbiddenError
 """
 ページの情報
 """
@@ -1608,32 +2306,127 @@ type PublishCardSuccess {
 	revision: Int!
 }
 """
-スターターデッキを公開する入力
+配布デッキを公開する入力
 """
-input PublishStarterDeckInput {
+input PublishGrantDeckInput {
 	"""
-	スターターデッキの公開用の ID
+	配布デッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	画面が見ていたスターターデッキの revision
+	画面が見ていた配布デッキの revision
 	"""
 	revision: Int!
 }
 """
-スターターデッキの公開の結果（準備中・使用不可から公開中にできる。公開中の数が上限なら公開できない）
+配布デッキの公開の結果（準備中・使用不可から公開中にできる。公開中の数に上限は無い。どれを配るかはスターターセットが決める）
 """
-union PublishStarterDeckResult = PublishStarterDeckSuccess | ValidationErrors | StarterDeckNotFoundError | StarterDeckLimitReachedError | RevisionConflictError | ForbiddenError
+union PublishGrantDeckResult = PublishGrantDeckSuccess | ValidationErrors | GrantDeckNotFoundError | RevisionConflictError | ForbiddenError
 """
-スターターデッキを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+配布デッキを公開中にした（すでに公開中なら何も変えず、revision も進まない）
 """
-type PublishStarterDeckSuccess {
+type PublishGrantDeckSuccess {
 	"""
-	公開したスターターデッキの公開用の ID
+	公開した配布デッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	公開したスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	公開した配布デッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターを公開する入力
+"""
+input PublishNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの公開の結果（準備中・使用不可から公開中にできる）。
+公開するときは、使うデッキが 1 つ以上あること（無ければ ValidationErrors の decks が必須）と、
+そのうち 1 つ以上が今も公開中であること（無ければ decks が使えない）を確かめる。すでに公開中なら確かめない
+"""
+union PublishNpcAvatarResult = PublishNpcAvatarSuccess | ValidationErrors | NpcAvatarNotFoundError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishNpcAvatarSuccess {
+	"""
+	公開した NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開した NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキを公開する入力
+"""
+input PublishNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの公開の結果（準備中・使用不可から公開中にできる）
+"""
+union PublishNpcDeckResult = PublishNpcDeckSuccess | ValidationErrors | NpcDeckNotFoundError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishNpcDeckSuccess {
+	"""
+	公開した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットを公開する入力
+"""
+input PublishStarterSetInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+}
+"""
+スターターセットの公開の結果（準備中・使用不可から公開中にできる）。
+公開するときは、配るデッキが 1 つ以上あること（無ければ ValidationErrors の grantDecks が必須）と、
+ほかに公開中のスターターセットが無いこと（あれば StarterSetLimitReachedError）を確かめる。解放するボードは 0 件でもよい。
+すでに公開中なら確かめない。公開した後は、配るデッキと解放するボードを変えられない
+"""
+union PublishStarterSetResult = PublishStarterSetSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetLimitReachedError | RevisionConflictError | ForbiddenError
+"""
+スターターセットを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishStarterSetSuccess {
+	"""
+	公開したスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開したスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -1695,6 +2488,94 @@ type Query {
 		after: String
 	): CardsResult!
 	"""
+	ゲーム全体のルール（紐づいたオペレーターだけ）
+	"""
+	gameRules: GameRulesResult!
+	"""
+	配布デッキの一覧（紐づいたオペレーターだけ）
+	"""
+	grantDecks(
+		"""
+		絞り込み
+		"""
+		filter: GrantDeckFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): GrantDecksResult!
+	"""
+	配布デッキの詳細（紐づいたオペレーターだけ）
+	"""
+	grantDeck(
+		"""
+		配布デッキの公開用の ID
+		"""
+		id: UUID!
+	): GrantDeckResult!
+	"""
+	NPC のアバターの一覧（紐づいたオペレーターだけ）
+	"""
+	npcAvatars(
+		"""
+		絞り込み
+		"""
+		filter: NpcAvatarFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): NpcAvatarsResult!
+	"""
+	NPC のアバターの詳細（紐づいたオペレーターだけ）
+	"""
+	npcAvatar(
+		"""
+		NPC のアバターの公開用の ID
+		"""
+		id: UUID!
+	): NpcAvatarResult!
+	"""
+	NPC のデッキの一覧（紐づいたオペレーターだけ）
+	"""
+	npcDecks(
+		"""
+		絞り込み
+		"""
+		filter: NpcDeckFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): NpcDecksResult!
+	"""
+	NPC のデッキの詳細（紐づいたオペレーターだけ）
+	"""
+	npcDeck(
+		"""
+		NPC のデッキの公開用の ID
+		"""
+		id: UUID!
+	): NpcDeckResult!
+	"""
 	プリセットデッキの一覧（紐づいたオペレーターだけ）
 	"""
 	presetDecks(
@@ -1723,13 +2604,13 @@ type Query {
 		id: UUID!
 	): PresetDeckResult!
 	"""
-	スターターデッキの一覧（紐づいたオペレーターだけ）
+	スターターセットの一覧（紐づいたオペレーターだけ）
 	"""
-	starterDecks(
+	starterSets(
 		"""
 		絞り込み
 		"""
-		filter: StarterDeckFilter
+		filter: StarterSetFilter
 
 		"""
 		1 ページの件数（1〜100。指定が無ければ 50）
@@ -1740,16 +2621,16 @@ type Query {
 		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
 		"""
 		after: String
-	): StarterDecksResult!
+	): StarterSetsResult!
 	"""
-	スターターデッキの詳細（紐づいたオペレーターだけ）
+	スターターセットの詳細（紐づいたオペレーターだけ）
 	"""
-	starterDeck(
+	starterSet(
 		"""
-		スターターデッキの公開用の ID
+		スターターセットの公開用の ID
 		"""
 		id: UUID!
-	): StarterDeckResult!
+	): StarterSetResult!
 	"""
 	studio でマスタを作るときの決まり（紐づいたオペレーターだけ）
 	"""
@@ -1804,6 +2685,62 @@ type RegisterCreatureSuccess {
 	creature: Creature!
 }
 """
+配布デッキをプリセットデッキから写して登録する入力
+"""
+input RegisterGrantDeckFromPresetDeckInput {
+	"""
+	写す元のプリセットデッキの公開用の ID（カードと枚数を写す。合計が 40 枚でなくてもよい）
+	"""
+	presetDeckId: UUID!
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する。元のプリセットデッキの名前は写さない）
+	"""
+	name: String!
+}
+"""
+プリセットデッキから写した配布デッキの登録の結果
+"""
+union RegisterGrantDeckFromPresetDeckResult = RegisterGrantDeckFromPresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | GrantDeckNameAlreadyInUseError | ForbiddenError
+"""
+プリセットデッキから写して配布デッキを登録した（準備中。写した元の内部 ID と revision は登録のイベントにだけ記録する）
+"""
+type RegisterGrantDeckFromPresetDeckSuccess {
+	"""
+	登録した配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した配布デッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+配布デッキを空から登録する入力
+"""
+input RegisterGrantDeckInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+配布デッキの登録の結果
+"""
+union RegisterGrantDeckResult = RegisterGrantDeckSuccess | ValidationErrors | GrantDeckNameAlreadyInUseError | ForbiddenError
+"""
+配布デッキを登録した（準備中）
+"""
+type RegisterGrantDeckSuccess {
+	"""
+	登録した配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した配布デッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 アイテムを登録する入力
 """
 input RegisterItemInput {
@@ -1824,6 +2761,88 @@ type RegisterItemSuccess {
 	登録したアイテム
 	"""
 	item: Item!
+}
+"""
+NPC のアバターを登録する入力
+"""
+input RegisterNpcAvatarInput {
+	"""
+	名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のアバターの登録の結果
+"""
+union RegisterNpcAvatarResult = RegisterNpcAvatarSuccess | ValidationErrors | NpcAvatarNameAlreadyInUseError | ForbiddenError
+"""
+NPC のアバターを登録した（準備中）
+"""
+type RegisterNpcAvatarSuccess {
+	"""
+	登録した NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキをプリセットデッキから写して登録する入力
+"""
+input RegisterNpcDeckFromPresetDeckInput {
+	"""
+	写す元のプリセットデッキの公開用の ID（カードと枚数を写す。合計が 40 枚でなくてもよい）
+	"""
+	presetDeckId: UUID!
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する。元のプリセットデッキの名前は写さない）
+	"""
+	name: String!
+}
+"""
+プリセットデッキから写した NPC のデッキの登録の結果
+"""
+union RegisterNpcDeckFromPresetDeckResult = RegisterNpcDeckFromPresetDeckSuccess | ValidationErrors | PresetDeckNotFoundError | NpcDeckNameAlreadyInUseError | ForbiddenError
+"""
+プリセットデッキから写して NPC のデッキを登録した（準備中。写した元の内部 ID と revision は登録のイベントにだけ記録する）
+"""
+type RegisterNpcDeckFromPresetDeckSuccess {
+	"""
+	登録した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキを空から登録する入力
+"""
+input RegisterNpcDeckInput {
+	"""
+	名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のデッキの登録の結果
+"""
+union RegisterNpcDeckResult = RegisterNpcDeckSuccess | ValidationErrors | NpcDeckNameAlreadyInUseError | ForbiddenError
+"""
+NPC のデッキを登録した（準備中）
+"""
+type RegisterNpcDeckSuccess {
+	"""
+	登録した NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
 }
 """
 プリセットデッキを登録する入力
@@ -1874,54 +2893,28 @@ type RegisterSpellSuccess {
 	spell: Spell!
 }
 """
-スターターデッキをプリセットデッキから写して登録する入力
+スターターセットを登録する入力
 """
-input RegisterStarterDeckFromPresetDeckInput {
+input RegisterStarterSetInput {
 	"""
-	写す元のプリセットデッキの公開用の ID（名前・カードと枚数を写す。合計が 40 枚でなくてもよい）
-	"""
-	presetDeckId: UUID!
-}
-"""
-プリセットデッキから写したスターターデッキの登録の結果
-"""
-union RegisterStarterDeckFromPresetDeckResult = RegisterStarterDeckFromPresetDeckSuccess | PresetDeckNotFoundError | StarterDeckNameAlreadyInUseError | ForbiddenError
-"""
-プリセットデッキから写してスターターデッキを登録した（準備中。写した元の公開 ID と revision を記録する）
-"""
-type RegisterStarterDeckFromPresetDeckSuccess {
-	"""
-	登録したスターターデッキの公開用の ID
-	"""
-	id: UUID!
-	"""
-	登録したスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
-	"""
-	revision: Int!
-}
-"""
-スターターデッキを空から登録する入力
-"""
-input RegisterStarterDeckInput {
-	"""
-	名前（1〜50 文字。前後の空白は除いて保存する）
+	名前（1〜20 文字。前後の空白は除いて保存する）
 	"""
 	name: String!
 }
 """
-スターターデッキの登録の結果
+スターターセットの登録の結果
 """
-union RegisterStarterDeckResult = RegisterStarterDeckSuccess | ValidationErrors | StarterDeckNameAlreadyInUseError | ForbiddenError
+union RegisterStarterSetResult = RegisterStarterSetSuccess | ValidationErrors | StarterSetNameAlreadyInUseError | ForbiddenError
 """
-スターターデッキを登録した（準備中）
+スターターセットを登録した（準備中。配るデッキと解放するボードは登録の後に指定する）
 """
-type RegisterStarterDeckSuccess {
+type RegisterStarterSetSuccess {
 	"""
-	登録したスターターデッキの公開用の ID
+	登録したスターターセットの公開用の ID
 	"""
 	id: UUID!
 	"""
-	登録したスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	登録したスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -1960,6 +2953,108 @@ type RenameBoardSuccess {
 	revision: Int!
 }
 """
+配布デッキの名前を変える入力
+"""
+input RenameGrantDeckInput {
+	"""
+	配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた配布デッキの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+配布デッキの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameGrantDeckResult = RenameGrantDeckSuccess | ValidationErrors | GrantDeckNotFoundError | GrantDeckNameAlreadyInUseError | GrantDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+配布デッキの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameGrantDeckSuccess {
+	"""
+	変えた配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた配布デッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの名前を変える入力
+"""
+input RenameNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のアバターの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameNpcAvatarResult = RenameNpcAvatarSuccess | ValidationErrors | NpcAvatarNotFoundError | NpcAvatarNameAlreadyInUseError | NpcAvatarNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameNpcAvatarSuccess {
+	"""
+	変えた NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの名前を変える入力
+"""
+input RenameNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC のデッキの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameNpcDeckResult = RenameNpcDeckSuccess | ValidationErrors | NpcDeckNotFoundError | NpcDeckNameAlreadyInUseError | NpcDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameNpcDeckSuccess {
+	"""
+	変えた NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 プリセットデッキの名前を変える入力
 """
 input RenamePresetDeckInput {
@@ -1994,36 +3089,36 @@ type RenamePresetDeckSuccess {
 	revision: Int!
 }
 """
-スターターデッキの名前を変える入力
+スターターセットの名前を変える入力
 """
-input RenameStarterDeckInput {
+input RenameStarterSetInput {
 	"""
-	スターターデッキの公開用の ID
+	スターターセットの公開用の ID
 	"""
 	id: UUID!
 	"""
-	画面が見ていたスターターデッキの revision
+	画面が見ていたスターターセットの revision
 	"""
 	revision: Int!
 	"""
-	新しい名前（1〜50 文字。前後の空白は除いて保存する）
+	新しい名前（1〜20 文字。前後の空白は除いて保存する）
 	"""
 	name: String!
 }
 """
-スターターデッキの名前の変更の結果（準備中のものだけ変えられる）
+スターターセットの名前の変更の結果（準備中のものだけ変えられる）
 """
-union RenameStarterDeckResult = RenameStarterDeckSuccess | ValidationErrors | StarterDeckNotFoundError | StarterDeckNameAlreadyInUseError | StarterDeckNotDraftError | RevisionConflictError | ForbiddenError
+union RenameStarterSetResult = RenameStarterSetSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNameAlreadyInUseError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
 """
-スターターデッキの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+スターターセットの名前を変えた（同じ名前なら何も変えず、revision も進まない）
 """
-type RenameStarterDeckSuccess {
+type RenameStarterSetSuccess {
 	"""
-	変えたスターターデッキの公開用の ID
+	変えたスターターセットの公開用の ID
 	"""
 	id: UUID!
 	"""
-	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -2088,32 +3183,122 @@ type RetireCardSuccess {
 	revision: Int!
 }
 """
-スターターデッキを使用不可にする入力
+配布デッキを使用不可にする入力
 """
-input RetireStarterDeckInput {
+input RetireGrantDeckInput {
 	"""
-	スターターデッキの公開用の ID
+	配布デッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	画面が見ていたスターターデッキの revision
+	画面が見ていた配布デッキの revision
 	"""
 	revision: Int!
 }
 """
-スターターデッキの使用不可の結果
+配布デッキの使用不可の結果
 """
-union RetireStarterDeckResult = RetireStarterDeckSuccess | StarterDeckNotFoundError | InvalidStarterDeckStatusTransitionError | RevisionConflictError | ForbiddenError
+union RetireGrantDeckResult = RetireGrantDeckSuccess | GrantDeckNotFoundError | InvalidGrantDeckStatusTransitionError | RevisionConflictError | ForbiddenError
 """
-スターターデッキを使用不可にした（すでに使用不可なら何も変えず、revision も進まない。新しいプレイヤーには配らない）
+配布デッキを使用不可にした（すでに使用不可なら何も変えず、revision も進まない。新しいプレイヤーには配らない）
 """
-type RetireStarterDeckSuccess {
+type RetireGrantDeckSuccess {
 	"""
-	使用不可にしたスターターデッキの公開用の ID
+	使用不可にした配布デッキの公開用の ID
 	"""
 	id: UUID!
 	"""
-	使用不可にしたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	使用不可にした配布デッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターを使用不可にする入力
+"""
+input RetireNpcAvatarInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターの使用不可の結果
+"""
+union RetireNpcAvatarResult = RetireNpcAvatarSuccess | NpcAvatarNotFoundError | InvalidNpcAvatarStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireNpcAvatarSuccess {
+	"""
+	使用不可にした NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にした NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキを使用不可にする入力
+"""
+input RetireNpcDeckInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキの使用不可の結果
+"""
+union RetireNpcDeckResult = RetireNpcDeckSuccess | NpcDeckNotFoundError | InvalidNpcDeckStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireNpcDeckSuccess {
+	"""
+	使用不可にした NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にした NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットを使用不可にする入力
+"""
+input RetireStarterSetInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+}
+"""
+スターターセットの使用不可の結果
+"""
+union RetireStarterSetResult = RetireStarterSetSuccess | StarterSetNotFoundError | InvalidStarterSetStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+スターターセットを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireStarterSetSuccess {
+	"""
+	使用不可にしたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にしたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -2138,6 +3323,110 @@ type SanctuaryTile implements BoardTile {
 	行
 	"""
 	y: Int!
+}
+"""
+配布デッキのカードの枚数を変える入力
+"""
+input SetGrantDeckCardCountsInput {
+	"""
+	配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた配布デッキの revision
+	"""
+	revision: Int!
+	"""
+	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ）
+	"""
+	cards: [DeckCardCountInput!]!
+}
+"""
+配布デッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない。準備中のものだけ変えられる）
+"""
+union SetGrantDeckCardCountsResult = SetGrantDeckCardCountsSuccess | ValidationErrors | GrantDeckNotFoundError | GrantDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+配布デッキのカードの枚数を変えた（1 回の操作で revision は 1 つ進む。何も変わらなければ進まない）
+"""
+type SetGrantDeckCardCountsSuccess {
+	"""
+	変えた配布デッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた配布デッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のアバターに使うデッキを割り当てる入力
+"""
+input SetNpcAvatarDecksInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+	"""
+	使う NPC のデッキの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じデッキは 2 回入れられない。新しく入れるデッキは公開中のものだけ）
+	"""
+	deckIds: [UUID!]!
+}
+"""
+NPC のアバターへの使うデッキの割り当ての結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は deckIds.<番号>。同じデッキの 2 つ目以降は重複、無い・削除したデッキは存在しない、
+新しく入れる公開中でないデッキは使えない）
+"""
+union SetNpcAvatarDecksResult = SetNpcAvatarDecksSuccess | ValidationErrors | NpcAvatarNotFoundError | NpcAvatarNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターに使うデッキを割り当てた（同じデッキの集まりなら何も変えず、revision も進まない）
+"""
+type SetNpcAvatarDecksSuccess {
+	"""
+	変えた NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC のデッキのカードの枚数を変える入力
+"""
+input SetNpcDeckCardCountsInput {
+	"""
+	NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のデッキの revision
+	"""
+	revision: Int!
+	"""
+	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ）
+	"""
+	cards: [DeckCardCountInput!]!
+}
+"""
+NPC のデッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない。準備中のものだけ変えられる）
+"""
+union SetNpcDeckCardCountsResult = SetNpcDeckCardCountsSuccess | ValidationErrors | NpcDeckNotFoundError | NpcDeckNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のデッキのカードの枚数を変えた（1 回の操作で revision は 1 つ進む。何も変わらなければ進まない）
+"""
+type SetNpcDeckCardCountsSuccess {
+	"""
+	変えた NPC のデッキの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
 }
 """
 プリセットデッキのカードの枚数を変える入力
@@ -2174,36 +3463,110 @@ type SetPresetDeckCardCountsSuccess {
 	revision: Int!
 }
 """
-スターターデッキのカードの枚数を変える入力
+スターターセットの配るデッキを指定する入力
 """
-input SetStarterDeckCardCountsInput {
+input SetStarterSetGrantDecksInput {
 	"""
-	スターターデッキの公開用の ID
+	スターターセットの公開用の ID
 	"""
 	id: UUID!
 	"""
-	画面が見ていたスターターデッキの revision
+	画面が見ていたスターターセットの revision
 	"""
 	revision: Int!
 	"""
-	変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ）
+	配るデッキ（配布デッキ）の公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じデッキは 2 回入れられない。新しく入れるデッキは公開中のものだけ）
 	"""
-	cards: [DeckCardCountInput!]!
+	grantDeckIds: [UUID!]!
 }
 """
-スターターデッキのカードの枚数の変更の結果（一覧のどれか 1 つでも誤りがあれば、何も変えない。準備中のものだけ変えられる）
+スターターセットの配るデッキの指定の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は grantDeckIds.<番号>。同じデッキの 2 つ目以降は重複、無い・削除した・配布デッキでないものは存在しない、
+新しく入れる公開中でないデッキは使えない）
 """
-union SetStarterDeckCardCountsResult = SetStarterDeckCardCountsSuccess | ValidationErrors | StarterDeckNotFoundError | StarterDeckNotDraftError | RevisionConflictError | ForbiddenError
+union SetStarterSetGrantDecksResult = SetStarterSetGrantDecksSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
 """
-スターターデッキのカードの枚数を変えた（1 回の操作で revision は 1 つ進む。何も変わらなければ進まない）
+スターターセットの配るデッキを指定した（同じデッキの集まりなら何も変えず、revision も進まない）
 """
-type SetStarterDeckCardCountsSuccess {
+type SetStarterSetGrantDecksSuccess {
 	"""
-	変えたスターターデッキの公開用の ID
+	変えたスターターセットの公開用の ID
 	"""
 	id: UUID!
 	"""
-	変えたスターターデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットの解放するボードを指定する入力
+"""
+input SetStarterSetUnlockBoardsInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+	"""
+	解放するボードの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じボードは 2 回入れられない。新しく入れるボードは公開中のものだけ）
+	"""
+	unlockBoardIds: [UUID!]!
+}
+"""
+スターターセットの解放するボードの指定の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は unlockBoardIds.<番号>。同じボードの 2 つ目以降は重複、無い・削除した・ボードでないものは存在しない、
+新しく入れる公開中でないボードは使えない）
+"""
+union SetStarterSetUnlockBoardsResult = SetStarterSetUnlockBoardsSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットの解放するボードを指定した（同じボードの集まりなら何も変えず、revision も進まない）
+"""
+type SetStarterSetUnlockBoardsSuccess {
+	"""
+	変えたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+スターターセットの解放する NPC のアバターを指定する入力
+"""
+input SetStarterSetUnlockNpcAvatarsInput {
+	"""
+	スターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスターターセットの revision
+	"""
+	revision: Int!
+	"""
+	解放する NPC のアバターの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じアバターは 2 回入れられない。新しく入れるアバターは公開中のものだけ）
+	"""
+	unlockNpcAvatarIds: [UUID!]!
+}
+"""
+スターターセットの解放する NPC のアバターの指定の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は unlockNpcAvatarIds.<番号>。同じアバターの 2 つ目以降は重複、無い・削除した・NPC のアバターでないものは存在しない、
+新しく入れる公開中でないアバターは使えない）
+"""
+union SetStarterSetUnlockNpcAvatarsResult = SetStarterSetUnlockNpcAvatarsSuccess | ValidationErrors | StarterSetNotFoundError | StarterSetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+スターターセットの解放する NPC のアバターを指定した（同じアバターの集まりなら何も変えず、revision も進まない）
+"""
+type SetStarterSetUnlockNpcAvatarsSuccess {
+	"""
+	変えたスターターセットの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -2250,33 +3613,33 @@ type Spell implements Card {
 	updatedAt: DateTime!
 }
 """
-スターターデッキ
+スターターセット
 """
-type StarterDeck {
+type StarterSet {
 	"""
 	公開用の ID
 	"""
 	id: UUID!
 	"""
-	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべてのスターターデッキの中で一意）
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべてのスターターセットの中で一意）
 	"""
 	name: String!
 	"""
 	状態（準備中・公開中・使用不可）
 	"""
-	status: StarterDeckStatus!
+	status: StarterSetStatus!
 	"""
-	入れたカードと枚数（カードの一覧と同じ並び: 種類の順（Creature → Item → Spell）、同じ種類の中は名前の順）
+	配るデッキ（配布デッキ。割り当てた順。準備中のあいだは 0 件でもよく、公開中にするには 1 つ以上要る。使用不可にしたデッキも、外すまで含まれる）
 	"""
-	cards: [DeckCard!]!
+	grantDecks: [GrantDeck!]!
 	"""
-	カードの枚数の合計
+	解放するボード（割り当てた順。0 件でもよい。使用不可にしたボードも、外すまで含まれる）
 	"""
-	totalCount: Int!
+	unlockBoards: [Board!]!
 	"""
-	プリセットデッキから写して作ったときの写し元（空から作ったときは null）
+	解放する NPC のアバター（割り当てた順。0 件でもよい。使用不可にしたアバターも、外すまで含まれる）
 	"""
-	source: StarterDeckSource
+	unlockNpcAvatars: [NpcAvatar!]!
 	"""
 	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
 	"""
@@ -2291,35 +3654,35 @@ type StarterDeck {
 	updatedAt: DateTime!
 }
 """
-スターターデッキの一覧の 1 ページ（名前の順）
+スターターセットの一覧の 1 ページ（名前の順）
 """
-type StarterDeckConnection {
+type StarterSetConnection {
 	"""
-	このページのスターターデッキ
+	このページのスターターセット
 	"""
-	edges: [StarterDeckEdge!]!
+	edges: [StarterSetEdge!]!
 	"""
 	ページの情報
 	"""
 	pageInfo: PageInfo!
 }
 """
-スターターデッキの一覧の 1 件と、その位置
+スターターセットの一覧の 1 件と、その位置
 """
-type StarterDeckEdge {
+type StarterSetEdge {
 	"""
 	この 1 件の位置（次のページを取るときに after に渡す）
 	"""
 	cursor: String!
 	"""
-	スターターデッキ
+	スターターセット
 	"""
-	node: StarterDeck!
+	node: StarterSet!
 }
 """
-スターターデッキの一覧の絞り込み
+スターターセットの一覧の絞り込み
 """
-input StarterDeckFilter {
+input StarterSetFilter {
 	"""
 	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
 	"""
@@ -2327,78 +3690,57 @@ input StarterDeckFilter {
 	"""
 	状態（指定が無ければすべて。空のリストは入力の誤り）
 	"""
-	statuses: [StarterDeckStatus!]
+	statuses: [StarterSetStatus!]
 }
 """
-公開中のスターターデッキの数が上限に達している（ほかのものを使用不可にすると公開できる）
+公開中のスターターセットの数が上限（1 つ）に達している（今の公開中のセットを使用不可にすると公開できる）
 """
-type StarterDeckLimitReachedError {
+type StarterSetLimitReachedError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
 	"""
-	公開中のスターターデッキの数の上限（そのときのゲーム全体のルールの値。画面が文言に出す）
+	公開中のスターターセットの数の上限（画面が文言に出す）
 	"""
 	max: Int!
 }
 """
-名前が、ほかのスターターデッキですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+名前が、ほかのスターターセットですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
 """
-type StarterDeckNameAlreadyInUseError {
+type StarterSetNameAlreadyInUseError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
 }
 """
-準備中でないスターターデッキの名前・枚数を変える、または削除しようとした（準備中のものだけ変えられる）
+準備中でないスターターセットの名前・配るデッキ・解放するボードを変える、または削除しようとした（準備中のものだけ変えられる）
 """
-type StarterDeckNotDraftError {
+type StarterSetNotDraftError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
 }
 """
-スターターデッキが無い（削除したものを含む）
+スターターセットが無い（削除したものを含む）
 """
-type StarterDeckNotFoundError {
+type StarterSetNotFoundError {
 	"""
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
 }
 """
-スターターデッキの詳細の結果
+スターターセットの詳細の結果
 """
-union StarterDeckResult = StarterDeck | StarterDeckNotFoundError | ForbiddenError
+union StarterSetResult = StarterSet | StarterSetNotFoundError | ForbiddenError
 """
-写した元
+スターターセットの状態。準備中は名前・配るデッキ・解放するボードを自由に変えられる。公開中にできるのは同時に 1 つだけで、
+配るデッキが 1 つ以上あるとき。公開中は中身を変えられない（変えたいときは使用不可にして新しく作る）
 """
-type StarterDeckSource {
-	"""
-	元のプリセットデッキの公開用の ID（消されていることもある）
-	"""
-	presetDeckId: UUID!
-	"""
-	写したときの、元のプリセットデッキの revision
-	"""
-	revision: Int!
-	"""
-	写した後に、元のプリセットデッキが変わっている（元が削除されていれば false）
-	"""
-	changedSinceCopied: Boolean!
-	"""
-	元のプリセットデッキが削除されている
-	"""
-	presetDeckDeleted: Boolean!
-}
-"""
-スターターデッキの状態。準備中は名前・カードを自由に変えられ、決まり（40 枚等）を満たさなくてよい。公開中は決まりを満たし、
-新しいプレイヤーに配る。使用不可は配らない（配り済みのデッキはプレイヤーの持ち物なので変わらない）
-"""
-enum StarterDeckStatus {
+enum StarterSetStatus {
 	"""
 	準備中（登録したときの状態）
 	"""
@@ -2413,9 +3755,9 @@ enum StarterDeckStatus {
 	RETIRED
 }
 """
-スターターデッキの一覧の結果
+スターターセットの一覧の結果
 """
-union StarterDecksResult = StarterDeckConnection | ValidationErrors | ForbiddenError
+union StarterSetsResult = StarterSetConnection | ValidationErrors | ForbiddenError
 """
 studio でマスタを作るときの決まり
 """

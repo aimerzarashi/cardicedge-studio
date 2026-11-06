@@ -1,4 +1,9 @@
 import type { Page } from "@playwright/test";
+import {
+  cardRevisionQuery,
+  publishCardMutation,
+  registerCreatureMutation,
+} from "@/app/cards/operations";
 import { login, seedOperator } from "./account";
 import { callCore, expectSuccess, untilReached } from "./core";
 import { expect } from "./fixtures";
@@ -62,16 +67,9 @@ export async function createCreature(
   page: Page,
   name: string,
 ): Promise<{ id: string; revision: number }> {
-  const data = await callCore(
-    page,
-    `mutation($input: RegisterCreatureInput!) {
-      registerCreature(input: $input) {
-        __typename
-        ... on RegisterCreatureSuccess { creature { id revision } }
-      }
-    }`,
-    { input: { name } },
-  );
+  const data = await callCore(page, registerCreatureMutation, {
+    input: { name },
+  });
   expectSuccess(data.registerCreature, "RegisterCreatureSuccess");
   return data.registerCreature.creature;
 }
@@ -80,13 +78,7 @@ async function publishCardByCore(
   page: Page,
   card: { id: string; revision: number },
 ): Promise<number> {
-  const data = await callCore(
-    page,
-    `mutation($input: PublishCardInput!) {
-      publishCard(input: $input) { __typename ... on PublishCardSuccess { revision } }
-    }`,
-    { input: card },
-  );
+  const data = await callCore(page, publishCardMutation, { input: card });
   expectSuccess(data.publishCard, "PublishCardSuccess");
   return data.publishCard.revision;
 }
@@ -98,16 +90,9 @@ async function untilCardsReached(
   expected: { id: string; revision: number }[],
 ) {
   await untilReached(`カード ${nameContains} が一覧に届く`, async () => {
-    const data = await callCore(
-      page,
-      `query($name: String!) {
-        cards(filter: { nameContains: $name }, first: 100) {
-          __typename
-          ... on CardConnection { edges { node { id revision } } }
-        }
-      }`,
-      { name: nameContains },
-    );
+    const data = await callCore(page, cardRevisionQuery, {
+      name: nameContains,
+    });
     if (data.cards.__typename !== "CardConnection") return false;
     const seen = new Map<string, number>(
       data.cards.edges.map(

@@ -1,5 +1,16 @@
 import type { Page } from "@playwright/test";
-import { callCore } from "./core";
+import {
+  boardRevisionQuery,
+  changeBoardLayoutMutation,
+  publishBoardMutation,
+  registerBoardMutation,
+} from "@/app/boards/operations";
+import type {
+  BoardConnectionInput,
+  BoardTileInput,
+  BoardTilePairInput,
+} from "@/graphql/graphql";
+import { callCore, expectSuccess, untilReached } from "./core";
 import { expect } from "./fixtures";
 import { section } from "./preset-deck";
 
@@ -23,23 +34,10 @@ export type Tool =
   | "占い館"
   | "カード屋"
   | "消す";
-// core の入力（@oneOf）と同じ形で、種類ごとに 1 つだけ書く
-export type Tile =
-  | { land: { x: number; y: number; attribute: string } }
-  | { base: { x: number; y: number } }
-  | { checkpoint: { x: number; y: number } }
-  | { warp: { x: number; y: number } }
-  | { bridge: { x: number; y: number } }
-  | { sanctuary: { x: number; y: number } }
-  | { shrine: { x: number; y: number } }
-  | { prophecyShop: { x: number; y: number } }
-  | { cardShop: { x: number; y: number } };
-export type Connection = {
-  a: { x: number; y: number };
-  b: { x: number; y: number };
-};
-// 転送円どうし・橋どうしの対（つながりと同じ形）
-export type Pair = Connection;
+// core の入力（@oneOf。種類ごとに 1 つだけ書く）の型は、codegen の生成物をそのまま使う
+export type Tile = BoardTileInput;
+export type Connection = BoardConnectionInput;
+export type Pair = BoardTilePairInput;
 
 // 詳細の画面にいるボードのレイアウトを入れる（準備中のものだけ入れられる）
 export async function setBoardLayout(
@@ -54,20 +52,13 @@ export async function setBoardLayout(
   },
 ) {
   const id = new URL(page.url()).pathname.split("/").pop();
-  const read = await callCore(
-    page,
-    "query($id: UUID!) { board(id: $id) { __typename ... on Board { revision } } }",
-    { id },
-  );
-  expect(read.board.__typename).toBe("Board");
-  const changed = await callCore(
-    page,
-    `mutation($input: ChangeBoardLayoutInput!) {
-      changeBoardLayout(input: $input) { __typename }
-    }`,
-    { input: { id, revision: read.board.revision, pairs: [], ...layout } },
-  );
-  expect(changed.changeBoardLayout.__typename).toBe("ChangeBoardLayoutSuccess");
+  if (!id) throw new Error("ボードの詳細の URL ではありません");
+  const read = await callCore(page, boardRevisionQuery, { id });
+  expectSuccess(read.board, "Board");
+  const changed = await callCore(page, changeBoardLayoutMutation, {
+    input: { id, revision: read.board.revision, pairs: [], ...layout },
+  });
+  expectSuccess(changed.changeBoardLayout, "ChangeBoardLayoutSuccess");
   // 詳細は投影から読むため、入れたレイアウトが出るまで開き直す
   await expect(async () => {
     await page.reload();
@@ -128,4 +119,55 @@ export async function savePublishableLayout(page: Page) {
   await putTiles(page, "火属性の土地", [[1, 0]]);
   await putTiles(page, "チェックポイント", [[2, 0]]);
   await saveLayout(page);
+}
+
+// 公開できるレイアウト（拠点 1 つ・チェックポイント 1 つが、土地を通ってつながった横一列）の公開中のボードを、画面を使わずに入れ、
+// 公開用の ID を返す。スターターセットに割り当てる前準備に使う
+export async function createPublishedBoard(
+  page: Page,
+  name: string,
+): Promise<string> {
+  const registered = await callCore(page, registerBoardMutation, {
+    input: { name },
+  });
+  expectSuccess(registered.registerBoard, "RegisterBoardSuccess");
+  const { id } = registered.registerBoard;
+  const reached = (revision: number) =>
+    untilReached(`ボード ${id} が詳細に届く`, async () => {
+      const read = await callCore(page, boardRevisionQuery, { id });
+      return (
+        read.board.__typename === "Board" && read.board.revision >= revision
+      );
+    });
+  await reached(registered.registerBoard.revision);
+
+  const read = await callCore(page, boardRevisionQuery, { id });
+  expectSuccess(read.board, "Board");
+  const changed = await callCore(page, changeBoardLayoutMutation, {
+    input: {
+      id,
+      revision: read.board.revision,
+      width: 8,
+      height: 8,
+      tiles: [
+        { base: { x: 0, y: 0 } },
+        { land: { x: 1, y: 0, attribute: "FIRE" } },
+        { checkpoint: { x: 2, y: 0 } },
+      ],
+      connections: [
+        { a: { x: 0, y: 0 }, b: { x: 1, y: 0 } },
+        { a: { x: 1, y: 0 }, b: { x: 2, y: 0 } },
+      ],
+      pairs: [],
+    },
+  });
+  expectSuccess(changed.changeBoardLayout, "ChangeBoardLayoutSuccess");
+  await reached(changed.changeBoardLayout.revision);
+
+  const published = await callCore(page, publishBoardMutation, {
+    input: { id, revision: changed.changeBoardLayout.revision },
+  });
+  expectSuccess(published.publishBoard, "PublishBoardSuccess");
+  await reached(published.publishBoard.revision);
+  return id;
 }

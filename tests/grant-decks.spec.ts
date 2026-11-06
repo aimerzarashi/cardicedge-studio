@@ -1,18 +1,15 @@
 import type { Page } from "@playwright/test";
 import { loginAsOperator, retireCard, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
-import { createFullPresetDeck, searchCards, section } from "./preset-deck";
 import {
-  createFullStarterDeck,
-  createStarterDeck,
+  createFullGrantDeck,
+  createGrantDeck,
   createTenCreatures,
-  registerStarterDeck,
-} from "./starter-deck";
+  registerGrantDeck,
+} from "./grant-deck";
+import { createFullPresetDeck, searchCards, section } from "./preset-deck";
 
-// 公開中のスターターデッキの数には上限があり、core の DB を共有するため、公開するテストは公開したまま終わらない
-// （使用不可にして終える）。公開するテストは同じファイルの中で順に流れる（fullyParallel にしていないため）。
-// ほかのファイルのテストは、スターターデッキを公開しない。
-// 前準備（カード・プリセットデッキ・スターターデッキ）は GraphQL で入れ（tests/core.ts）、確かめる画面の操作だけを画面でする。
+// 前準備（カード・プリセットデッキ・配布デッキ）は GraphQL で入れ（tests/core.ts）、確かめる画面の操作だけを画面でする。
 // 画面で空から登録する流れは、1 本目のテストで確かめている
 
 function deckRows(page: Page) {
@@ -25,15 +22,15 @@ test("空から登録すると詳細の画面に移り、一覧に準備中・�
   await loginAsOperator(page);
   const name = uniqueName("火・地");
 
-  await registerStarterDeck(page, name);
+  await registerGrantDeck(page, name);
 
-  await expect(page).toHaveURL(/\/starter-decks\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/grant-decks\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("definition").first()).toHaveText("準備中");
   await expect(section(page, "入れたカード")).toContainText(
     "カードが入っていません",
   );
   await expect(async () => {
-    await page.goto(`/starter-decks?name=${encodeURIComponent(name)}`);
+    await page.goto(`/grant-decks?name=${encodeURIComponent(name)}`);
     await expect(deckRows(page)).toHaveCount(1, { timeout: 1_000 });
   }).toPass();
   await expect(deckRows(page).first()).toContainText(name);
@@ -46,9 +43,9 @@ test("使われている名前で登録すると名前の重複が表示され�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("水・風");
-  await createStarterDeck(page, name);
+  await createGrantDeck(page, name);
 
-  await page.goto("/starter-decks/new");
+  await page.goto("/grant-decks/new");
   const empty = section(page, "空から作る");
   await empty.getByLabel("名前").fill(name);
   await empty.getByRole("button", { name: "登録する" }).click();
@@ -57,50 +54,43 @@ test("使われている名前で登録すると名前の重複が表示され�
   await expect(empty.getByLabel("名前")).toHaveValue(name);
 });
 
-test("プリセットデッキから写して登録すると、名前とカードが写り、写した元が出る", async ({
+test("プリセットデッキからコピーして登録すると、入れておいた元の名前でカードがコピーされる", async ({
   page,
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const presetDeckURL = await createFullPresetDeck(page, name);
+  await createFullPresetDeck(page, name);
 
   await expect(async () => {
-    await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
+    await page.goto(`/grant-decks/new?name=${encodeURIComponent(name)}`);
     await expect(
-      page.getByRole("button", { name: `${name}を写して作る` }),
+      page.getByRole("button", { name: `${name}をコピーして作る` }),
     ).toBeVisible({ timeout: 1_000 });
   }).toPass();
-  await page.getByRole("button", { name: `${name}を写して作る` }).click();
+  await page.getByRole("button", { name: `${name}をコピーして作る` }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-  await expect(page).toHaveURL(/\/starter-decks\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/grant-decks\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("definition").nth(1)).toHaveText("40");
   await expect(section(page, "入れたカード").locator("tbody tr")).toHaveCount(
     10,
   );
-  const source = section(page, "写した元");
-  await expect(
-    source.getByRole("link", { name: "元のプリセットデッキ" }),
-  ).toHaveAttribute("href", presetDeckURL);
-  await expect(
-    source.getByText("元のプリセットデッキが変わっています"),
-  ).toHaveCount(0);
 });
 
-test("写した後に元のプリセットデッキを変えると「変わっています」が出て、写したデッキは変わらない", async ({
+test("コピーした後に元のプリセットデッキを変えても、コピーしたデッキは変わらない", async ({
   page,
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
   const presetDeckURL = await createFullPresetDeck(page, name);
   await expect(async () => {
-    await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
+    await page.goto(`/grant-decks/new?name=${encodeURIComponent(name)}`);
     await page
-      .getByRole("button", { name: `${name}を写して作る` })
+      .getByRole("button", { name: `${name}をコピーして作る` })
       .click({ timeout: 1_000 });
   }).toPass();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-  const starterDeckURL = new URL(page.url()).pathname;
+  const grantDeckURL = new URL(page.url()).pathname;
 
   await page.goto(presetDeckURL);
   const rename = section(page, "名前の変更");
@@ -108,53 +98,40 @@ test("写した後に元のプリセットデッキを変えると「変わっ�
   await rename.getByRole("button", { name: "名前を変える" }).click();
   await expect(rename.getByText("名前を変えました")).toBeVisible();
 
-  // 投影されるまで開き直す
-  await expect(async () => {
-    await page.goto(starterDeckURL);
-    await expect(
-      section(page, "写した元").getByText(
-        "元のプリセットデッキが変わっています",
-      ),
-    ).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await page.goto(grantDeckURL);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
 });
 
-test("元のプリセットデッキを削除すると、写した元に「削除されています」が出る", async ({
+test("元のプリセットデッキを削除しても、コピーしたデッキは残る", async ({
   page,
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
   const presetDeckURL = await createFullPresetDeck(page, name);
   await expect(async () => {
-    await page.goto(`/starter-decks/new?name=${encodeURIComponent(name)}`);
+    await page.goto(`/grant-decks/new?name=${encodeURIComponent(name)}`);
     await page
-      .getByRole("button", { name: `${name}を写して作る` })
+      .getByRole("button", { name: `${name}をコピーして作る` })
       .click({ timeout: 1_000 });
   }).toPass();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
-  const starterDeckURL = new URL(page.url()).pathname;
+  const grantDeckURL = new URL(page.url()).pathname;
   await page.goto(presetDeckURL);
   const del = section(page, "削除");
   await del.getByRole("button", { name: "削除する" }).click();
   await del.getByRole("button", { name: "削除する" }).click();
   await expect(page).toHaveURL(/\/preset-decks$/);
 
-  await expect(async () => {
-    await page.goto(starterDeckURL);
-    await expect(
-      section(page, "写した元").getByText(
-        "元のプリセットデッキは削除されています",
-      ),
-    ).toBeVisible({ timeout: 1_000 });
-  }).toPass();
+  await page.goto(grantDeckURL);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
+  await expect(page.getByRole("definition").nth(1)).toHaveText("40");
 });
 
 test("名前を変えると詳細の見出しと入力欄が新しい名前になる", async ({
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createStarterDeck(page, uniqueName("火・地")));
+  await page.goto(await createGrantDeck(page, uniqueName("火・地")));
   const renamed = uniqueName("炎・大地");
 
   const rename = section(page, "名前の変更");
@@ -171,7 +148,7 @@ test("カードを探して枚数を保存すると入れたカードに出て�
 }) => {
   await loginAsOperator(page);
   const { id, names: cards } = await createTenCreatures(page);
-  const deckURL = await createStarterDeck(page, uniqueName("火・地"));
+  const deckURL = await createGrantDeck(page, uniqueName("火・地"));
   await searchCards(page, deckURL, id, 10);
   const candidates = section(page, "カードを探す");
   for (const card of cards) {
@@ -193,11 +170,11 @@ test("カードを探して枚数を保存すると入れたカードに出て�
   await expect(page.getByRole("definition").nth(1)).toHaveText("36");
 });
 
-test("合計が 40 枚でないスターターデッキを公開しようとすると、足りない旨の誤りが出て準備中のまま", async ({
+test("合計が 40 枚でない配布デッキを公開しようとすると、足りない旨の誤りが出て準備中のまま", async ({
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createStarterDeck(page, uniqueName("作りかけ")));
+  await page.goto(await createGrantDeck(page, uniqueName("作りかけ")));
 
   await section(page, "公開").getByRole("button", { name: "公開する" }).click();
 
@@ -210,11 +187,11 @@ test("合計が 40 枚でないスターターデッキを公開しようとす�
   await expect(page.getByRole("definition").first()).toHaveText("準備中");
 });
 
-test("入っているカードが公開中でなくなったスターターデッキを公開しようとすると、公開中でないカードの誤りが出る", async ({
+test("入っているカードが公開中でなくなった配布デッキを公開しようとすると、公開中でないカードの誤りが出る", async ({
   page,
 }) => {
   await loginAsOperator(page);
-  const { deckURL, cards } = await createFullStarterDeck(
+  const { deckURL, cards } = await createFullGrantDeck(
     page,
     uniqueName("火・地"),
   );
@@ -234,7 +211,7 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const { deckURL } = await createFullStarterDeck(page, name);
+  const { deckURL } = await createFullGrantDeck(page, name);
   await page.goto(deckURL);
 
   const publish = section(page, "公開");
@@ -260,21 +237,19 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
   await expect(page.getByRole("definition").first()).toHaveText("使用不可");
 });
 
-test("状態で絞り込むと、その状態のスターターデッキだけが出る", async ({
-  page,
-}) => {
+test("状態で絞り込むと、その状態の配布デッキだけが出る", async ({ page }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  await createStarterDeck(page, name);
+  await createGrantDeck(page, name);
   await expect(async () => {
-    await page.goto(`/starter-decks?name=${encodeURIComponent(name)}`);
+    await page.goto(`/grant-decks?name=${encodeURIComponent(name)}`);
     await expect(deckRows(page)).toHaveCount(1, { timeout: 1_000 });
   }).toPass();
 
   await page.getByLabel("公開中").check();
   await page.getByRole("button", { name: "絞り込む" }).click();
   await expect(page).toHaveURL(/status=PUBLISHED/);
-  await expect(page.getByText("スターターデッキがありません")).toBeVisible();
+  await expect(page.getByText("配布デッキがありません")).toBeVisible();
 
   await page.getByLabel("公開中").uncheck();
   await page.getByLabel("準備中").check();
@@ -289,7 +264,7 @@ test("削除を確かめてから削除すると一覧の画面に移り、詳�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("水・風");
-  const deckURL = await createStarterDeck(page, name);
+  const deckURL = await createGrantDeck(page, name);
   await page.goto(deckURL);
 
   const del = section(page, "削除");
@@ -299,12 +274,12 @@ test("削除を確かめてから削除すると一覧の画面に移り、詳�
   ).toBeVisible();
   await del.getByRole("button", { name: "削除する" }).click();
 
-  await expect(page).toHaveURL(/\/starter-decks$/);
+  await expect(page).toHaveURL(/\/grant-decks$/);
   await expect(async () => {
     await page.goto(deckURL);
-    await expect(
-      page.getByText("このスターターデッキは見つかりません"),
-    ).toBeVisible({ timeout: 1_000 });
+    await expect(page.getByText("この配布デッキは見つかりません")).toBeVisible({
+      timeout: 1_000,
+    });
   }).toPass();
 });
 
@@ -313,7 +288,7 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
 }) => {
   await loginAsOperator(page);
   const name = uniqueName("火・地");
-  const { deckURL } = await createFullStarterDeck(page, name);
+  const { deckURL } = await createFullGrantDeck(page, name);
   await page.goto(deckURL);
   const other = await page.context().newPage();
   await other.goto(deckURL);
@@ -334,43 +309,4 @@ test("ほかの画面で先に公開されていると、名前は変わらず�
     .getByRole("button", { name: "使用不可にする" })
     .click();
   await expect(other.getByRole("definition").first()).toHaveText("使用不可");
-});
-
-test("公開中の数の上限に達していると、上限の数が出て準備中のまま", async ({
-  page,
-}) => {
-  await loginAsOperator(page);
-  // テストの core の公開中の上限は既定の 2。ほかのテストは公開したら使用不可にして終えるため、ここで 2 つ公開すれば埋まる
-  const decks = [];
-  for (const base of ["火・地", "水・風", "光・闇"]) {
-    decks.push((await createFullStarterDeck(page, uniqueName(base))).deckURL);
-  }
-  const published: string[] = [];
-  try {
-    for (const deckURL of decks.slice(0, 2)) {
-      await page.goto(deckURL);
-      const publish = section(page, "公開");
-      await publish.getByRole("button", { name: "公開する" }).click();
-      await expect(publish.getByText("公開しました")).toBeVisible();
-      published.push(deckURL);
-    }
-
-    await page.goto(decks[2]);
-    const publish = section(page, "公開");
-    await publish.getByRole("button", { name: "公開する" }).click();
-    await expect(
-      publish.getByText(
-        "公開中のスターターデッキは 2 個までです。ほかのものを使用不可にすると公開できます",
-      ),
-    ).toBeVisible();
-    await expect(page.getByRole("definition").first()).toHaveText("準備中");
-  } finally {
-    for (const deckURL of published) {
-      await page.goto(deckURL);
-      await section(page, "公開")
-        .getByRole("button", { name: "使用不可にする" })
-        .click();
-      await expect(page.getByRole("definition").first()).toHaveText("使用不可");
-    }
-  }
 });

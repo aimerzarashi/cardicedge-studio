@@ -7,6 +7,9 @@ import {
   nameErrorMessage,
   RULE_LABELS,
   ruleStep,
+  starterSetItemErrorMessage,
+  starterSetLimitReachedMessage,
+  starterSetPublishErrorMessage,
 } from "./messages.ts";
 
 describe("nameErrorMessage", () => {
@@ -117,14 +120,14 @@ describe("boardRuleErrorMessage", () => {
     );
   });
 
-  it("サイコロの目の最大が最小を下回ったときは、比べる相手の項目名から文言を作る", () => {
+  it("サイコロの目の最大が最小以下のときは、比べる相手の項目名から文言を作る", () => {
     assert.equal(
       boardRuleErrorMessage({
-        __typename: "FieldLessThan",
+        __typename: "FieldNotGreaterThan",
         field: "diceMax",
         than: "diceMin",
       }),
-      "サイコロの目（最大）はサイコロの目（最小）以上にしてください",
+      "サイコロの目（最大）はサイコロの目（最小）より大きくしてください",
     );
   });
 
@@ -153,6 +156,43 @@ describe("ruleStep", () => {
         diceMin: 1,
         diceMax: 1,
       },
+    );
+  });
+});
+
+describe("スターターセットの文言", () => {
+  it("公開中の上限は、core が返した数を文言に入れる", () => {
+    assert.equal(
+      starterSetLimitReachedMessage(1),
+      "公開中のスターターセットは 1 個までです。今のものを使用不可にすると公開できます",
+    );
+  });
+
+  it("配るデッキが無くて公開できないときは、割り当てを促す", () => {
+    assert.equal(
+      starterSetPublishErrorMessage([{ __typename: "FieldRequired" }]),
+      "配るデッキを割り当ててから公開してください",
+    );
+  });
+
+  it("指定するものの呼び方を、誤りの文言に入れる", () => {
+    assert.equal(
+      starterSetItemErrorMessage(
+        [{ __typename: "FieldUnavailable" }],
+        "ボード",
+      ),
+      "公開中でないボードは割り当てられません",
+    );
+    assert.equal(
+      starterSetItemErrorMessage(
+        [{ __typename: "FieldDuplicated" }, { __typename: "FieldNotFound" }],
+        "デッキ",
+      ),
+      "同じデッキが 2 回入っています。このデッキは見つかりません",
+    );
+    assert.equal(
+      starterSetItemErrorMessage([{ __typename: "FieldDuplicated" }], "NPC"),
+      "同じ NPC が 2 回入っています",
     );
   });
 });

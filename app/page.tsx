@@ -34,10 +34,19 @@ export default async function Home() {
           <Link href="/preset-decks">プリセットデッキの一覧</Link>
         </li>
         <li>
-          <Link href="/starter-decks">スターターデッキの一覧</Link>
+          <Link href="/grant-decks">配布デッキの一覧</Link>
         </li>
         <li>
           <Link href="/boards">ボードの一覧</Link>
+        </li>
+        <li>
+          <Link href="/npc-avatars">NPC のアバターの一覧</Link>
+        </li>
+        <li>
+          <Link href="/npc-decks">NPC のデッキの一覧</Link>
+        </li>
+        <li>
+          <Link href="/starter-sets">スターターセットの一覧</Link>
         </li>
       </ul>
       <LogoutButton />

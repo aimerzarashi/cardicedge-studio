@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { graphql } from "@/graphql";
+import { registerPresetDeckMutation } from "@/app/preset-decks/operations";
 import { callCore } from "@/lib/core";
 import {
   FORBIDDEN,
@@ -9,26 +9,6 @@ import {
   nameErrorMessage,
 } from "../../messages";
 import { waitPresetDeck } from "../wait-preset-deck";
-
-const registerPresetDeckMutation = graphql(`
-  mutation RegisterPresetDeck($input: RegisterPresetDeckInput!) {
-    registerPresetDeck(input: $input) {
-      __typename
-      ... on RegisterPresetDeckSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type RegisterPresetDeckState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残す）

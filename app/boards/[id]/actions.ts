@@ -2,6 +2,10 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  changeBoardLayoutMutation,
+  publishBoardMutation,
+} from "@/app/boards/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -72,31 +76,6 @@ const changeBoardDefaultRulesMutation = graphql(`
           ... on FieldNotGreaterThan {
             than
           }
-          ... on FieldLessThan {
-            than
-          }
-        }
-      }
-    }
-  }
-`);
-
-const changeBoardLayoutMutation = graphql(`
-  mutation ChangeBoardLayout($input: ChangeBoardLayoutInput!) {
-    changeBoardLayout(input: $input) {
-      __typename
-      ... on ChangeBoardLayoutSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldOutOfRange {
-            min
-            max
-          }
         }
       }
     }
@@ -148,41 +127,6 @@ const deleteBoardMutation = graphql(`
   mutation DeleteBoard($input: DeleteBoardInput!) {
     deleteBoard(input: $input) {
       __typename
-    }
-  }
-`);
-
-const publishBoardMutation = graphql(`
-  mutation PublishBoard($input: PublishBoardInput!) {
-    publishBoard(input: $input) {
-      __typename
-      ... on PublishBoardSuccess {
-        id
-        revision
-      }
-      ... on BoardNotPublishableError {
-        problems {
-          __typename
-          ... on BaseCountProblem {
-            positions {
-              x
-              y
-            }
-          }
-          ... on UnreachableTilesProblem {
-            positions {
-              x
-              y
-            }
-          }
-          ... on UnpairedTilesProblem {
-            positions {
-              x
-              y
-            }
-          }
-        }
-      }
     }
   }
 `);
@@ -392,7 +336,7 @@ export async function deleteBoard(
 
   const deleted = result.data.deleteBoard;
   switch (deleted.__typename) {
-    // 一覧は投影から読むため、移った直後は少し残ることがある。消えるまでは待たない（スターターデッキと同じ）
+    // 一覧は投影から読むため、移った直後は少し残ることがある。消えるまでは待たない（配布デッキと同じ）
     case "DeleteBoardSuccess":
       return redirect("/boards");
     case "BoardNotDraftError":

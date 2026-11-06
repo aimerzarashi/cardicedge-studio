@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { publishCardMutation } from "@/app/cards/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import { type Notice, target } from "../deck-form";
@@ -13,18 +14,6 @@ import {
   REVISION_CONFLICT,
 } from "../messages";
 import { waitCard } from "./wait-card";
-
-const publishCardMutation = graphql(`
-  mutation PublishCard($input: PublishCardInput!) {
-    publishCard(input: $input) {
-      __typename
-      ... on PublishCardSuccess {
-        id
-        revision
-      }
-    }
-  }
-`);
 
 const retireCardMutation = graphql(`
   mutation RetireCard($input: RetireCardInput!) {

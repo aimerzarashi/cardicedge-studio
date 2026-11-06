@@ -1,28 +1,7 @@
 "use server";
 
-import { graphql } from "@/graphql";
+import { registerCreatureMutation } from "@/app/cards/operations";
 import { callCore } from "@/lib/core";
-
-const registerCreatureMutation = graphql(`
-  mutation RegisterCreature($input: RegisterCreatureInput!) {
-    registerCreature(input: $input) {
-      __typename
-      ... on RegisterCreatureSuccess {
-        creature {
-          name
-        }
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTooLong {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
 
 export type RegisterCreatureState = {
   // 入力欄に入れておく値（誤りのときは入力した値を残し、登録できたら空にする）

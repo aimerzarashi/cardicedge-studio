@@ -5,10 +5,10 @@ export default function NewCreaturePage() {
   return (
     <main>
       <h1>Creature を登録</h1>
-      <RegisterCreatureForm />
       <p>
         <Link href="/cards">カードの一覧へ</Link>
       </p>
+      <RegisterCreatureForm />
     </main>
   );
 }

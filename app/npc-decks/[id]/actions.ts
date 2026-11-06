@@ -2,6 +2,10 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  publishNpcDeckMutation,
+  setNpcDeckCardCountsMutation,
+} from "@/app/npc-decks/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import {
@@ -19,19 +23,18 @@ import {
   INVALID_TARGET,
   NAME_ALREADY_IN_USE,
   NOT_REFLECTED,
+  NPC_DECK_NOT_DRAFT,
   nameErrorMessage,
   publishErrorMessage,
   REVISION_CONFLICT,
-  STARTER_DECK_NOT_DRAFT,
-  starterDeckLimitReachedMessage,
 } from "../../messages";
-import { waitStarterDeck } from "../wait-starter-deck";
+import { waitNpcDeck } from "../wait-npc-deck";
 
-const renameStarterDeckMutation = graphql(`
-  mutation RenameStarterDeck($input: RenameStarterDeckInput!) {
-    renameStarterDeck(input: $input) {
+const renameNpcDeckMutation = graphql(`
+  mutation RenameNpcDeck($input: RenameNpcDeckInput!) {
+    renameNpcDeck(input: $input) {
       __typename
-      ... on RenameStarterDeckSuccess {
+      ... on RenameNpcDeckSuccess {
         id
         revision
       }
@@ -47,67 +50,19 @@ const renameStarterDeckMutation = graphql(`
   }
 `);
 
-const setStarterDeckCardCountsMutation = graphql(`
-  mutation SetStarterDeckCardCounts($input: SetStarterDeckCardCountsInput!) {
-    setStarterDeckCardCounts(input: $input) {
-      __typename
-      ... on SetStarterDeckCardCountsSuccess {
-        id
-        revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldOutOfRange {
-            min
-            max
-          }
-          ... on FieldTotalTooLarge {
-            max
-          }
-        }
-      }
-    }
-  }
-`);
-
-const deleteStarterDeckMutation = graphql(`
-  mutation DeleteStarterDeck($input: DeleteStarterDeckInput!) {
-    deleteStarterDeck(input: $input) {
+const deleteNpcDeckMutation = graphql(`
+  mutation DeleteNpcDeck($input: DeleteNpcDeckInput!) {
+    deleteNpcDeck(input: $input) {
       __typename
     }
   }
 `);
 
-const publishStarterDeckMutation = graphql(`
-  mutation PublishStarterDeck($input: PublishStarterDeckInput!) {
-    publishStarterDeck(input: $input) {
+const retireNpcDeckMutation = graphql(`
+  mutation RetireNpcDeck($input: RetireNpcDeckInput!) {
+    retireNpcDeck(input: $input) {
       __typename
-      ... on PublishStarterDeckSuccess {
-        id
-        revision
-      }
-      ... on StarterDeckLimitReachedError {
-        max
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          ... on FieldTotalMismatch {
-            required
-          }
-        }
-      }
-    }
-  }
-`);
-
-const retireStarterDeckMutation = graphql(`
-  mutation RetireStarterDeck($input: RetireStarterDeckInput!) {
-    retireStarterDeck(input: $input) {
-      __typename
-      ... on RetireStarterDeckSuccess {
+      ... on RetireNpcDeckSuccess {
         id
         revision
       }
@@ -121,12 +76,12 @@ async function showChanged(
   revision: number,
   status: string,
 ): Promise<Notice> {
-  const reached = await waitStarterDeck(id, revision);
+  const reached = await waitNpcDeck(id, revision);
   refresh();
   return reached === "reached" ? { status } : { status: NOT_REFLECTED };
 }
 
-export async function renameStarterDeck(
+export async function renameNpcDeck(
   _previous: RenameDeckState,
   form: FormData,
 ): Promise<RenameDeckState> {
@@ -136,16 +91,16 @@ export async function renameStarterDeck(
     return { error: INVALID_TARGET };
   }
 
-  const result = await callCore(renameStarterDeckMutation, {
+  const result = await callCore(renameNpcDeckMutation, {
     input: { ...deck, name },
   });
   if (!result.ok) {
     return { revision: deck.revision, value: name, error: CORE_UNAVAILABLE };
   }
 
-  const renamed = result.data.renameStarterDeck;
+  const renamed = result.data.renameNpcDeck;
   switch (renamed.__typename) {
-    case "RenameStarterDeckSuccess":
+    case "RenameNpcDeckSuccess":
       return showChanged(renamed.id, renamed.revision, "名前を変えました");
     case "ValidationErrors":
       return {
@@ -153,20 +108,20 @@ export async function renameStarterDeck(
         value: name,
         nameError: nameErrorMessage(renamed.errors),
       };
-    case "StarterDeckNameAlreadyInUseError":
+    case "NpcDeckNameAlreadyInUseError":
       return {
         revision: deck.revision,
         value: name,
         nameError: NAME_ALREADY_IN_USE,
       };
-    case "StarterDeckNotDraftError":
+    case "NpcDeckNotDraftError":
       refresh();
-      return { error: STARTER_DECK_NOT_DRAFT };
+      return { error: NPC_DECK_NOT_DRAFT };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
     // 画面を出し直すと「見つからない」になる
-    case "StarterDeckNotFoundError":
+    case "NpcDeckNotFoundError":
       refresh();
       return {};
     case "ForbiddenError":
@@ -174,7 +129,7 @@ export async function renameStarterDeck(
   }
 }
 
-export async function setStarterDeckCardCounts(
+export async function setNpcDeckCardCounts(
   _previous: SetCardCountsState,
   form: FormData,
 ): Promise<SetCardCountsState> {
@@ -192,16 +147,16 @@ export async function setStarterDeckCardCounts(
   }
   const { counts, changes } = parsed;
 
-  const result = await callCore(setStarterDeckCardCountsMutation, {
+  const result = await callCore(setNpcDeckCardCountsMutation, {
     input: { ...deck, cards: changes },
   });
   if (!result.ok) {
     return { revision: deck.revision, counts, error: CORE_UNAVAILABLE };
   }
 
-  const changed = result.data.setStarterDeckCardCounts;
+  const changed = result.data.setNpcDeckCardCounts;
   switch (changed.__typename) {
-    case "SetStarterDeckCardCountsSuccess":
+    case "SetNpcDeckCardCountsSuccess":
       return showChanged(changed.id, changed.revision, "枚数を保存しました");
     case "ValidationErrors":
       return {
@@ -209,13 +164,13 @@ export async function setStarterDeckCardCounts(
         counts,
         ...cardCountsErrors(changed.errors, changes),
       };
-    case "StarterDeckNotDraftError":
+    case "NpcDeckNotDraftError":
       refresh();
-      return { error: STARTER_DECK_NOT_DRAFT };
+      return { error: NPC_DECK_NOT_DRAFT };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
-    case "StarterDeckNotFoundError":
+    case "NpcDeckNotFoundError":
       refresh();
       return {};
     case "ForbiddenError":
@@ -223,7 +178,7 @@ export async function setStarterDeckCardCounts(
   }
 }
 
-export async function deleteStarterDeck(
+export async function deleteNpcDeck(
   _previous: Notice,
   form: FormData,
 ): Promise<Notice> {
@@ -232,23 +187,23 @@ export async function deleteStarterDeck(
     return { error: INVALID_TARGET };
   }
 
-  const result = await callCore(deleteStarterDeckMutation, { input: deck });
+  const result = await callCore(deleteNpcDeckMutation, { input: deck });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
 
-  const deleted = result.data.deleteStarterDeck;
+  const deleted = result.data.deleteNpcDeck;
   switch (deleted.__typename) {
     // 一覧は投影から読むため、移った直後は少し残ることがある。消えるまでは待たない（プリセットデッキと同じ）
-    case "DeleteStarterDeckSuccess":
-      return redirect("/starter-decks");
-    case "StarterDeckNotDraftError":
+    case "DeleteNpcDeckSuccess":
+      return redirect("/npc-decks");
+    case "NpcDeckNotDraftError":
       refresh();
-      return { error: STARTER_DECK_NOT_DRAFT };
+      return { error: NPC_DECK_NOT_DRAFT };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
-    case "StarterDeckNotFoundError":
+    case "NpcDeckNotFoundError":
       refresh();
       return {};
     case "ForbiddenError":
@@ -256,7 +211,7 @@ export async function deleteStarterDeck(
   }
 }
 
-export async function publishStarterDeck(
+export async function publishNpcDeck(
   _previous: Notice,
   form: FormData,
 ): Promise<Notice> {
@@ -265,23 +220,21 @@ export async function publishStarterDeck(
     return { error: INVALID_TARGET };
   }
 
-  const result = await callCore(publishStarterDeckMutation, { input: deck });
+  const result = await callCore(publishNpcDeckMutation, { input: deck });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
 
-  const published = result.data.publishStarterDeck;
+  const published = result.data.publishNpcDeck;
   switch (published.__typename) {
-    case "PublishStarterDeckSuccess":
+    case "PublishNpcDeckSuccess":
       return showChanged(published.id, published.revision, "公開しました");
     case "ValidationErrors":
       return { error: publishErrorMessage(published.errors) };
-    case "StarterDeckLimitReachedError":
-      return { error: starterDeckLimitReachedMessage(published.max) };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
-    case "StarterDeckNotFoundError":
+    case "NpcDeckNotFoundError":
       refresh();
       return {};
     case "ForbiddenError":
@@ -289,7 +242,7 @@ export async function publishStarterDeck(
   }
 }
 
-export async function retireStarterDeck(
+export async function retireNpcDeck(
   _previous: Notice,
   form: FormData,
 ): Promise<Notice> {
@@ -298,22 +251,22 @@ export async function retireStarterDeck(
     return { error: INVALID_TARGET };
   }
 
-  const result = await callCore(retireStarterDeckMutation, { input: deck });
+  const result = await callCore(retireNpcDeckMutation, { input: deck });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
 
-  const retired = result.data.retireStarterDeck;
+  const retired = result.data.retireNpcDeck;
   switch (retired.__typename) {
-    case "RetireStarterDeckSuccess":
+    case "RetireNpcDeckSuccess":
       return showChanged(retired.id, retired.revision, "使用不可にしました");
-    case "InvalidStarterDeckStatusTransitionError":
+    case "InvalidNpcDeckStatusTransitionError":
       refresh();
       return { error: INVALID_STATUS_TRANSITION };
     case "RevisionConflictError":
       refresh();
       return { error: REVISION_CONFLICT };
-    case "StarterDeckNotFoundError":
+    case "NpcDeckNotFoundError":
       refresh();
       return {};
     case "ForbiddenError":

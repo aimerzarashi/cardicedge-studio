@@ -113,10 +113,10 @@ function NotFound() {
   return (
     <main>
       <h1>ボード</h1>
-      <p role="alert">このボードは見つかりません</p>
       <p>
         <Link href="/boards">ボードの一覧へ</Link>
       </p>
+      <p role="alert">このボードは見つかりません</p>
     </main>
   );
 }
@@ -166,6 +166,9 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
   return (
     <main>
       <h1>{board.name}</h1>
+      <p>
+        <Link href="/boards">ボードの一覧へ</Link>
+      </p>
       <dl>
         <dt>状態</dt>
         <dd>{STATUS_LABELS[board.status]}</dd>
@@ -276,10 +279,6 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
           </section>
         </>
       )}
-
-      <p>
-        <Link href="/boards">ボードの一覧へ</Link>
-      </p>
     </main>
   );
 }
