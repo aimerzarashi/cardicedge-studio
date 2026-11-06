@@ -49,6 +49,16 @@ static_resources:
     - name: studio
       type: STRICT_DNS
       lb_policy: ROUND_ROBIN
+      # 何もしていない接続は、Next.js（Node.js）が閉じるより先に envoy が手放す。Node.js は既定で 5 秒で閉じ、envoy は既定で
+      # 1 時間使い回すため、閉じられた接続に送って 503（reset reason: connection termination）になっていた（studio#68）。
+      # Next.js の側を延ばす案（公式の文書の形）は、開発の next dev に keep-alive を変える入口が無いため採らなかった
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          common_http_protocol_options:
+            idle_timeout: 4s
+          explicit_http_config:
+            http_protocol_options: {}
       load_assignment:
         cluster_name: studio
         endpoints:
