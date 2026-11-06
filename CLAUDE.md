@@ -36,6 +36,7 @@
 # 入口（envoy）
 
 - アクセスはすべて studio-envoy:10000 を経由する（ホストは STUDIO_PORT、既定 3001）。studio:3000 はホストに公開しない
+- envoy から studio への接続は、何もしていない時間が 4 秒で手放す（local/envoy/envoy.yaml の studio のクラスターの `idle_timeout`）。Next.js（Node.js）は何もしていない接続を 5 秒で閉じるため、envoy が先に手放さないと、閉じられた接続に送って 503（reset reason: connection termination）になる。開発の `next dev` には keep-alive を変える入口が無いので、Next.js の側は延ばさない。ルートの envoy.yaml（リリース確認の環境）も同じ（studio#68）
 - envoy を経由するホスト名からのアクセスは Next.js の `allowedDevOrigins` に追加する（`studio-envoy`、`*.trycloudflare.com`）
 
 # 画面の決まり
