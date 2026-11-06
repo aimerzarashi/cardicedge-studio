@@ -64,6 +64,9 @@ export default async function NewNpcDeckPage({
   return (
     <main>
       <h1>NPC のデッキを登録</h1>
+      <p>
+        <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
+      </p>
       <section aria-labelledby="empty-heading">
         <h2 id="empty-heading">空から作る</h2>
         <p>名前を決めて登録し、カードは登録した後の詳細の画面で入れます。</p>
@@ -83,9 +86,6 @@ export default async function NewNpcDeckPage({
         </Form>
         <PresetDecks result={result} name={name} />
       </section>
-      <p>
-        <Link href="/npc-decks">NPC のデッキの一覧へ</Link>
-      </p>
     </main>
   );
 }

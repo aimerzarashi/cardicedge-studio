@@ -93,10 +93,10 @@ function NotFound() {
   return (
     <main>
       <h1>プリセットデッキ</h1>
-      <p role="alert">このプリセットデッキは見つかりません</p>
       <p>
         <Link href="/preset-decks">プリセットデッキの一覧へ</Link>
       </p>
+      <p role="alert">このプリセットデッキは見つかりません</p>
     </main>
   );
 }
@@ -168,6 +168,9 @@ export default async function PresetDeckPage({
   return (
     <main>
       <h1>{deck.name}</h1>
+      <p>
+        <Link href="/preset-decks">プリセットデッキの一覧へ</Link>
+      </p>
       <dl>
         <dt>合計の枚数</dt>
         <dd>{deck.totalCount}</dd>
@@ -243,10 +246,6 @@ export default async function PresetDeckPage({
           name={deck.name}
         />
       </section>
-
-      <p>
-        <Link href="/preset-decks">プリセットデッキの一覧へ</Link>
-      </p>
     </main>
   );
 }

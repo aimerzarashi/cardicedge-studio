@@ -98,10 +98,10 @@ function NotFound() {
   return (
     <main>
       <h1>配布デッキ</h1>
-      <p role="alert">この配布デッキは見つかりません</p>
       <p>
         <Link href="/grant-decks">配布デッキの一覧へ</Link>
       </p>
+      <p role="alert">この配布デッキは見つかりません</p>
     </main>
   );
 }
@@ -173,6 +173,9 @@ export default async function GrantDeckPage({
   return (
     <main>
       <h1>{deck.name}</h1>
+      <p>
+        <Link href="/grant-decks">配布デッキの一覧へ</Link>
+      </p>
       <dl>
         <dt>状態</dt>
         <dd>{STATUS_LABELS[deck.status]}</dd>
@@ -302,10 +305,6 @@ export default async function GrantDeckPage({
           )}
         </section>
       )}
-
-      <p>
-        <Link href="/grant-decks">配布デッキの一覧へ</Link>
-      </p>
     </main>
   );
 }
