@@ -24,6 +24,8 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_SERVICE_NAME: core
+      # テスト用の環境の印。開発の環境（compose.yaml）は development。同じ受け手に同じサービス名で送るので、これで見分ける（core#120）
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=test
     # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける（core#74）
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -94,6 +96,8 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_SERVICE_NAME: studio
+      # テスト用の環境の印。開発の環境（compose.yaml）は development。同じ受け手に同じサービス名で送るので、これで見分ける（core#120）
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment.name=test
     # 共有ネットワークには入れず、ホストの口（otel-lgtm）へ届ける。理由は core の compose の otel-lgtm の注記（core#74）
     extra_hosts:
       - "host.docker.internal:host-gateway"
