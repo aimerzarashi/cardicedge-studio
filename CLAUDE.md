@@ -109,6 +109,7 @@
 - JWT の issuer / audience は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須）で渡し、core の設定と一致させる。core は (iss, sub) で operator を識別するため、運用を始めた環境では issuer を変えない
 - 誰をオペレーターにするか・権限は core が決める。better-auth に任せるのは、確認つきのサインアップ・ログイン・パスワードの再設定だけ。Admin プラグイン・role は使わない（studio#12）
 - JWT には `definePayload` で `email`・`email_verified` だけを足す（core が初めてのログインでオペレーターに紐づけるのに使う）。メールアドレスの変更（changeEmail）は有効にしない（紐づけの前提が崩れる）
+- better-auth のクッキー名の頭（`advanced.cookiePrefix`）は環境変数 `BETTER_AUTH_COOKIE_PREFIX`（必須）で渡し、game と別の値にする（`studio`）。proxy.ts の未ログインの判定（`getSessionCookie`）も同じ値を読む。既定のままだと game と同じ名前になり、ブラウザのクッキーはポートで分かれないため、開発の環境（同じ localhost）で片方のログインがもう片方のセッションを切っていた（studio#72・game#55）
 - better-auth の `name` は空文字にし、表示・メールに使わない
 - lib/auth.ts とそこから読むファイル（lib/mail.ts）は、seed・better-auth の CLI が Node.js で直接読むため、パスの別名（`@/`）を使わず相対パス（`./mail.ts`）で import する（別名だと CLI が「server-only を外せ」という紛らわしいエラーを出す）
 - メールは lib/mail.ts の `sendMail` だけで送る。better-auth の送信の関数では送信を await しない（登録の有無で応答時間が変わるため。公式の注意）
