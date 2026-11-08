@@ -78,6 +78,8 @@ check:
     BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
     BETTER_AUTH_URL: http://localhost:3000
     JWT_ISSUER: diecardomain-studio
+    # better-auth のクッキー名の頭。studio と game で別にする（同じホストに並べたとき、片方のログインがもう片方を切らないため。studio#72・game#55）
+    BETTER_AUTH_COOKIE_PREFIX: studio
     JWT_AUDIENCE: diecardomain-core
   script:
     - echo "== lint =="

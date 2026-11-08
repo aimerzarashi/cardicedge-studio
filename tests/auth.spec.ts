@@ -99,3 +99,31 @@ test("ログインの試行回数が多すぎるときは、パスワードの�
     page.getByText("メールアドレスまたはパスワードが正しくありません"),
   ).toHaveCount(0);
 });
+
+// studio と game を同じホスト（開発の環境の localhost）に並べても、片方のログインがもう片方のセッションを上書きしないよう、
+// クッキー名をアプリごとに分けている（studio#72・game#55）。もう片方の名前のクッキーがあっても、こちらのセッションは切れない
+test("ログインのクッキーはstudioの名前で持ち、gameの名前のクッキーがあってもセッションは切れない", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await page.getByLabel("メールアドレス").fill(operator.email);
+  await page.getByLabel("パスワード").fill(operator.password);
+  await page.getByRole("button", { name: "ログイン" }).click();
+  await expect(page.getByTestId("operator-email")).toHaveText(operator.email);
+
+  const names = (await page.context().cookies()).map((cookie) => cookie.name);
+  expect(names).toContain("studio.session_token");
+  expect(names.filter((name) => name.startsWith("better-auth."))).toEqual([]);
+
+  const [own] = (await page.context().cookies()).filter(
+    (cookie) => cookie.name === "studio.session_token",
+  );
+  await page
+    .context()
+    .addCookies([
+      { ...own, name: "game.session_token", value: "game-session" },
+    ]);
+  await page.reload();
+
+  await expect(page.getByTestId("operator-email")).toHaveText(operator.email);
+});
