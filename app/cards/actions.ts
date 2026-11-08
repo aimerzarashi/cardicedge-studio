@@ -27,24 +27,12 @@ const retireCardMutation = graphql(`
   }
 `);
 
-// 一覧は名前で絞って待つため、名前も画面が隠し項目で送る
-function cardTarget(
-  form: FormData,
-): { id: string; revision: number; name: string } | undefined {
-  const card = target(form);
-  const name = form.get("name");
-  if (card === undefined || typeof name !== "string") {
-    return undefined;
-  }
-  return { ...card, name };
-}
-
 async function showChanged(
-  card: { id: string; name: string },
+  card: { id: string },
   revision: number,
   status: string,
 ): Promise<Notice> {
-  const reached = await waitCard(card.id, card.name, revision);
+  const reached = await waitCard(card.id, revision);
   refresh();
   return reached === "reached" ? { status } : { status: NOT_REFLECTED };
 }
@@ -53,7 +41,7 @@ export async function publishCard(
   _previous: Notice,
   form: FormData,
 ): Promise<Notice> {
-  const card = cardTarget(form);
+  const card = target(form);
   if (card === undefined) {
     return { error: INVALID_TARGET };
   }
@@ -87,7 +75,7 @@ export async function retireCard(
   _previous: Notice,
   form: FormData,
 ): Promise<Notice> {
-  const card = cardTarget(form);
+  const card = target(form);
   if (card === undefined) {
     return { error: INVALID_TARGET };
   }

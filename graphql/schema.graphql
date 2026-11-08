@@ -283,36 +283,6 @@ interface BoardTile {
 	y: Int!
 }
 """
-土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
-効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
-"""
-enum BoardTileAttribute {
-	"""
-	火（火属性）
-	"""
-	FIRE
-	"""
-	地（地属性）
-	"""
-	EARTH
-	"""
-	水（水属性）
-	"""
-	WATER
-	"""
-	風（風属性）
-	"""
-	WIND
-	"""
-	無（無属性）
-	"""
-	NEUTRAL
-	"""
-	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
-	"""
-	MULTI
-}
-"""
 ボードのマスの数（read model の投影のときに数える）。土地だけが属性を持つので、属性ごとの数の和が土地の数になる
 """
 type BoardTileCounts {
@@ -376,6 +346,36 @@ type BoardTileCounts {
 	カード屋の数
 	"""
 	cardShop: Int!
+}
+"""
+土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
+効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
+"""
+enum BoardTileElement {
+	"""
+	火（火属性）
+	"""
+	FIRE
+	"""
+	地（地属性）
+	"""
+	EARTH
+	"""
+	水（水属性）
+	"""
+	WATER
+	"""
+	風（風属性）
+	"""
+	WIND
+	"""
+	無（無属性）
+	"""
+	NEUTRAL
+	"""
+	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
+	"""
+	MULTI
 }
 """
 置くマスの入力。land・base・checkpoint・warp・bridge・sanctuary・shrine・prophecyShop・cardShop のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
@@ -505,6 +505,14 @@ interface Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -570,6 +578,15 @@ type CardNameAlreadyInUseError {
 	message: String!
 }
 """
+準備中でないカードの性能を変えようとした（性能を変えられるのは準備中だけ。公開中・使用不可は、デッキに入れた・game に写した性能が途中で変わるため）
+"""
+type CardNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 カードが無い（公開用の ID に当たるカードが無い。カードでない ID を含む）
 """
 type CardNotFoundError {
@@ -578,6 +595,31 @@ type CardNotFoundError {
 	"""
 	message: String!
 }
+"""
+カードの希少度
+"""
+enum CardRarity {
+	"""
+	画面では N
+	"""
+	NORMAL
+	"""
+	画面では S
+	"""
+	STRANGE
+	"""
+	画面では R
+	"""
+	RARE
+	"""
+	画面では E
+	"""
+	EXTRA
+}
+"""
+カードの詳細の結果
+"""
+union CardResult = Creature | Item | Spell | CardNotFoundError | ForbiddenError
 """
 カード屋（止まると、用意されたカードから 1 枚買える）。属性は持たない
 """
@@ -730,6 +772,146 @@ type ChangeBoardLayoutSuccess {
 	revision: Int!
 }
 """
+カードのコストを変える入力
+"""
+input ChangeCardCostInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの revision
+	"""
+	revision: Int!
+	"""
+	変えた後のコスト（0 以上。上限は無い）
+	"""
+	cost: Int!
+}
+"""
+カードのコストを変える操作の結果
+"""
+union ChangeCardCostResult = ChangeCardCostSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+カードのコストを変えた（同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeCardCostSuccess {
+	"""
+	変えたカードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたカードの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+カードの希少度を変える入力
+"""
+input ChangeCardRarityInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の希少度
+	"""
+	rarity: CardRarity!
+}
+"""
+カードの希少度を変える操作の結果
+"""
+union ChangeCardRarityResult = ChangeCardRaritySuccess | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+カードの希少度を変えた（同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeCardRaritySuccess {
+	"""
+	変えたカードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたカードの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーの属性を変える入力
+"""
+input ChangeCreatureElementsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の属性（1〜4 つ。重複は入力の誤り。無は単独。並びは問わず、保存は火・地・水・風の順にそろえる）
+	"""
+	elements: [CreatureElement!]!
+}
+"""
+クリーチャーの属性を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureElementsResult = ChangeCreatureElementsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの属性を変えた（同じ集合なら何も変えず、revision も進まない）
+"""
+type ChangeCreatureElementsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーの攻撃力と体力を変える入力
+"""
+input ChangeCreatureStatsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の攻撃力（AT。0 以上。上限は無い）
+	"""
+	attack: Int!
+	"""
+	変えた後の体力（HP。1 以上。上限は無い）
+	"""
+	hitPoints: Int!
+}
+"""
+クリーチャーの攻撃力と体力を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureStatsResult = ChangeCreatureStatsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの攻撃力と体力を変えた（どちらも同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeCreatureStatsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの）
 """
 input CheckBoardLayoutInput {
@@ -797,6 +979,26 @@ type Creature implements Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
+	属性（1〜4 つ。無は単独。火・地・水・風の順に並べる）
+	"""
+	elements: [CreatureElement!]!
+	"""
+	攻撃力（AT。0 以上）
+	"""
+	attack: Int!
+	"""
+	体力（HP。1 以上）
+	"""
+	hitPoints: Int!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -808,6 +1010,31 @@ type Creature implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない）
+"""
+enum CreatureElement {
+	"""
+	火
+	"""
+	FIRE
+	"""
+	地
+	"""
+	EARTH
+	"""
+	水
+	"""
+	WATER
+	"""
+	風
+	"""
+	WIND
+	"""
+	無
+	"""
+	NEUTRAL
 }
 """
 日時（RFC 3339 の文字列。例: 2026-10-17T09:00:00Z）
@@ -1389,6 +1616,14 @@ type Item implements Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -1416,7 +1651,7 @@ type LandTile implements BoardTile {
 	"""
 	属性
 	"""
-	attribute: BoardTileAttribute!
+	element: BoardTileElement!
 }
 """
 置く土地の入力
@@ -1433,7 +1668,7 @@ input LandTileInput {
 	"""
 	属性
 	"""
-	attribute: BoardTileAttribute!
+	element: BoardTileElement!
 }
 """
 対戦の決まり（盤面や部屋によらず、ゲーム全体で同じ値）
@@ -1521,6 +1756,24 @@ type Mutation {
 		input: RetireBoardInput!
 	): RetireBoardResult!
 	"""
+	カードのコストを変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCardCost(
+		"""
+		変えるカードとコスト
+		"""
+		input: ChangeCardCostInput!
+	): ChangeCardCostResult!
+	"""
+	カードの希少度を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCardRarity(
+		"""
+		変えるカードと希少度
+		"""
+		input: ChangeCardRarityInput!
+	): ChangeCardRarityResult!
+	"""
 	カードを公開中にする（紐づいたオペレーターだけ。準備中・使用不可から）
 	"""
 	publishCard(
@@ -1538,6 +1791,24 @@ type Mutation {
 		"""
 		input: RetireCardInput!
 	): RetireCardResult!
+	"""
+	クリーチャーの属性を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCreatureElements(
+		"""
+		変えるクリーチャーと属性
+		"""
+		input: ChangeCreatureElementsInput!
+	): ChangeCreatureElementsResult!
+	"""
+	クリーチャーの攻撃力と体力を変える（紐づいたオペレーターだけ。準備中だけ。2 つは一緒に変える）
+	"""
+	changeCreatureStats(
+		"""
+		変えるクリーチャーと攻撃力・体力
+		"""
+		input: ChangeCreatureStatsInput!
+	): ChangeCreatureStatsResult!
 	"""
 	クリーチャーを登録する（紐づいたオペレーターだけ）
 	"""
@@ -2468,6 +2739,15 @@ type Query {
 		"""
 		input: CheckBoardLayoutInput!
 	): CheckBoardLayoutResult!
+	"""
+	カードの詳細（紐づいたオペレーターだけ。性能を変える画面が使う）
+	"""
+	card(
+		"""
+		カード（Creature・Item・Spell）の公開用の ID
+		"""
+		id: UUID!
+	): CardResult!
 	"""
 	カードの一覧（紐づいたオペレーターだけ）
 	"""
@@ -3599,6 +3879,14 @@ type Spell implements Card {
 	状態（準備中・公開中・使用不可）
 	"""
 	status: CardStatus!
+	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
 	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""

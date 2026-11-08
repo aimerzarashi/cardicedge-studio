@@ -101,6 +101,10 @@ test("カードを探して枚数を保存すると入れたカードに出て�
   await expect(page.getByRole("definition").first()).toHaveText("2");
   // 探した側の表も、保存した後の枚数になる
   await expect(candidates.getByLabel(`a-${id}の枚数`)).toHaveValue("0");
+
+  // デッキの中のカード名から、カードの詳細へ移れる（studio・game のカードの一覧はどれも詳細へ移れる。2026-11-07 オーナー）
+  await deckCards.getByRole("link", { name: `b-${id}` }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`b-${id}`);
 });
 
 test("枚数が範囲の外だとカードの行に誤りが表示され、入力した値が残る", async ({

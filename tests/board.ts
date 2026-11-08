@@ -22,9 +22,9 @@ export async function registerBoard(page: Page, name: string) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(name);
 }
 
-export type Attribute = "火" | "地" | "水" | "風" | "無" | "複";
+export type Element = "火" | "地" | "水" | "風" | "無" | "複";
 export type Tool =
-  | `${Attribute}属性の土地`
+  | `${Element}属性の土地`
   | "拠点"
   | "チェックポイント"
   | "転送円"
@@ -151,7 +151,7 @@ export async function createPublishedBoard(
       height: 8,
       tiles: [
         { base: { x: 0, y: 0 } },
-        { land: { x: 1, y: 0, attribute: "FIRE" } },
+        { land: { x: 1, y: 0, element: "FIRE" } },
         { checkpoint: { x: 2, y: 0 } },
       ],
       connections: [

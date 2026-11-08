@@ -10,7 +10,7 @@ import {
 import {
   type Cells,
   type Connection,
-  isTileAttribute,
+  isTileElement,
   isTileKind,
   type Pair,
   type Tile,
@@ -41,7 +41,7 @@ export type CheckLayoutResult =
 // フォームの値の組み立て。マスは `x,y,種類` で、土地だけ `x,y,種類,属性`（種類は core の出力の型の名前）、つながり（`connection`）と対（`pair`）は `ax,ay,bx,by` の文字列にして同じ名前で並べる（順番が core の誤りの位置になる）
 export function tileField(tile: Tile): string {
   return tile.__typename === "LandTile"
-    ? `${tile.x},${tile.y},${tile.__typename},${tile.attribute}`
+    ? `${tile.x},${tile.y},${tile.__typename},${tile.element}`
     : `${tile.x},${tile.y},${tile.__typename}`;
 }
 
@@ -68,17 +68,17 @@ export function parseLayout(form: FormData): Layout | undefined {
   for (const value of form.getAll("tile")) {
     const parts = typeof value === "string" ? value.split(",") : [];
     const xy = integers(parts.slice(0, 2).join(","), 2);
-    const [, , kind, attribute] = parts;
+    const [, , kind, element] = parts;
     if (xy === undefined || kind === undefined || !isTileKind(kind)) {
       return undefined;
     }
     const position = { x: xy[0], y: xy[1] };
     // 属性があるのは土地だけ
     if (kind === "LandTile") {
-      if (parts.length !== 4 || !isTileAttribute(attribute)) {
+      if (parts.length !== 4 || !isTileElement(element)) {
         return undefined;
       }
-      tiles.push({ ...position, __typename: kind, attribute });
+      tiles.push({ ...position, __typename: kind, element });
     } else if (parts.length === 3) {
       tiles.push({ ...position, __typename: kind });
     } else {
@@ -134,7 +134,7 @@ export function tileInput(tile: Tile): BoardTileInput {
   const { x, y } = tile;
   switch (tile.__typename) {
     case "LandTile":
-      return { land: { x, y, attribute: tile.attribute } };
+      return { land: { x, y, element: tile.element } };
     case "BaseTile":
       return { base: { x, y } };
     case "CheckpointTile":

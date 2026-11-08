@@ -17,8 +17,8 @@ import {
 } from "./board-layout.ts";
 
 const empty: Cells = { tiles: [], connections: [], pairs: [] };
-const fire: Placement = { __typename: "LandTile", attribute: "FIRE" };
-const water: Placement = { __typename: "LandTile", attribute: "WATER" };
+const fire: Placement = { __typename: "LandTile", element: "FIRE" };
+const water: Placement = { __typename: "LandTile", element: "WATER" };
 const warp: Placement = { __typename: "WarpTile" };
 const bridge: Placement = { __typename: "BridgeTile" };
 

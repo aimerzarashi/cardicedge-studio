@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import type { SetCardCountsState } from "./deck-form";
 
@@ -53,7 +54,9 @@ export function CardCountsForm({
               const errorId = `count-error-${row.cardId}`;
               return (
                 <tr key={row.cardId}>
-                  <td>{row.name}</td>
+                  <td>
+                    <Link href={`/cards/${row.cardId}`}>{row.name}</Link>
+                  </td>
                   <td>{row.typeLabel}</td>
                   <td>
                     <input

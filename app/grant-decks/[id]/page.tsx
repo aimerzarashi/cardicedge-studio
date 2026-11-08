@@ -295,7 +295,9 @@ export default async function GrantDeckPage({
               <tbody>
                 {deckRows.map((row) => (
                   <tr key={row.cardId}>
-                    <td>{row.name}</td>
+                    <td>
+                      <Link href={`/cards/${row.cardId}`}>{row.name}</Link>
+                    </td>
                     <td>{row.typeLabel}</td>
                     <td>{row.count}</td>
                   </tr>
