@@ -100,8 +100,10 @@ services:
     # オペレーターの ID（JWT の sub）が変わって、core の DB に残った紐づけと合わなくなる（studio#19）
     volumes:
       - studio-db-data:/var/lib/postgresql
+    # TCP で確かめる（-h）。unix ソケットで見ると、初期化の SQL を流す一時的なサーバー（unix ソケットだけで待ち受ける）にも応えて
+    # healthy になり、そのサーバーが止まって本番のサーバーが TCP で待ち受けるまでの間に、直後のマイグレーションが断られる（core#118）
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U studio_user -d studio"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U studio_user -d studio"]
       interval: 2s
       timeout: 5s
       retries: 30
