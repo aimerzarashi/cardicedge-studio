@@ -70,6 +70,7 @@ const boardsQuery = graphql(`
               roundLimit
               diceMin
               diceMax
+              baseLandValue
             }
             publishProblems {
               __typename

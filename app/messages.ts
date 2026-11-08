@@ -277,6 +277,7 @@ export const RULE_LABELS = {
   roundLimit: "ラウンドの上限",
   diceMin: "サイコロの目（最小）",
   diceMax: "サイコロの目（最大）",
+  baseLandValue: "土地の基本の値",
 } as const;
 export type RuleField = keyof typeof RULE_LABELS;
 
@@ -290,6 +291,7 @@ export function ruleStep(field: RuleField): number {
     case "roundLimit":
     case "diceMin":
     case "diceMax":
+    case "baseLandValue":
       return 1;
     default:
       return 100;
