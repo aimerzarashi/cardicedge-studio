@@ -347,6 +347,7 @@ test("公開中は、格子も既定のルールも表示だけで出て、編�
   await expect(detail(page, "ラウンドの上限")).toHaveText("30");
   await expect(detail(page, "サイコロの目（最小）")).toHaveText("1");
   await expect(detail(page, "サイコロの目（最大）")).toHaveText("6");
+  await expect(detail(page, "土地の基本の値")).toHaveText("100");
   await expect(rules.getByLabel("目標の魔力")).toHaveCount(0);
   await expect(rules.getByRole("button", { name: "ルールを保存" })).toHaveCount(
     0,
@@ -554,6 +555,7 @@ test("準備中のボードの既定のルールを変えて保存すると、�
   await rules.getByLabel("ラウンドの上限").fill("20");
   await rules.getByLabel("サイコロの目（最小）").fill("2");
   await rules.getByLabel("サイコロの目（最大）").fill("12");
+  await rules.getByLabel("土地の基本の値").fill("150");
   await rules.getByRole("button", { name: "ルールを保存" }).click();
 
   await expect(rules.getByText("ルールを保存しました")).toBeVisible();
@@ -567,6 +569,7 @@ test("準備中のボードの既定のルールを変えて保存すると、�
   await expect(rules.getByLabel("ラウンドの上限")).toHaveValue("20");
   await expect(rules.getByLabel("サイコロの目（最小）")).toHaveValue("2");
   await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("12");
+  await expect(rules.getByLabel("土地の基本の値")).toHaveValue("150");
 });
 
 test("決まりに反する既定のルールを保存すると誤りが出て、入力した値が残り、保存した値は変わらない", async ({

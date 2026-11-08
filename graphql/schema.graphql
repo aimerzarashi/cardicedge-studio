@@ -144,6 +144,10 @@ type BoardDefaultRules {
 	サイコロの目の最大（最小以上。登録した直後は 6）
 	"""
 	diceMax: Int!
+	"""
+	土地の基本の値（1 以上。レベルと連鎖の倍率を掛ける元。登録した直後は 100）
+	"""
+	baseLandValue: Int!
 }
 """
 ボードの一覧の絞り込み
@@ -664,7 +668,7 @@ enum CardType {
 """
 union CardsResult = CardConnection | ValidationErrors | ForbiddenError
 """
-ボードの既定のルールを変える入力（変えた後の 7 つの値の全体）
+ボードの既定のルールを変える入力（変えた後の 8 つの値の全体）
 """
 input ChangeBoardDefaultRulesInput {
 	"""
@@ -703,6 +707,10 @@ input ChangeBoardDefaultRulesInput {
 	サイコロの目の最大（最小以上でなければ入力の誤り）
 	"""
 	diceMax: Int!
+	"""
+	土地の基本の値（1 以上）
+	"""
+	baseLandValue: Int!
 }
 """
 ボードの既定のルールの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
