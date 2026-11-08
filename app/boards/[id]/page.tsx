@@ -35,7 +35,7 @@ const boardQuery = graphql(`
           x
           y
           ... on LandTile {
-            attribute
+            element
           }
         }
         defaultRules {

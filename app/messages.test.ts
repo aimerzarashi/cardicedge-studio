@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   boardPublishProblemMessage,
   boardRuleErrorMessage,
+  elementsErrorMessage,
   NAME_ALREADY_IN_USE,
   nameErrorMessage,
   RULE_LABELS,
@@ -10,6 +11,7 @@ import {
   starterSetItemErrorMessage,
   starterSetLimitReachedMessage,
   starterSetPublishErrorMessage,
+  statsErrorMessage,
 } from "./messages.ts";
 
 describe("nameErrorMessage", () => {
@@ -193,6 +195,44 @@ describe("スターターセットの文言", () => {
     assert.equal(
       starterSetItemErrorMessage([{ __typename: "FieldDuplicated" }], "NPC"),
       "同じ NPC が 2 回入っています",
+    );
+  });
+});
+
+describe("クリーチャーの性能の文言", () => {
+  it("属性を 1 つも選ばないと、選ぶよう促す", () => {
+    assert.equal(
+      elementsErrorMessage({ __typename: "FieldRequired", field: "elements" }),
+      "属性を 1 つ以上選んでください",
+    );
+  });
+
+  it("属性の組み合わせの誤りは、組み合わせにできないと伝える", () => {
+    assert.equal(
+      elementsErrorMessage({
+        __typename: "FieldInvalidFormat",
+        field: "elements",
+      }),
+      "この属性の組み合わせにはできません",
+    );
+  });
+
+  it("攻撃力と体力の下限の誤りは、core が返した field と下限で項目ごとに出す", () => {
+    assert.equal(
+      statsErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "attack",
+        min: 0,
+      }),
+      "ATは 0 以上にしてください",
+    );
+    assert.equal(
+      statsErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "hitPoints",
+        min: 1,
+      }),
+      "HPは 1 以上にしてください",
     );
   });
 });

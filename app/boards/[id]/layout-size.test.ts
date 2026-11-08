@@ -7,7 +7,7 @@ const land = (x: number, y: number): Tile => ({
   x,
   y,
   __typename: "LandTile",
-  attribute: "FIRE",
+  element: "FIRE",
 });
 
 // 範囲は core の studioRules.board から受け取る値。テストでは適当な値を使う

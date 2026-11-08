@@ -10,7 +10,11 @@ import { sendMail } from "./mail.ts";
 // 未設定だと better-auth は黙って BETTER_AUTH_URL を使うため、実行時に必ず確かめる。
 // next build 中（NEXT_PHASE=phase-production-build）は環境変数を渡さないため確かめない
 if (process.env.NEXT_PHASE !== "phase-production-build") {
-  for (const name of ["JWT_ISSUER", "JWT_AUDIENCE", "BETTER_AUTH_COOKIE_PREFIX"]) {
+  for (const name of [
+    "JWT_ISSUER",
+    "JWT_AUDIENCE",
+    "BETTER_AUTH_COOKIE_PREFIX",
+  ]) {
     if (!process.env[name]) {
       throw new Error(`環境変数 ${name} が設定されていません`);
     }

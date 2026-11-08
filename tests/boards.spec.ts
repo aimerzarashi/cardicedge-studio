@@ -100,8 +100,8 @@ const unreachableLayout: Parameters<typeof setBoardLayout>[1] = {
   tiles: [
     { base: { x: 0, y: 0 } },
     { checkpoint: { x: 1, y: 0 } },
-    { land: { x: 2, y: 3, attribute: "FIRE" } },
-    { land: { x: 4, y: 5, attribute: "FIRE" } },
+    { land: { x: 2, y: 3, element: "FIRE" } },
+    { land: { x: 4, y: 5, element: "FIRE" } },
   ],
   connections: [{ a: { x: 0, y: 0 }, b: { x: 1, y: 0 } }],
 };
@@ -250,9 +250,9 @@ test("属性ごとの土地・施設 4 つ・転送円と橋の対を置いて�
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("全部の種類"));
 
-  const attributes = ["火", "地", "水", "風", "無", "複"] as const;
-  for (const [x, attribute] of attributes.entries()) {
-    await putTiles(page, `${attribute}属性の土地`, [[x, 0]]);
+  const elements = ["火", "地", "水", "風", "無", "複"] as const;
+  for (const [x, element] of elements.entries()) {
+    await putTiles(page, `${element}属性の土地`, [[x, 0]]);
   }
   await putTiles(page, "拠点", [[0, 1]]);
   await putTiles(page, "チェックポイント", [[1, 1]]);
@@ -279,9 +279,9 @@ test("属性ごとの土地・施設 4 つ・転送円と橋の対を置いて�
   await saveLayout(page);
   await page.reload();
 
-  for (const [x, attribute] of attributes.entries()) {
+  for (const [x, element] of elements.entries()) {
     await expect(tileButton(page, x, 0)).toHaveAccessibleName(
-      `(${x}, 0) のマス ${attribute}属性の土地`,
+      `(${x}, 0) のマス ${element}属性の土地`,
     );
   }
   await expect(tileButton(page, 0, 1)).toHaveAccessibleName(

@@ -64,7 +64,7 @@ export function paint(tile: Tile | undefined): CSSProperties {
     case "LandTile":
       return {
         border: "1px solid #555",
-        background: LAND_COLORS[tile.attribute],
+        background: LAND_COLORS[tile.element],
       };
     case "WarpTile":
       return { border: "1px solid #555", background: WARP_COLOR };

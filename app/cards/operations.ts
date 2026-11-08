@@ -3,9 +3,21 @@
 // 操作の名前は全体で一意にする（codegen の決まり）
 import { graphql } from "@/graphql";
 
-// card(id) の問い合わせが無いため、名前で絞った一覧から探す
+// 操作の結果の revision が詳細に届いたかを確かめる（投影の遅れを待つ。wait-card.ts）
 export const cardRevisionQuery = graphql(`
-  query CardRevision($name: String!) {
+  query CardRevision($id: UUID!) {
+    card(id: $id) {
+      __typename
+      ... on Card {
+        revision
+      }
+    }
+  }
+`);
+
+// テストが、名前で絞った一覧に複数のカードが届くのを待つ（tests/card.ts）
+export const cardsRevisionQuery = graphql(`
+  query CardsRevision($name: String!) {
     cards(filter: { nameContains: $name }, first: 100) {
       __typename
       ... on CardConnection {

@@ -44,7 +44,7 @@ export type BoardStatus =
  * 土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
  * 効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
  */
-export type BoardTileAttribute =
+export type BoardTileElement =
   /** 地（地属性） */
   | 'EARTH'
   /** 火（火属性） */
@@ -96,6 +96,17 @@ export type CardFilter = {
   /** 種類（指定が無ければすべて。空のリストは入力の誤り） */
   types?: Array<CardType> | null | undefined;
 };
+
+/** カードの希少度 */
+export type CardRarity =
+  /** 画面では E */
+  | 'EXTRA'
+  /** 画面では N */
+  | 'NORMAL'
+  /** 画面では R */
+  | 'RARE'
+  /** 画面では S */
+  | 'STRANGE';
 
 /**
  * カードの状態。準備中は自由に変えられ、デッキに入れられず、game に写さない。公開中はデッキに入れられ、game に写す。
@@ -155,6 +166,48 @@ export type ChangeBoardLayoutInput = {
   width: number;
 };
 
+/** カードのコストを変える入力 */
+export type ChangeCardCostInput = {
+  /** 変えた後のコスト（0 以上。上限は無い） */
+  cost: number;
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの revision */
+  revision: number;
+};
+
+/** カードの希少度を変える入力 */
+export type ChangeCardRarityInput = {
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  id: string;
+  /** 変えた後の希少度 */
+  rarity: CardRarity;
+  /** 画面が見ていたカードの revision */
+  revision: number;
+};
+
+/** クリーチャーの属性を変える入力 */
+export type ChangeCreatureElementsInput = {
+  /** 変えた後の属性（1〜4 つ。重複は入力の誤り。無は単独。並びは問わず、保存は火・地・水・風の順にそろえる） */
+  elements: Array<CreatureElement>;
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
+/** クリーチャーの攻撃力と体力を変える入力 */
+export type ChangeCreatureStatsInput = {
+  /** 変えた後の攻撃力（AT。0 以上。上限は無い） */
+  attack: number;
+  /** 変えた後の体力（HP。1 以上。上限は無い） */
+  hitPoints: number;
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
 /** ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの） */
 export type CheckBoardLayoutInput = {
   /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
@@ -168,6 +221,19 @@ export type CheckBoardLayoutInput = {
   /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
   width: number;
 };
+
+/** クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない） */
+export type CreatureElement =
+  /** 地 */
+  | 'EARTH'
+  /** 火 */
+  | 'FIRE'
+  /** 無 */
+  | 'NEUTRAL'
+  /** 水 */
+  | 'WATER'
+  /** 風 */
+  | 'WIND';
 
 /** 変えるカードと、その枚数 */
 export type DeckCardCountInput = {
@@ -248,7 +314,7 @@ export type GrantDeckStatus =
 /** 置く土地の入力 */
 export type LandTileInput = {
   /** 属性 */
-  attribute: BoardTileAttribute;
+  element: BoardTileElement;
   /** 列（0 以上、幅 − 1 以下） */
   x: number;
   /** 行（0 以上、高さ − 1 以下） */
@@ -755,7 +821,7 @@ export type BoardQuery = { board:
         | { __typename: 'BridgeTile', x: number, y: number }
         | { __typename: 'CardShopTile', x: number, y: number }
         | { __typename: 'CheckpointTile', x: number, y: number }
-        | { __typename: 'LandTile', attribute: BoardTileAttribute, x: number, y: number }
+        | { __typename: 'LandTile', element: BoardTileElement, x: number, y: number }
         | { __typename: 'ProphecyShopTile', x: number, y: number }
         | { __typename: 'SanctuaryTile', x: number, y: number }
         | { __typename: 'ShrineTile', x: number, y: number }
@@ -877,6 +943,122 @@ export type BoardsQuery = { boards:
     | { __typename: 'ValidationErrors' }
    };
 
+export type ChangeCardCostMutationVariables = Exact<{
+  input: ChangeCardCostInput;
+}>;
+
+
+export type ChangeCardCostMutation = { changeCardCost:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCardCostSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeCardRarityMutationVariables = Exact<{
+  input: ChangeCardRarityInput;
+}>;
+
+
+export type ChangeCardRarityMutation = { changeCardRarity:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCardRaritySuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type ChangeCreatureElementsMutationVariables = Exact<{
+  input: ChangeCreatureElementsInput;
+}>;
+
+
+export type ChangeCreatureElementsMutation = { changeCreatureElements:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureElementsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeCreatureStatsMutationVariables = Exact<{
+  input: ChangeCreatureStatsInput;
+}>;
+
+
+export type ChangeCreatureStatsMutation = { changeCreatureStats:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureStatsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type CardQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type CardQuery = { card:
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
+    | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
+   };
+
 export type RetireCardMutationVariables = Exact<{
   input: RetireCardInput;
 }>;
@@ -891,11 +1073,24 @@ export type RetireCardMutation = { retireCard:
    };
 
 export type CardRevisionQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type CardRevisionQuery = { card:
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'Creature', revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'Item', revision: number }
+    | { __typename: 'Spell', revision: number }
+   };
+
+export type CardsRevisionQueryVariables = Exact<{
   name: string;
 }>;
 
 
-export type CardRevisionQuery = { cards:
+export type CardsRevisionQuery = { cards:
     | { __typename: 'CardConnection', edges: Array<{ node:
           | { id: string, revision: number }
           | { id: string, revision: number }
@@ -954,9 +1149,9 @@ export type CardsQueryVariables = Exact<{
 
 export type CardsQuery = { cards:
     | { __typename: 'CardConnection', edges: Array<{ node:
-          | { __typename: 'Creature', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
-          | { __typename: 'Item', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
-          | { __typename: 'Spell', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
+          | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
+          | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
+          | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
          }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
@@ -2248,7 +2443,7 @@ export const BoardDocument = new TypedDocumentString(`
         x
         y
         ... on LandTile {
-          attribute
+          element
         }
       }
       defaultRules {
@@ -2454,6 +2649,96 @@ export const BoardsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<BoardsQuery, BoardsQueryVariables>;
+export const ChangeCardCostDocument = new TypedDocumentString(`
+    mutation ChangeCardCost($input: ChangeCardCostInput!) {
+  changeCardCost(input: $input) {
+    __typename
+    ... on ChangeCardCostSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCardCostMutation, ChangeCardCostMutationVariables>;
+export const ChangeCardRarityDocument = new TypedDocumentString(`
+    mutation ChangeCardRarity($input: ChangeCardRarityInput!) {
+  changeCardRarity(input: $input) {
+    __typename
+    ... on ChangeCardRaritySuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCardRarityMutation, ChangeCardRarityMutationVariables>;
+export const ChangeCreatureElementsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureElements($input: ChangeCreatureElementsInput!) {
+  changeCreatureElements(input: $input) {
+    __typename
+    ... on ChangeCreatureElementsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureElementsMutation, ChangeCreatureElementsMutationVariables>;
+export const ChangeCreatureStatsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureStats($input: ChangeCreatureStatsInput!) {
+  changeCreatureStats(input: $input) {
+    __typename
+    ... on ChangeCreatureStatsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureStatsMutation, ChangeCreatureStatsMutationVariables>;
+export const CardDocument = new TypedDocumentString(`
+    query Card($id: UUID!) {
+  card(id: $id) {
+    __typename
+    ... on Card {
+      id
+      name
+      status
+      cost
+      rarity
+      revision
+      registeredAt
+      updatedAt
+    }
+    ... on Creature {
+      elements
+      attack
+      hitPoints
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CardQuery, CardQueryVariables>;
 export const RetireCardDocument = new TypedDocumentString(`
     mutation RetireCard($input: RetireCardInput!) {
   retireCard(input: $input) {
@@ -2466,7 +2751,17 @@ export const RetireCardDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<RetireCardMutation, RetireCardMutationVariables>;
 export const CardRevisionDocument = new TypedDocumentString(`
-    query CardRevision($name: String!) {
+    query CardRevision($id: UUID!) {
+  card(id: $id) {
+    __typename
+    ... on Card {
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CardRevisionQuery, CardRevisionQueryVariables>;
+export const CardsRevisionDocument = new TypedDocumentString(`
+    query CardsRevision($name: String!) {
   cards(filter: { nameContains: $name }, first: 100) {
     __typename
     ... on CardConnection {
@@ -2479,7 +2774,7 @@ export const CardRevisionDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<CardRevisionQuery, CardRevisionQueryVariables>;
+    `) as unknown as TypedDocumentString<CardsRevisionQuery, CardsRevisionQueryVariables>;
 export const PublishCardDocument = new TypedDocumentString(`
     mutation PublishCard($input: PublishCardInput!) {
   publishCard(input: $input) {
@@ -2524,6 +2819,8 @@ export const CardsDocument = new TypedDocumentString(`
           id
           name
           status
+          cost
+          rarity
           revision
           registeredAt
           updatedAt

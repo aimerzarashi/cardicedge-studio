@@ -11,10 +11,10 @@ import { dateTimeFormat } from "@/lib/format";
 import { all, first } from "@/lib/search-params";
 import { isStatus, STATUS_LABELS, STATUSES } from "@/lib/status";
 import { RULE_LABELS, type RuleField } from "../messages";
-import { ATTRIBUTE_LABELS, TILE_KIND_LABELS } from "./board-layout";
+import { ELEMENT_LABELS, TILE_KIND_LABELS } from "./board-layout";
 
 // 属性ごとの数の項目名（core の tileCounts）。0 の属性も出して、ボードどうしで並びをそろえる
-const ATTRIBUTE_COUNTS = [
+const ELEMENT_COUNTS = [
   ["FIRE", "fire"],
   ["EARTH", "earth"],
   ["WATER", "water"],
@@ -214,9 +214,9 @@ function BoardsResult({
                       拠点 {node.tileCounts.base}・チェックポイント{" "}
                       {node.tileCounts.checkpoint}・土地 {node.tileCounts.land}
                       （
-                      {ATTRIBUTE_COUNTS.map(
-                        ([attribute, key]) =>
-                          `${ATTRIBUTE_LABELS[attribute]} ${node.tileCounts[key]}`,
+                      {ELEMENT_COUNTS.map(
+                        ([element, key]) =>
+                          `${ELEMENT_LABELS[element]} ${node.tileCounts[key]}`,
                       ).join("・")}
                       ）
                       {SPECIAL_COUNTS.map(

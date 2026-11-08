@@ -282,3 +282,109 @@ test("ほかの画面で先に公開されていると、変えずに最新の�
   await expect(otherRow).toContainText("公開中");
   await expect(row).toContainText("公開中");
 });
+
+test("準備中のカードの詳細でコストと希少度を変えると、詳細と一覧に出る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("スペクター");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+
+  await page.getByLabel("コスト").fill("30");
+  await page.getByRole("button", { name: "コストを変える" }).click();
+  await expect(page.getByText("保存しました")).toBeVisible();
+  await expect(page.getByLabel("コスト")).toHaveValue("30");
+  await page.getByLabel("希少度").selectOption({ label: "R" });
+  await page.getByRole("button", { name: "希少度を変える" }).click();
+  await expect(page.getByLabel("希少度")).toHaveValue("RARE");
+
+  // 一覧の列は カード名・種類・状態・コスト・希少度 の順
+  const row = await openCardRow(page, name);
+  await expect(row.locator("td").nth(3)).toHaveText("30");
+  await expect(row.locator("td").nth(4)).toHaveText("R");
+});
+
+test("準備中のクリーチャーの詳細で属性と AT・HP を変えると詳細に出て、属性の組み合わせの誤りは選んだまま残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("サラマンダー");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  // 登録の直後は無属性
+  await expect(page.getByLabel("無", { exact: true })).toBeChecked();
+
+  // 無は単独でしか持てない（決まりは core が判定する）
+  await page.getByLabel("火", { exact: true }).check();
+  await page.getByRole("button", { name: "属性を変える" }).click();
+  await expect(
+    page.getByText("この属性の組み合わせにはできません"),
+  ).toBeVisible();
+  await expect(page.getByLabel("火", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("無", { exact: true })).toBeChecked();
+
+  await page.getByLabel("無", { exact: true }).uncheck();
+  await page.getByLabel("水", { exact: true }).check();
+  await page.getByRole("button", { name: "属性を変える" }).click();
+  await expect(page.getByText("保存しました")).toBeVisible();
+  await expect(page.getByLabel("火", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("水", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("無", { exact: true })).not.toBeChecked();
+
+  await page.getByLabel("AT", { exact: true }).fill("40");
+  await page.getByLabel("HP", { exact: true }).fill("50");
+  await page.getByRole("button", { name: "AT と HP を変える" }).click();
+  await expect(page.getByText("保存しました").nth(1)).toBeVisible();
+  await expect(page.getByLabel("AT", { exact: true })).toHaveValue("40");
+  await expect(page.getByLabel("HP", { exact: true })).toHaveValue("50");
+});
+
+test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ウルフ");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+
+  await page.getByLabel("コスト").fill("-1");
+  await page.getByRole("button", { name: "コストを変える" }).click();
+
+  await expect(page.getByText("コストは 0 以上にしてください")).toBeVisible();
+  await expect(page.getByLabel("コスト")).toHaveValue("-1");
+});
+
+test("公開中のカードの詳細は性能を表示だけにする", async ({ page }) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ノーム");
+  await registerCreature(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await publishCard(page, name);
+  await page.getByRole("link", { name }).click();
+
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "コストを変える" }),
+  ).toHaveCount(0);
+  await expect(page.getByText("コスト", { exact: true })).toBeVisible();
+});
+
+test("ログインした後の画面からトップへ戻れる", async ({ page }) => {
+  await loginAsOperator(page);
+  await page.goto("/cards");
+
+  await page
+    .getByRole("navigation", { name: "全体" })
+    .getByRole("link", { name: "トップへ" })
+    .click();
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: "studio" }),
+  ).toBeVisible();
+});

@@ -10,6 +10,7 @@ import type {
 import { CARD_TYPE_LABELS, CARD_TYPES, isCardType } from "@/lib/card-type";
 import { type CoreResult, callCore } from "@/lib/core";
 import { dateTimeFormat } from "@/lib/format";
+import { RARITY_LABELS } from "@/lib/rarity";
 import { all, first } from "@/lib/search-params";
 import { isStatus, STATUS_LABELS, STATUSES } from "@/lib/status";
 import { publishCard, retireCard } from "./actions";
@@ -26,6 +27,8 @@ const cardsQuery = graphql(`
             id
             name
             status
+            cost
+            rarity
             revision
             registeredAt
             updatedAt
@@ -182,6 +185,8 @@ function CardsResult({
                   <th>カード名</th>
                   <th>種類</th>
                   <th>状態</th>
+                  <th>コスト</th>
+                  <th>希少度</th>
                   <th>登録日時</th>
                   <th>更新日時</th>
                   <th>操作</th>
@@ -190,9 +195,13 @@ function CardsResult({
               <tbody>
                 {cards.edges.map(({ node }) => (
                   <tr key={node.id}>
-                    <td>{node.name}</td>
+                    <td>
+                      <Link href={`/cards/${node.id}`}>{node.name}</Link>
+                    </td>
                     <td>{CARD_TYPE_LABELS[node.__typename]}</td>
                     <td>{STATUS_LABELS[node.status]}</td>
+                    <td>{node.cost}</td>
+                    <td>{RARITY_LABELS[node.rarity]}</td>
                     <td>
                       {dateTimeFormat.format(new Date(node.registeredAt))}
                     </td>

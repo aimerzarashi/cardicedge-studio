@@ -317,3 +317,37 @@ export function boardRuleErrorMessage(error: {
       return `${label}の入力が正しくありません`;
   }
 }
+
+export const CARD_NOT_DRAFT =
+  "公開中・使用不可のカードの性能は変えられません（変えられるのは準備中だけです）";
+
+// コストの入力の誤り（下限は core が返した値を使う）
+export function costErrorMessage(error: FieldError): string {
+  switch (error.__typename) {
+    case "FieldTooSmall":
+      return `コストは ${error.min} 以上にしてください`;
+    default:
+      return "コストが正しくありません";
+  }
+}
+
+// 属性の入力の誤り（組み合わせの決まりは core が判定し、ここには書き写さない）
+export function elementsErrorMessage(error: FieldError): string {
+  switch (error.__typename) {
+    case "FieldRequired":
+      return "属性を 1 つ以上選んでください";
+    default:
+      return "この属性の組み合わせにはできません";
+  }
+}
+
+// 攻撃力・体力の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
+export function statsErrorMessage(error: FieldError): string {
+  const label = error.field === "hitPoints" ? "HP" : "AT";
+  switch (error.__typename) {
+    case "FieldTooSmall":
+      return `${label}は ${error.min} 以上にしてください`;
+    default:
+      return `${label}が正しくありません`;
+  }
+}
