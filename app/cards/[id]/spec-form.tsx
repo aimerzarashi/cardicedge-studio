@@ -1,11 +1,16 @@
 "use client";
 
 import { useActionState } from "react";
-import type { CardRarity, CreatureElement } from "@/graphql/graphql";
+import type {
+  CardRarity,
+  CreatureElement,
+  ItemCategory,
+} from "@/graphql/graphql";
 import {
   CREATURE_ELEMENT_LABELS,
   CREATURE_ELEMENTS,
 } from "@/lib/creature-element";
+import { ITEM_CATEGORIES, ITEM_CATEGORY_LABELS } from "@/lib/item-category";
 import { RARITIES, RARITY_LABELS } from "@/lib/rarity";
 import type { Kept, Notice } from "../../deck-form";
 
@@ -30,6 +35,15 @@ export type StatsState = Notice &
     hitPoints?: string;
     attackError?: string;
     hitPointsError?: string;
+  };
+
+// アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
+export type StatBonusesState = Notice &
+  Kept & {
+    attackBonus?: string;
+    hitPointsBonus?: string;
+    attackBonusError?: string;
+    hitPointsBonusError?: string;
   };
 
 const initialState: SpecState = {};
@@ -231,6 +245,114 @@ export function StatsForm({
         )}
         <button type="submit" disabled={isPending}>
           AT と HP を変える
+        </button>
+      </form>
+    </>
+  );
+}
+
+export function CategoryForm({
+  action,
+  id,
+  revision,
+  category,
+}: {
+  action: Action;
+  id: string;
+  revision: number;
+  category: ItemCategory;
+}) {
+  const [state, formAction, isPending] = useActionState(action, initialState);
+
+  return (
+    <>
+      {state.status && <p role="status">{state.status}</p>}
+      {state.error && <p role="alert">{state.error}</p>}
+      <form key={revision} action={formAction}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="revision" value={revision} />
+        <label>
+          分類
+          <select name="category" defaultValue={category}>
+            {ITEM_CATEGORIES.map((value) => (
+              <option key={value} value={value}>
+                {ITEM_CATEGORY_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" disabled={isPending}>
+          分類を変える
+        </button>
+      </form>
+    </>
+  );
+}
+
+export function StatBonusesForm({
+  action,
+  id,
+  revision,
+  attackBonus,
+  hitPointsBonus,
+}: {
+  action: (
+    previous: StatBonusesState,
+    form: FormData,
+  ) => Promise<StatBonusesState>;
+  id: string;
+  revision: number;
+  attackBonus: number;
+  hitPointsBonus: number;
+}) {
+  const [state, formAction, isPending] = useActionState(action, {});
+  const kept = state.revision === revision ? state : {};
+
+  return (
+    <>
+      {state.status && <p role="status">{state.status}</p>}
+      {state.error && <p role="alert">{state.error}</p>}
+      <form key={revision} action={formAction}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="revision" value={revision} />
+        <label>
+          AT の増減
+          <input
+            type="number"
+            name="attackBonus"
+            required
+            defaultValue={kept.attackBonus ?? attackBonus}
+            aria-invalid={kept.attackBonusError ? true : undefined}
+            aria-describedby={
+              kept.attackBonusError ? "attack-bonus-error" : undefined
+            }
+          />
+        </label>
+        {kept.attackBonusError && (
+          <p id="attack-bonus-error" role="alert">
+            {kept.attackBonusError}
+          </p>
+        )}
+        <label>
+          HP の増減
+          <input
+            type="number"
+            name="hitPointsBonus"
+            required
+            defaultValue={kept.hitPointsBonus ?? hitPointsBonus}
+            aria-invalid={kept.hitPointsBonusError ? true : undefined}
+            aria-describedby={
+              kept.hitPointsBonusError ? "hit-points-bonus-error" : undefined
+            }
+          />
+        </label>
+        {kept.hitPointsBonusError && (
+          <p id="hit-points-bonus-error" role="alert">
+            {kept.hitPointsBonusError}
+          </p>
+        )}
+        <button type="submit" disabled={isPending}>
+          増減を変える
         </button>
       </form>
     </>

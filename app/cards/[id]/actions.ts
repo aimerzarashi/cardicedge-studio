@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
 import { isCreatureElement } from "@/lib/creature-element";
+import { isItemCategory } from "@/lib/item-category";
 import { isRarity } from "@/lib/rarity";
 import { type Notice, target } from "../../deck-form";
 import {
@@ -18,7 +19,12 @@ import {
   statsErrorMessage,
 } from "../../messages";
 import { waitCard } from "../wait-card";
-import type { ElementsState, SpecState, StatsState } from "./spec-form";
+import type {
+  ElementsState,
+  SpecState,
+  StatBonusesState,
+  StatsState,
+} from "./spec-form";
 
 const changeCardCostMutation = graphql(`
   mutation ChangeCardCost($input: ChangeCardCostInput!) {
@@ -87,6 +93,30 @@ const changeCreatureStatsMutation = graphql(`
             min
           }
         }
+      }
+    }
+  }
+`);
+
+const changeItemCategoryMutation = graphql(`
+  mutation ChangeItemCategory($input: ChangeItemCategoryInput!) {
+    changeItemCategory(input: $input) {
+      __typename
+      ... on ChangeItemCategorySuccess {
+        id
+        revision
+      }
+    }
+  }
+`);
+
+const changeItemStatBonusesMutation = graphql(`
+  mutation ChangeItemStatBonuses($input: ChangeItemStatBonusesInput!) {
+    changeItemStatBonuses(input: $input) {
+      __typename
+      ... on ChangeItemStatBonusesSuccess {
+        id
+        revision
       }
     }
   }
@@ -272,6 +302,79 @@ export async function changeCreatureStats(
         hitPointsError: hitPointsError && statsErrorMessage(hitPointsError),
       };
     }
+    default:
+      return failed(changed.__typename);
+  }
+}
+
+export async function changeItemCategory(
+  _previous: SpecState,
+  form: FormData,
+): Promise<SpecState> {
+  const card = target(form);
+  const category = String(form.get("category") ?? "");
+  if (card === undefined || !isItemCategory(category)) {
+    return { error: INVALID_TARGET };
+  }
+
+  const result = await callCore(changeItemCategoryMutation, {
+    input: { id: card.id, revision: card.revision, category },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+  const changed = result.data.changeItemCategory;
+  switch (changed.__typename) {
+    case "ChangeItemCategorySuccess":
+      return showChanged(card.id, changed.revision);
+    default:
+      return failed(changed.__typename);
+  }
+}
+
+export async function changeItemStatBonuses(
+  _previous: StatBonusesState,
+  form: FormData,
+): Promise<StatBonusesState> {
+  const card = target(form);
+  if (card === undefined) {
+    return { error: INVALID_TARGET };
+  }
+  const attackValue = String(form.get("attackBonus") ?? "");
+  const hitPointsValue = String(form.get("hitPointsBonus") ?? "");
+  const attackBonus = integerOf(attackValue);
+  const hitPointsBonus = integerOf(hitPointsValue);
+  if (attackBonus === undefined || hitPointsBonus === undefined) {
+    return {
+      revision: card.revision,
+      attackBonus: attackValue,
+      hitPointsBonus: hitPointsValue,
+      attackBonusError:
+        attackBonus === undefined
+          ? "AT の増減は整数で入力してください"
+          : undefined,
+      hitPointsBonusError:
+        hitPointsBonus === undefined
+          ? "HP の増減は整数で入力してください"
+          : undefined,
+    };
+  }
+
+  const result = await callCore(changeItemStatBonusesMutation, {
+    input: {
+      id: card.id,
+      revision: card.revision,
+      attackBonus,
+      hitPointsBonus,
+    },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+  const changed = result.data.changeItemStatBonuses;
+  switch (changed.__typename) {
+    case "ChangeItemStatBonusesSuccess":
+      return showChanged(card.id, changed.revision);
     default:
       return failed(changed.__typename);
   }
