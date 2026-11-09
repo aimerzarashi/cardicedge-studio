@@ -67,3 +67,45 @@ export function tracks(count: number, tile: number): string {
     i % 2 === 0 ? `${tile}px` : `${LINK}px`,
   ).join(" ");
 }
+
+export type BoardShortcut = "zoomIn" | "zoomOut" | "fit" | "toggleStats";
+
+// 文字ではなくキーの位置で見るので、Caps Lock や日本語入力の状態によらず効く（Shift の要らない 1 キーにする。`+` は Shift が要るので採らなかった）
+const BOARD_SHORTCUTS: Record<string, BoardShortcut> = {
+  KeyZ: "zoomIn",
+  KeyX: "zoomOut",
+  Digit0: "fit",
+  Numpad0: "fit",
+  KeyT: "toggleStats",
+};
+
+const TEXT_ENTRY_TAGS = new Set(["INPUT", "SELECT", "TEXTAREA"]);
+
+// 文字の入力とブラウザの操作を邪魔しないよう、入力欄の中と修飾キーつきでは効かせない
+export function boardShortcut(event: {
+  code: string;
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  repeat: boolean;
+  target: EventTarget | null;
+}): BoardShortcut | undefined {
+  if (
+    event.shiftKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    event.repeat
+  ) {
+    return undefined;
+  }
+  const target = event.target as {
+    tagName?: string;
+    isContentEditable?: boolean;
+  } | null;
+  if (TEXT_ENTRY_TAGS.has(target?.tagName ?? "") || target?.isContentEditable) {
+    return undefined;
+  }
+  return BOARD_SHORTCUTS[event.code];
+}
