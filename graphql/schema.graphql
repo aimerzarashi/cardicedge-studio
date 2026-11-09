@@ -920,6 +920,78 @@ type ChangeCreatureStatsSuccess {
 	revision: Int!
 }
 """
+アイテムの分類を変える入力
+"""
+input ChangeItemCategoryInput {
+	"""
+	変えるアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの更新の番号
+	"""
+	revision: Int!
+	"""
+	変えた後の分類
+	"""
+	category: ItemCategory!
+}
+"""
+アイテムの分類を変える操作の結果（カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
+"""
+union ChangeItemCategoryResult = ChangeItemCategorySuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+アイテムの分類を変えた（同じ値なら revision は進まない）
+"""
+type ChangeItemCategorySuccess {
+	"""
+	変えたアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	操作した後の更新の番号
+	"""
+	revision: Int!
+}
+"""
+アイテムの戦闘中の AT・HP の増減を変える入力
+"""
+input ChangeItemStatBonusesInput {
+	"""
+	変えるアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの更新の番号
+	"""
+	revision: Int!
+	"""
+	戦闘中に足す攻撃力（負は下げる）
+	"""
+	attackBonus: Int!
+	"""
+	戦闘中に足す体力（負は下げる）
+	"""
+	hitPointsBonus: Int!
+}
+"""
+アイテムの増減を変える操作の結果（カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
+"""
+union ChangeItemStatBonusesResult = ChangeItemStatBonusesSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+アイテムの戦闘中の AT・HP の増減を変えた（どちらも同じ値なら revision は進まない）
+"""
+type ChangeItemStatBonusesSuccess {
+	"""
+	変えたアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	操作した後の更新の番号
+	"""
+	revision: Int!
+}
+"""
 ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの）
 """
 input CheckBoardLayoutInput {
@@ -1632,6 +1704,18 @@ type Item implements Card {
 	"""
 	rarity: CardRarity!
 	"""
+	分類
+	"""
+	category: ItemCategory!
+	"""
+	戦闘中に足す攻撃力（負は下げる）
+	"""
+	attackBonus: Int!
+	"""
+	戦闘中に足す体力（負は下げる）
+	"""
+	hitPointsBonus: Int!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -1643,6 +1727,23 @@ type Item implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+アイテムの分類
+"""
+enum ItemCategory {
+	"""
+	武器
+	"""
+	WEAPON
+	"""
+	防具
+	"""
+	ARMOR
+	"""
+	巻物
+	"""
+	SCROLL
 }
 """
 土地（ふつうのマス。公開するボードの、拠点・チェックポイント以外のマス）
@@ -1889,6 +1990,24 @@ type Mutation {
 		"""
 		input: RetireGrantDeckInput!
 	): RetireGrantDeckResult!
+	"""
+	アイテムの分類を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeItemCategory(
+		"""
+		変えるアイテムと分類
+		"""
+		input: ChangeItemCategoryInput!
+	): ChangeItemCategoryResult!
+	"""
+	アイテムの戦闘中の AT・HP の増減を変える（紐づいたオペレーターだけ。準備中だけ。2 つは一緒に変える）
+	"""
+	changeItemStatBonuses(
+		"""
+		変えるアイテムと増減
+		"""
+		input: ChangeItemStatBonusesInput!
+	): ChangeItemStatBonusesResult!
 	"""
 	アイテムを登録する（紐づいたオペレーターだけ）
 	"""

@@ -210,6 +210,28 @@ export type ChangeCreatureStatsInput = {
   revision: number;
 };
 
+/** アイテムの分類を変える入力 */
+export type ChangeItemCategoryInput = {
+  /** 変えた後の分類 */
+  category: ItemCategory;
+  /** 変えるアイテムの公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの更新の番号 */
+  revision: number;
+};
+
+/** アイテムの戦闘中の AT・HP の増減を変える入力 */
+export type ChangeItemStatBonusesInput = {
+  /** 戦闘中に足す攻撃力（負は下げる） */
+  attackBonus: number;
+  /** 戦闘中に足す体力（負は下げる） */
+  hitPointsBonus: number;
+  /** 変えるアイテムの公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの更新の番号 */
+  revision: number;
+};
+
 /** ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの） */
 export type CheckBoardLayoutInput = {
   /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
@@ -312,6 +334,15 @@ export type GrantDeckStatus =
   | 'PUBLISHED'
   /** 使用不可 */
   | 'RETIRED';
+
+/** アイテムの分類 */
+export type ItemCategory =
+  /** 防具 */
+  | 'ARMOR'
+  /** 巻物 */
+  | 'SCROLL'
+  /** 武器 */
+  | 'WEAPON';
 
 /** 置く土地の入力 */
 export type LandTileInput = {
@@ -1048,6 +1079,34 @@ export type ChangeCreatureStatsMutation = { changeCreatureStats:
       > }
    };
 
+export type ChangeItemCategoryMutationVariables = Exact<{
+  input: ChangeItemCategoryInput;
+}>;
+
+
+export type ChangeItemCategoryMutation = { changeItemCategory:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeItemCategorySuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type ChangeItemStatBonusesMutationVariables = Exact<{
+  input: ChangeItemStatBonusesInput;
+}>;
+
+
+export type ChangeItemStatBonusesMutation = { changeItemStatBonuses:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeItemStatBonusesSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
 export type CardQueryVariables = Exact<{
   id: string;
 }>;
@@ -1057,7 +1116,7 @@ export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number }
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
+    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
    };
 
@@ -2721,6 +2780,28 @@ export const ChangeCreatureStatsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeCreatureStatsMutation, ChangeCreatureStatsMutationVariables>;
+export const ChangeItemCategoryDocument = new TypedDocumentString(`
+    mutation ChangeItemCategory($input: ChangeItemCategoryInput!) {
+  changeItemCategory(input: $input) {
+    __typename
+    ... on ChangeItemCategorySuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeItemCategoryMutation, ChangeItemCategoryMutationVariables>;
+export const ChangeItemStatBonusesDocument = new TypedDocumentString(`
+    mutation ChangeItemStatBonuses($input: ChangeItemStatBonusesInput!) {
+  changeItemStatBonuses(input: $input) {
+    __typename
+    ... on ChangeItemStatBonusesSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeItemStatBonusesMutation, ChangeItemStatBonusesMutationVariables>;
 export const CardDocument = new TypedDocumentString(`
     query Card($id: UUID!) {
   card(id: $id) {
@@ -2739,6 +2820,11 @@ export const CardDocument = new TypedDocumentString(`
       elements
       attack
       hitPoints
+    }
+    ... on Item {
+      category
+      attackBonus
+      hitPointsBonus
     }
   }
 }

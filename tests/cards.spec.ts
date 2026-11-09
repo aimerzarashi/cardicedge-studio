@@ -388,3 +388,37 @@ test("ログインした後の画面からトップへ戻れる", async ({ page 
     page.getByRole("heading", { level: 1, name: "studio" }),
   ).toBeVisible();
 });
+
+test("準備中のアイテムの詳細で分類と AT・HP の増減を変えると詳細に出て、負の増減も入れられる", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("かぶと");
+  await registerItem(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  // 登録の直後は武器で、増減は 0
+  await expect(page.getByLabel("分類")).toHaveValue("WEAPON");
+  await expect(page.getByLabel("AT の増減")).toHaveValue("0");
+  await expect(page.getByLabel("HP の増減")).toHaveValue("0");
+
+  await page.getByLabel("分類").selectOption("ARMOR");
+  await page.getByRole("button", { name: "分類を変える" }).click();
+  await expect(page.getByText("保存しました")).toBeVisible();
+  await expect(page.getByLabel("分類")).toHaveValue("ARMOR");
+
+  await page.getByLabel("AT の増減").fill("-5");
+  await page.getByLabel("HP の増減").fill("30");
+  await page.getByRole("button", { name: "増減を変える" }).click();
+  await expect(page.getByText("保存しました").nth(1)).toBeVisible();
+  await expect(page.getByLabel("AT の増減")).toHaveValue("-5");
+  await expect(page.getByLabel("HP の増減")).toHaveValue("30");
+
+  // 公開した後は表示だけで、増やす値にも + が付く
+  await publishCard(page, name);
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  await expect(page.locator("dl").last()).toHaveText(
+    /分類\s*防具\s*AT の増減\s*-5\s*HP の増減\s*\+30/,
+  );
+});

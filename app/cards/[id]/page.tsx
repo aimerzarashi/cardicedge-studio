@@ -4,6 +4,7 @@ import { CARD_TYPE_LABELS } from "@/lib/card-type";
 import { callCore } from "@/lib/core";
 import { elementsLabel } from "@/lib/creature-element";
 import { dateTimeFormat } from "@/lib/format";
+import { ITEM_CATEGORY_LABELS, signedBonus } from "@/lib/item-category";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { STATUS_LABELS } from "@/lib/status";
 import { publishCard, retireCard } from "../actions";
@@ -13,8 +14,17 @@ import {
   changeCardRarity,
   changeCreatureElements,
   changeCreatureStats,
+  changeItemCategory,
+  changeItemStatBonuses,
 } from "./actions";
-import { CostForm, ElementsForm, RarityForm, StatsForm } from "./spec-form";
+import {
+  CategoryForm,
+  CostForm,
+  ElementsForm,
+  RarityForm,
+  StatBonusesForm,
+  StatsForm,
+} from "./spec-form";
 
 const cardQuery = graphql(`
   query Card($id: UUID!) {
@@ -34,6 +44,11 @@ const cardQuery = graphql(`
         elements
         attack
         hitPoints
+      }
+      ... on Item {
+        category
+        attackBonus
+        hitPointsBonus
       }
     }
   }
@@ -162,6 +177,23 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 />
               </>
             )}
+            {card.__typename === "Item" && (
+              <>
+                <CategoryForm
+                  action={changeItemCategory}
+                  id={card.id}
+                  revision={card.revision}
+                  category={card.category}
+                />
+                <StatBonusesForm
+                  action={changeItemStatBonuses}
+                  id={card.id}
+                  revision={card.revision}
+                  attackBonus={card.attackBonus}
+                  hitPointsBonus={card.hitPointsBonus}
+                />
+              </>
+            )}
           </>
         ) : (
           <dl>
@@ -177,6 +209,16 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dd>{card.attack}</dd>
                 <dt>HP</dt>
                 <dd>{card.hitPoints}</dd>
+              </>
+            )}
+            {card.__typename === "Item" && (
+              <>
+                <dt>分類</dt>
+                <dd>{ITEM_CATEGORY_LABELS[card.category]}</dd>
+                <dt>AT の増減</dt>
+                <dd>{signedBonus(card.attackBonus)}</dd>
+                <dt>HP の増減</dt>
+                <dd>{signedBonus(card.hitPointsBonus)}</dd>
               </>
             )}
           </dl>
