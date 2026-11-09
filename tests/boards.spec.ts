@@ -524,6 +524,29 @@ test("拡大・縮小・全体を表示のボタンで、表示の倍率が変�
   expect(await scaleOf(page)).toBeCloseTo(fitted, 3);
 });
 
+test("Z・X・0 のキーで拡大・縮小・全体を表示ができ、入力欄の中では効かない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("キー"));
+  const editor = section(page, "レイアウト");
+  await expect(viewport(page)).toHaveAttribute("data-scale", /.+/);
+  const fitted = await scaleOf(page);
+
+  await page.keyboard.press("z");
+  await expect.poll(() => scaleOf(page)).toBeGreaterThan(fitted);
+  await page.keyboard.press("0");
+  await expect.poll(() => scaleOf(page)).toBeCloseTo(fitted, 3);
+  await page.keyboard.press("x");
+  await expect.poll(() => scaleOf(page)).toBeLessThan(fitted);
+  await page.keyboard.press("0");
+  await expect.poll(() => scaleOf(page)).toBeCloseTo(fitted, 3);
+
+  await editor.getByLabel("幅").focus();
+  await page.keyboard.press("z");
+  await expect.poll(() => scaleOf(page)).toBeCloseTo(fitted, 3);
+});
+
 test("幅・高さが最大のボードでも、端のマスを押せる", async ({ page }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("広い"));

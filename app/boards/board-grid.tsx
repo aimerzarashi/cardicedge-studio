@@ -29,6 +29,7 @@ import {
   tileText,
 } from "./board-paint";
 import {
+  boardShortcut,
   centerOn,
   fitView,
   type Size,
@@ -155,6 +156,39 @@ export function BoardGrid({
     return () => element.removeEventListener("wheel", onWheel);
   }, [size, width, height]);
 
+  useEffect(() => {
+    if (!size) {
+      return;
+    }
+    const zoomBy = (factor: number) => {
+      setAnimated(true);
+      setView((current) =>
+        zoomAt(
+          current ?? fitView(size, width, height),
+          factor,
+          size.width / 2,
+          size.height / 2,
+        ),
+      );
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      switch (boardShortcut(event)) {
+        case "zoomIn":
+          zoomBy(ZOOM_STEP);
+          break;
+        case "zoomOut":
+          zoomBy(1 / ZOOM_STEP);
+          break;
+        case "fit":
+          setAnimated(true);
+          setView(null);
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [size, width, height]);
+
   function zoom(factor: number) {
     if (!size || !shown) {
       return;
@@ -256,14 +290,26 @@ export function BoardGrid({
       style={{ border: "none", margin: 0, padding: 0, minInlineSize: 0 }}
     >
       <div>
-        <button type="button" onClick={() => zoom(ZOOM_STEP)}>
+        <button
+          type="button"
+          title="キー: Z"
+          aria-keyshortcuts="z"
+          onClick={() => zoom(ZOOM_STEP)}
+        >
           拡大
         </button>
-        <button type="button" onClick={() => zoom(1 / ZOOM_STEP)}>
+        <button
+          type="button"
+          title="キー: X"
+          aria-keyshortcuts="x"
+          onClick={() => zoom(1 / ZOOM_STEP)}
+        >
           縮小
         </button>
         <button
           type="button"
+          title="キー: 0"
+          aria-keyshortcuts="0"
           onClick={() => {
             setAnimated(true);
             setView(null);
