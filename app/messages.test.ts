@@ -264,14 +264,34 @@ describe("スペルの効果の文言", () => {
   });
 
   it("フォームに入れる種類と値を、core が返した型から読む", () => {
-    assert.deepEqual(spellEffectValue(null), { kind: "none", value: null });
+    assert.deepEqual(spellEffectValue(null), {
+      kind: "none",
+      value: null,
+      turns: null,
+    });
     assert.deepEqual(
       spellEffectValue({ __typename: "SpellGainMagicEffect", perLap: 100 }),
-      { kind: "gainMagic", value: 100 },
+      { kind: "gainMagic", value: 100, turns: null },
     );
     assert.deepEqual(
       spellEffectValue({ __typename: "SpellRollDiceEffect", count: 2 }),
-      { kind: "rollDice", value: 2 },
+      { kind: "rollDice", value: 2, turns: null },
+    );
+    assert.deepEqual(
+      spellEffectValue({
+        __typename: "SpellFixedDiceCurseEffect",
+        value: 6,
+        turns: 1,
+      }),
+      { kind: "fixedDiceCurse", value: 6, turns: 1 },
+    );
+    assert.equal(
+      spellEffectLabel({
+        __typename: "SpellFixedDiceCurseEffect",
+        value: 6,
+        turns: 1,
+      }),
+      "対象の次のサイコロの目を 6 にする呪い（1 ターン）",
     );
   });
 

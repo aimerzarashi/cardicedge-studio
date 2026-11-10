@@ -51,6 +51,8 @@ export type EffectState = Notice &
     kind?: string;
     value?: string;
     valueError?: string;
+    turns?: string;
+    turnsError?: string;
   };
 
 // アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
@@ -324,8 +326,8 @@ export function EffectForm({
   action: (previous: EffectState, form: FormData) => Promise<EffectState>;
   id: string;
   revision: number;
-  // 今の効果の種類と値（効果なしは kind が none）
-  effect: { kind: string; value: number | null };
+  // 今の効果の種類と値（効果なしは kind が none。ターン数は呪いだけ）
+  effect: { kind: string; value: number | null; turns: number | null };
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const kept = state.revision === revision ? state : {};
@@ -364,6 +366,21 @@ export function EffectForm({
         {kept.valueError && (
           <p id="value-error" role="alert">
             {kept.valueError}
+          </p>
+        )}
+        <label>
+          解けるまでのターン数（呪いだけ）
+          <input
+            type="number"
+            name="turns"
+            defaultValue={kept.turns ?? effect.turns ?? 1}
+            aria-invalid={kept.turnsError ? true : undefined}
+            aria-describedby={kept.turnsError ? "turns-error" : undefined}
+          />
+        </label>
+        {kept.turnsError && (
+          <p id="turns-error" role="alert">
+            {kept.turnsError}
           </p>
         )}
         <button type="submit" disabled={isPending}>

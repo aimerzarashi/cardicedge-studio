@@ -350,6 +350,8 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   "effect.drawCards.count": "引く枚数",
   "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
   "effect.rollDice.count": "サイコロの個数",
+  "effect.fixedDiceCurse.value": "決める目",
+  "effect.fixedDiceCurse.turns": "解けるまでのターン数",
 };
 
 // 攻撃力・体力・移動・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
@@ -365,7 +367,13 @@ export function statsErrorMessage(error: FieldError): string {
 
 // core が返したスペルの効果（種類は __typename。効果なしは null）
 export type SpellEffectView =
-  | { __typename?: string; count?: number; perLap?: number }
+  | {
+      __typename?: string;
+      count?: number;
+      perLap?: number;
+      value?: number;
+      turns?: number;
+    }
   | null
   | undefined;
 
@@ -392,24 +400,42 @@ export const SPELL_EFFECT_KINDS = [
     field: "effect.rollDice.count",
     typename: "SpellRollDiceEffect",
   },
+  {
+    kind: "fixedDiceCurse",
+    label: "次のサイコロの目を決める呪い",
+    valueLabel: "決める目",
+    field: "effect.fixedDiceCurse.value",
+    typename: "SpellFixedDiceCurseEffect",
+  },
 ] as const;
+
+// 呪いの種類だけが持つ、解けるまでのターン数の項目（core の入力の項目）
+export const CURSE_TURNS_FIELD = "effect.fixedDiceCurse.turns";
 
 export type SpellEffectKind = (typeof SPELL_EFFECT_KINDS)[number]["kind"];
 
-// フォームに入れる今の効果の種類と値（効果なしは kind が none で値は null）
+// フォームに入れる今の効果の種類と値（効果なしは kind が none で値は null。ターン数は呪いだけ）
 export function spellEffectValue(effect: SpellEffectView): {
   kind: SpellEffectKind | "none";
   value: number | null;
+  turns: number | null;
 } {
   const found = SPELL_EFFECT_KINDS.find(
     (entry) => entry.typename === effect?.__typename,
   );
   if (!found || !effect) {
-    return { kind: "none", value: null };
+    return { kind: "none", value: null, turns: null };
   }
+  const value =
+    found.kind === "gainMagic"
+      ? effect.perLap
+      : found.kind === "fixedDiceCurse"
+        ? effect.value
+        : effect.count;
   return {
     kind: found.kind,
-    value: (found.kind === "gainMagic" ? effect.perLap : effect.count) ?? null,
+    value: value ?? null,
+    turns: found.kind === "fixedDiceCurse" ? (effect.turns ?? null) : null,
   };
 }
 
@@ -422,6 +448,8 @@ export function spellEffectLabel(effect: SpellEffectView): string {
       return `（周回数 + 1）× ${effect.perLap} の魔力を得る`;
     case "SpellRollDiceEffect":
       return `サイコロを ${effect.count} 個同時に振る`;
+    case "SpellFixedDiceCurseEffect":
+      return `対象の次のサイコロの目を ${effect.value} にする呪い（${effect.turns} ターン）`;
     default:
       return "なし";
   }

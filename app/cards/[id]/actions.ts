@@ -11,6 +11,7 @@ import { type Notice, target } from "../../deck-form";
 import {
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
+  CURSE_TURNS_FIELD,
   costErrorMessage,
   elementsErrorMessage,
   FORBIDDEN,
@@ -402,7 +403,13 @@ export async function changeSpellEffect(
     return { error: INVALID_TARGET };
   }
   const valueText = String(form.get("value") ?? "");
-  const kept = { revision: card.revision, kind, value: valueText };
+  const turnsText = String(form.get("turns") ?? "");
+  const kept = {
+    revision: card.revision,
+    kind,
+    value: valueText,
+    turns: turnsText,
+  };
   let effect: SpellEffectInput | null = null;
   if (entry !== undefined) {
     const value = integerOf(valueText);
@@ -412,12 +419,21 @@ export async function changeSpellEffect(
         valueError: `${entry.valueLabel}は整数で入力してください`,
       };
     }
+    const turns = integerOf(turnsText);
+    if (entry.kind === "fixedDiceCurse" && turns === undefined) {
+      return {
+        ...kept,
+        turnsError: "解けるまでのターン数は整数で入力してください",
+      };
+    }
     effect =
       entry.kind === "drawCards"
         ? { drawCards: { count: value } }
         : entry.kind === "gainMagic"
           ? { gainMagic: { perLap: value } }
-          : { rollDice: { count: value } };
+          : entry.kind === "rollDice"
+            ? { rollDice: { count: value } }
+            : { fixedDiceCurse: { value, turns: turns ?? 0 } };
   }
 
   const result = await callCore(changeSpellEffectMutation, {
@@ -432,9 +448,13 @@ export async function changeSpellEffect(
       return showChanged(card.id, changed.revision);
     case "ValidationErrors": {
       const valueError = changed.errors.find((e) => e.field === entry?.field);
+      const turnsError = changed.errors.find(
+        (e) => e.field === CURSE_TURNS_FIELD,
+      );
       return {
         ...kept,
         valueError: valueError && statsErrorMessage(valueError),
+        turnsError: turnsError && statsErrorMessage(turnsError),
       };
     }
     default:

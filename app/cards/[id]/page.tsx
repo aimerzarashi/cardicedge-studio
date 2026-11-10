@@ -68,6 +68,10 @@ const cardQuery = graphql(`
           ... on SpellRollDiceEffect {
             count
           }
+          ... on SpellFixedDiceCurseEffect {
+            value
+            turns
+          }
         }
       }
     }

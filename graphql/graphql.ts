@@ -725,11 +725,21 @@ export type SpellDrawCardsEffectInput = {
 /** スペルの効果の入力（種類のどれか 1 つだけ） */
 export type SpellEffectInput =
   {   /** カードを引く */
-  drawCards: SpellDrawCardsEffectInput; gainMagic?: never; rollDice?: never; }
-  |  { drawCards?: never;   /** 魔力を得る */
+  drawCards: SpellDrawCardsEffectInput; fixedDiceCurse?: never; gainMagic?: never; rollDice?: never; }
+  |  { drawCards?: never;   /** 次のサイコロの目を決める呪い */
+  fixedDiceCurse: SpellFixedDiceCurseEffectInput; gainMagic?: never; rollDice?: never; }
+  |  { drawCards?: never; fixedDiceCurse?: never;   /** 魔力を得る */
   gainMagic: SpellGainMagicEffectInput; rollDice?: never; }
-  |  { drawCards?: never; gainMagic?: never;   /** サイコロを複数振る */
+  |  { drawCards?: never; fixedDiceCurse?: never; gainMagic?: never;   /** サイコロを複数振る */
   rollDice: SpellRollDiceEffectInput; };
+
+/** 次のサイコロの目を決める呪いの入力 */
+export type SpellFixedDiceCurseEffectInput = {
+  /** 解けるまでのターン数（1 以上） */
+  turns: number;
+  /** 決める目（1 以上） */
+  value: number;
+};
 
 /** 魔力を得る効果の入力 */
 export type SpellGainMagicEffectInput = {
@@ -1226,6 +1236,7 @@ export type CardQuery = { card:
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
         | { __typename: 'SpellDrawCardsEffect', count: number }
+        | { __typename: 'SpellFixedDiceCurseEffect', value: number, turns: number }
         | { __typename: 'SpellGainMagicEffect', perLap: number }
         | { __typename: 'SpellRollDiceEffect', count: number }
        | null }
@@ -2989,6 +3000,10 @@ export const CardDocument = new TypedDocumentString(`
         }
         ... on SpellRollDiceEffect {
           count
+        }
+        ... on SpellFixedDiceCurseEffect {
+          value
+          turns
         }
       }
     }

@@ -4142,7 +4142,7 @@ input SpellDrawCardsEffectInput {
 """
 スペルの効果（種類は __typename で見分ける）
 """
-union SpellEffect = SpellDrawCardsEffect | SpellGainMagicEffect | SpellRollDiceEffect
+union SpellEffect = SpellDrawCardsEffect | SpellGainMagicEffect | SpellRollDiceEffect | SpellFixedDiceCurseEffect
 """
 スペルの効果の入力（種類のどれか 1 つだけ）
 """
@@ -4159,6 +4159,36 @@ input SpellEffectInput @oneOf {
 	サイコロを複数振る
 	"""
 	rollDice: SpellRollDiceEffectInput
+	"""
+	次のサイコロの目を決める呪い
+	"""
+	fixedDiceCurse: SpellFixedDiceCurseEffectInput
+}
+"""
+次のサイコロの目を決める呪い（対象のプレイヤーが次に振ると、目は value になる。turns ターンで解ける）
+"""
+type SpellFixedDiceCurseEffect {
+	"""
+	決める目（1 以上）
+	"""
+	value: Int!
+	"""
+	解けるまでのターン数（1 以上。かけられた人が自分のターンを終えるたびに 1 減り、0 で解ける）
+	"""
+	turns: Int!
+}
+"""
+次のサイコロの目を決める呪いの入力
+"""
+input SpellFixedDiceCurseEffectInput {
+	"""
+	決める目（1 以上）
+	"""
+	value: Int!
+	"""
+	解けるまでのターン数（1 以上）
+	"""
+	turns: Int!
 }
 """
 魔力を得る効果（使った人が（周回数 + 1）× perLap の魔力を得る。周回数はその対戦で周回を終えた回数）
