@@ -198,6 +198,16 @@ export type ChangeCreatureElementsInput = {
   revision: number;
 };
 
+/** クリーチャーの移動を変える入力 */
+export type ChangeCreatureMovementInput = {
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 変えた後の移動（0 以上。上限は無い） */
+  movement: number;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
 /** クリーチャーの攻撃力と体力を変える入力 */
 export type ChangeCreatureStatsInput = {
   /** 変えた後の攻撃力（AT。0 以上。上限は無い） */
@@ -1049,6 +1059,36 @@ export type ChangeCreatureElementsMutation = { changeCreatureElements:
       > }
    };
 
+export type ChangeCreatureMovementMutationVariables = Exact<{
+  input: ChangeCreatureMovementInput;
+}>;
+
+
+export type ChangeCreatureMovementMutation = { changeCreatureMovement:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureMovementSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
 export type ChangeCreatureStatsMutationVariables = Exact<{
   input: ChangeCreatureStatsInput;
 }>;
@@ -1114,7 +1154,7 @@ export type CardQueryVariables = Exact<{
 
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, movement: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
@@ -2760,6 +2800,26 @@ export const ChangeCreatureElementsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeCreatureElementsMutation, ChangeCreatureElementsMutationVariables>;
+export const ChangeCreatureMovementDocument = new TypedDocumentString(`
+    mutation ChangeCreatureMovement($input: ChangeCreatureMovementInput!) {
+  changeCreatureMovement(input: $input) {
+    __typename
+    ... on ChangeCreatureMovementSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureMovementMutation, ChangeCreatureMovementMutationVariables>;
 export const ChangeCreatureStatsDocument = new TypedDocumentString(`
     mutation ChangeCreatureStats($input: ChangeCreatureStatsInput!) {
   changeCreatureStats(input: $input) {
@@ -2820,6 +2880,7 @@ export const CardDocument = new TypedDocumentString(`
       elements
       attack
       hitPoints
+      movement
     }
     ... on Item {
       category

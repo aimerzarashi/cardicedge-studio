@@ -342,6 +342,16 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByText("保存しました").nth(1)).toBeVisible();
   await expect(page.getByLabel("AT", { exact: true })).toHaveValue("40");
   await expect(page.getByLabel("HP", { exact: true })).toHaveValue("50");
+
+  // 移動は既定の 1 から、AT・HP とは別のボタンで変える
+  await expect(page.getByLabel("移動", { exact: true })).toHaveValue("1");
+  await page.getByLabel("移動", { exact: true }).fill("-1");
+  await page.getByRole("button", { name: "移動を変える" }).click();
+  await expect(page.getByText("移動は 0 以上にしてください")).toBeVisible();
+  await page.getByLabel("移動", { exact: true }).fill("0");
+  await page.getByRole("button", { name: "移動を変える" }).click();
+  await expect(page.getByText("保存しました").nth(2)).toBeVisible();
+  await expect(page.getByLabel("移動", { exact: true })).toHaveValue("0");
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

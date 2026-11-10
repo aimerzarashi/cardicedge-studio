@@ -37,6 +37,13 @@ export type StatsState = Notice &
     hitPointsError?: string;
   };
 
+// 移動のフォームの結果。形は攻撃力と体力のフォームと同じ
+export type MovementState = Notice &
+  Kept & {
+    movement?: string;
+    movementError?: string;
+  };
+
 // アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
 export type StatBonusesState = Notice &
   Kept & {
@@ -245,6 +252,52 @@ export function StatsForm({
         )}
         <button type="submit" disabled={isPending}>
           AT と HP を変える
+        </button>
+      </form>
+    </>
+  );
+}
+
+// 移動は AT・HP とは別の操作で変える（core の changeCreatureMovement。2026-11-10 オーナー）
+export function MovementForm({
+  action,
+  id,
+  revision,
+  movement,
+}: {
+  action: (previous: MovementState, form: FormData) => Promise<MovementState>;
+  id: string;
+  revision: number;
+  movement: number;
+}) {
+  const [state, formAction, isPending] = useActionState(action, {});
+  const kept = state.revision === revision ? state : {};
+
+  return (
+    <>
+      {state.status && <p role="status">{state.status}</p>}
+      {state.error && <p role="alert">{state.error}</p>}
+      <form key={revision} action={formAction}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="revision" value={revision} />
+        <label>
+          移動
+          <input
+            type="number"
+            name="movement"
+            required
+            defaultValue={kept.movement ?? movement}
+            aria-invalid={kept.movementError ? true : undefined}
+            aria-describedby={kept.movementError ? "movement-error" : undefined}
+          />
+        </label>
+        {kept.movementError && (
+          <p id="movement-error" role="alert">
+            {kept.movementError}
+          </p>
+        )}
+        <button type="submit" disabled={isPending}>
+          移動を変える
         </button>
       </form>
     </>
