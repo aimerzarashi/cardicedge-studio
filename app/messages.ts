@@ -348,6 +348,8 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   hitPoints: "HP",
   movement: "移動",
   "effect.drawCards.count": "引く枚数",
+  "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
+  "effect.rollDice.count": "サイコロの個数",
 };
 
 // 攻撃力・体力・移動・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
@@ -361,13 +363,65 @@ export function statsErrorMessage(error: FieldError): string {
   }
 }
 
+// core が返したスペルの効果（種類は __typename。効果なしは null）
+export type SpellEffectView =
+  | { __typename?: string; count?: number; perLap?: number }
+  | null
+  | undefined;
+
+// スペルの効果の種類（フォームの選択肢の値・呼び方・値の呼び方と、core の入力の項目と出力の型の名前の対応）
+export const SPELL_EFFECT_KINDS = [
+  {
+    kind: "drawCards",
+    label: "カードを引く",
+    valueLabel: "引く枚数",
+    field: "effect.drawCards.count",
+    typename: "SpellDrawCardsEffect",
+  },
+  {
+    kind: "gainMagic",
+    label: "魔力を得る",
+    valueLabel: "周回数 1 つあたりの魔力",
+    field: "effect.gainMagic.perLap",
+    typename: "SpellGainMagicEffect",
+  },
+  {
+    kind: "rollDice",
+    label: "サイコロを複数振る",
+    valueLabel: "サイコロの個数",
+    field: "effect.rollDice.count",
+    typename: "SpellRollDiceEffect",
+  },
+] as const;
+
+export type SpellEffectKind = (typeof SPELL_EFFECT_KINDS)[number]["kind"];
+
+// フォームに入れる今の効果の種類と値（効果なしは kind が none で値は null）
+export function spellEffectValue(effect: SpellEffectView): {
+  kind: SpellEffectKind | "none";
+  value: number | null;
+} {
+  const found = SPELL_EFFECT_KINDS.find(
+    (entry) => entry.typename === effect?.__typename,
+  );
+  if (!found || !effect) {
+    return { kind: "none", value: null };
+  }
+  return {
+    kind: found.kind,
+    value: (found.kind === "gainMagic" ? effect.perLap : effect.count) ?? null,
+  };
+}
+
 // スペルの効果の表示。種類は core が返した __typename で見分け、効果なし（null）は「なし」
-export function spellEffectLabel(
-  effect: { __typename?: string; count?: number } | null | undefined,
-): string {
+export function spellEffectLabel(effect: SpellEffectView): string {
   switch (effect?.__typename) {
     case "SpellDrawCardsEffect":
       return `カードを ${effect.count} 枚引く`;
+    case "SpellGainMagicEffect":
+      return `（周回数 + 1）× ${effect.perLap} の魔力を得る`;
+    case "SpellRollDiceEffect":
+      return `サイコロを ${effect.count} 個同時に振る`;
     default:
       return "なし";
   }

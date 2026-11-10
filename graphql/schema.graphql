@@ -4142,7 +4142,7 @@ input SpellDrawCardsEffectInput {
 """
 スペルの効果（種類は __typename で見分ける）
 """
-union SpellEffect = SpellDrawCardsEffect
+union SpellEffect = SpellDrawCardsEffect | SpellGainMagicEffect | SpellRollDiceEffect
 """
 スペルの効果の入力（種類のどれか 1 つだけ）
 """
@@ -4151,6 +4151,50 @@ input SpellEffectInput @oneOf {
 	カードを引く
 	"""
 	drawCards: SpellDrawCardsEffectInput
+	"""
+	魔力を得る
+	"""
+	gainMagic: SpellGainMagicEffectInput
+	"""
+	サイコロを複数振る
+	"""
+	rollDice: SpellRollDiceEffectInput
+}
+"""
+魔力を得る効果（使った人が（周回数 + 1）× perLap の魔力を得る。周回数はその対戦で周回を終えた回数）
+"""
+type SpellGainMagicEffect {
+	"""
+	周回数 1 つあたりの魔力（1 以上）
+	"""
+	perLap: Int!
+}
+"""
+魔力を得る効果の入力
+"""
+input SpellGainMagicEffectInput {
+	"""
+	周回数 1 つあたりの魔力（1 以上。上限は無い）
+	"""
+	perLap: Int!
+}
+"""
+サイコロを複数振る効果（使った人は、そのターンのサイコロを count 個同時に振り、合計の分だけ進む）
+"""
+type SpellRollDiceEffect {
+	"""
+	振るサイコロの個数（2 以上）
+	"""
+	count: Int!
+}
+"""
+サイコロを複数振る効果の入力
+"""
+input SpellRollDiceEffectInput {
+	"""
+	振るサイコロの個数（2 以上。上限は無い）
+	"""
+	count: Int!
 }
 """
 スターターセット

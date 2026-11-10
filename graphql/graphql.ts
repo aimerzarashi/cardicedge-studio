@@ -725,7 +725,23 @@ export type SpellDrawCardsEffectInput = {
 /** スペルの効果の入力（種類のどれか 1 つだけ） */
 export type SpellEffectInput =
   {   /** カードを引く */
-  drawCards: SpellDrawCardsEffectInput; };
+  drawCards: SpellDrawCardsEffectInput; gainMagic?: never; rollDice?: never; }
+  |  { drawCards?: never;   /** 魔力を得る */
+  gainMagic: SpellGainMagicEffectInput; rollDice?: never; }
+  |  { drawCards?: never; gainMagic?: never;   /** サイコロを複数振る */
+  rollDice: SpellRollDiceEffectInput; };
+
+/** 魔力を得る効果の入力 */
+export type SpellGainMagicEffectInput = {
+  /** 周回数 1 つあたりの魔力（1 以上。上限は無い） */
+  perLap: number;
+};
+
+/** サイコロを複数振る効果の入力 */
+export type SpellRollDiceEffectInput = {
+  /** 振るサイコロの個数（2 以上。上限は無い） */
+  count: number;
+};
 
 /** スターターセットの一覧の絞り込み */
 export type StarterSetFilter = {
@@ -1208,7 +1224,11 @@ export type CardQuery = { card:
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, movement: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
-    | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect: { __typename: 'SpellDrawCardsEffect', count: number } | null }
+    | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
+        | { __typename: 'SpellDrawCardsEffect', count: number }
+        | { __typename: 'SpellGainMagicEffect', perLap: number }
+        | { __typename: 'SpellRollDiceEffect', count: number }
+       | null }
    };
 
 export type RetireCardMutationVariables = Exact<{
@@ -2962,6 +2982,12 @@ export const CardDocument = new TypedDocumentString(`
       effect {
         __typename
         ... on SpellDrawCardsEffect {
+          count
+        }
+        ... on SpellGainMagicEffect {
+          perLap
+        }
+        ... on SpellRollDiceEffect {
           count
         }
       }

@@ -13,6 +13,7 @@ import {
 import { ITEM_CATEGORIES, ITEM_CATEGORY_LABELS } from "@/lib/item-category";
 import { RARITIES, RARITY_LABELS } from "@/lib/rarity";
 import type { Kept, Notice } from "../../deck-form";
+import { SPELL_EFFECT_KINDS } from "../../messages";
 
 // 性能の項目 1 つを変えるフォームの結果。入力した値と誤りは、入力したときの版に結びつける
 export type SpecState = Notice &
@@ -48,8 +49,8 @@ export type MovementState = Notice &
 export type EffectState = Notice &
   Kept & {
     kind?: string;
-    count?: string;
-    countError?: string;
+    value?: string;
+    valueError?: string;
   };
 
 // アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
@@ -312,23 +313,23 @@ export function MovementForm({
   );
 }
 
-// 効果は種類を選んでから値を入れる（core の changeSpellEffect。種類ごとに値の項目が違うため。今は「カードを引く」だけ）。
-// 「なし」を選ぶと枚数は送らない
+// 効果は種類を選んでから値を入れる（core の changeSpellEffect。種類ごとに値の意味が違うため、値の欄は 1 つにして選んだ種類の値として送る）。
+// 「なし」を選ぶと値は送らない
 export function EffectForm({
   action,
   id,
   revision,
-  drawCount,
+  effect,
 }: {
   action: (previous: EffectState, form: FormData) => Promise<EffectState>;
   id: string;
   revision: number;
-  // 今の効果が「カードを引く」なら引く枚数、効果なしなら null
-  drawCount: number | null;
+  // 今の効果の種類と値（効果なしは kind が none）
+  effect: { kind: string; value: number | null };
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const kept = state.revision === revision ? state : {};
-  const kind = kept.kind ?? (drawCount === null ? "none" : "drawCards");
+  const kind = kept.kind ?? effect.kind;
 
   return (
     <>
@@ -343,22 +344,26 @@ export function EffectForm({
           効果
           <select name="kind" defaultValue={kind}>
             <option value="none">なし</option>
-            <option value="drawCards">カードを引く</option>
+            {SPELL_EFFECT_KINDS.map((entry) => (
+              <option key={entry.kind} value={entry.kind}>
+                {entry.label}（{entry.valueLabel}）
+              </option>
+            ))}
           </select>
         </label>
         <label>
-          引く枚数
+          値
           <input
             type="number"
-            name="count"
-            defaultValue={kept.count ?? drawCount ?? 1}
-            aria-invalid={kept.countError ? true : undefined}
-            aria-describedby={kept.countError ? "count-error" : undefined}
+            name="value"
+            defaultValue={kept.value ?? effect.value ?? 1}
+            aria-invalid={kept.valueError ? true : undefined}
+            aria-describedby={kept.valueError ? "value-error" : undefined}
           />
         </label>
-        {kept.countError && (
-          <p id="count-error" role="alert">
-            {kept.countError}
+        {kept.valueError && (
+          <p id="value-error" role="alert">
+            {kept.valueError}
           </p>
         )}
         <button type="submit" disabled={isPending}>

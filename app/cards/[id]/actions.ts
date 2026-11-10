@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { graphql } from "@/graphql";
+import type { SpellEffectInput } from "@/graphql/graphql";
 import { callCore } from "@/lib/core";
 import { isCreatureElement } from "@/lib/creature-element";
 import { isItemCategory } from "@/lib/item-category";
@@ -16,6 +17,7 @@ import {
   INVALID_TARGET,
   NOT_REFLECTED,
   REVISION_CONFLICT,
+  SPELL_EFFECT_KINDS,
   statsErrorMessage,
 } from "../../messages";
 import { waitCard } from "../wait-card";
@@ -388,25 +390,34 @@ const changeSpellEffectMutation = graphql(`
   }
 `);
 
-// 「なし」は効果なし（null）を送り、引く枚数は読まない
+// 「なし」は効果なし（null）を送り、値は読まない。ほかは選んだ種類の入力の項目に値を入れる
 export async function changeSpellEffect(
   _previous: EffectState,
   form: FormData,
 ): Promise<EffectState> {
   const card = target(form);
   const kind = String(form.get("kind") ?? "");
-  if (card === undefined || (kind !== "none" && kind !== "drawCards")) {
+  const entry = SPELL_EFFECT_KINDS.find((candidate) => candidate.kind === kind);
+  if (card === undefined || (kind !== "none" && entry === undefined)) {
     return { error: INVALID_TARGET };
   }
-  const countValue = String(form.get("count") ?? "");
-  const kept = { revision: card.revision, kind, count: countValue };
-  let effect: { drawCards: { count: number } } | null = null;
-  if (kind === "drawCards") {
-    const count = integerOf(countValue);
-    if (count === undefined) {
-      return { ...kept, countError: "引く枚数は整数で入力してください" };
+  const valueText = String(form.get("value") ?? "");
+  const kept = { revision: card.revision, kind, value: valueText };
+  let effect: SpellEffectInput | null = null;
+  if (entry !== undefined) {
+    const value = integerOf(valueText);
+    if (value === undefined) {
+      return {
+        ...kept,
+        valueError: `${entry.valueLabel}は整数で入力してください`,
+      };
     }
-    effect = { drawCards: { count } };
+    effect =
+      entry.kind === "drawCards"
+        ? { drawCards: { count: value } }
+        : entry.kind === "gainMagic"
+          ? { gainMagic: { perLap: value } }
+          : { rollDice: { count: value } };
   }
 
   const result = await callCore(changeSpellEffectMutation, {
@@ -420,12 +431,10 @@ export async function changeSpellEffect(
     case "ChangeSpellEffectSuccess":
       return showChanged(card.id, changed.revision);
     case "ValidationErrors": {
-      const countError = changed.errors.find(
-        (e) => e.field === "effect.drawCards.count",
-      );
+      const valueError = changed.errors.find((e) => e.field === entry?.field);
       return {
         ...kept,
-        countError: countError && statsErrorMessage(countError),
+        valueError: valueError && statsErrorMessage(valueError),
       };
     }
     default:
