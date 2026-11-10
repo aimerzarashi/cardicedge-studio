@@ -34,7 +34,7 @@ http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバー�
 送ったメール（パスワードの設定等）は http://localhost:8025 の Mailpit で読む（外には送らない。ポートは STUDIO_MAILPIT_PORT で変更可）。
 ポートが他と衝突する場合は `STUDIO_PORT=13001 make up` のように変更できる。
 
-開発の画面がページ全体の読み直しを繰り返すとき（ブラウザの console に `[Fast Refresh] rebuilding` が出続ける）は、まず `docker compose restart studio`、直らなければ `make dev-cache-reset` で開発用のキャッシュを作り直す。依存（`pnpm-lock.yaml` から入れたもの）か `next.config.ts` が前回の起動から変わっていれば、起動のとき（`make up`・再起動）に自動で作り直す（local/studio/dev.sh。studio#66・game#39）。
+開発の画面がページ全体の読み直しを繰り返すとき（ブラウザの console に `[Fast Refresh] rebuilding` が出続ける）は、ふつうは自動で直る。起動の手順（local/studio/dev.sh）が開発サーバーの「Compiled in」の行を 1 分ごとに数え、20 を超えたら開発用のキャッシュ（.next/dev）を消して起動し直す（`docker compose logs studio` に「開発の画面の読み直しの繰り返し…を見つけたので」と出る。同じ起動の間に 3 回作り直しても続くときは数えるのをやめるので、キャッシュ以外の原因を調べる。しきい値と回数は環境変数 `DEV_RELOAD_LOOP_LIMIT`・`DEV_RELOAD_LOOP_MAX_RESETS`。game#68・studio#77）。直らなければ `make dev-cache-reset` で作り直す。Grafana の「入口 · 異常」の「画面の再コンパイル」でも見える（core#133）。依存（`pnpm-lock.yaml` から入れたもの）か `next.config.ts` が前回の起動から変わっていれば、起動のとき（`make up`・再起動）に自動で作り直す（local/studio/dev.sh。studio#66・game#39）。
 
 ### 構成
 
