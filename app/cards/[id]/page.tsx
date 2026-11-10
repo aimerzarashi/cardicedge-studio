@@ -7,7 +7,7 @@ import { dateTimeFormat } from "@/lib/format";
 import { ITEM_CATEGORY_LABELS, signedBonus } from "@/lib/item-category";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { STATUS_LABELS } from "@/lib/status";
-import { spellEffectLabel } from "../../messages";
+import { spellEffectLabel, spellEffectValue } from "../../messages";
 import { publishCard, retireCard } from "../actions";
 import { CardStatusButton } from "../card-status-button";
 import {
@@ -60,6 +60,12 @@ const cardQuery = graphql(`
         effect {
           __typename
           ... on SpellDrawCardsEffect {
+            count
+          }
+          ... on SpellGainMagicEffect {
+            perLap
+          }
+          ... on SpellRollDiceEffect {
             count
           }
         }
@@ -219,11 +225,7 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 action={changeSpellEffect}
                 id={card.id}
                 revision={card.revision}
-                drawCount={
-                  card.effect?.__typename === "SpellDrawCardsEffect"
-                    ? card.effect.count
-                    : null
-                }
+                effect={spellEffectValue(card.effect)}
               />
             )}
           </>
