@@ -345,7 +345,12 @@ export function elementsErrorMessage(error: FieldError): string {
 
 // 攻撃力・体力の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
 export function statsErrorMessage(error: FieldError): string {
-  const label = error.field === "hitPoints" ? "HP" : "AT";
+  const label =
+    error.field === "hitPoints"
+      ? "HP"
+      : error.field === "movement"
+        ? "移動"
+        : "AT";
   switch (error.__typename) {
     case "FieldTooSmall":
       return `${label}は ${error.min} 以上にしてください`;

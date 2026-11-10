@@ -21,6 +21,7 @@ import {
 import { waitCard } from "../wait-card";
 import type {
   ElementsState,
+  MovementState,
   SpecState,
   StatBonusesState,
   StatsState,
@@ -71,6 +72,27 @@ const changeCreatureElementsMutation = graphql(`
         errors {
           __typename
           field
+        }
+      }
+    }
+  }
+`);
+
+const changeCreatureMovementMutation = graphql(`
+  mutation ChangeCreatureMovement($input: ChangeCreatureMovementInput!) {
+    changeCreatureMovement(input: $input) {
+      __typename
+      ... on ChangeCreatureMovementSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldTooSmall {
+            min
+          }
         }
       }
     }
@@ -300,6 +322,43 @@ export async function changeCreatureStats(
         ...kept,
         attackError: attackError && statsErrorMessage(attackError),
         hitPointsError: hitPointsError && statsErrorMessage(hitPointsError),
+      };
+    }
+    default:
+      return failed(changed.__typename);
+  }
+}
+
+export async function changeCreatureMovement(
+  _previous: MovementState,
+  form: FormData,
+): Promise<MovementState> {
+  const card = target(form);
+  if (card === undefined) {
+    return { error: INVALID_TARGET };
+  }
+  const movementValue = String(form.get("movement") ?? "");
+  const movement = integerOf(movementValue);
+  const kept = { revision: card.revision, movement: movementValue };
+  if (movement === undefined) {
+    return { ...kept, movementError: "移動は整数で入力してください" };
+  }
+
+  const result = await callCore(changeCreatureMovementMutation, {
+    input: { id: card.id, revision: card.revision, movement },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+  const changed = result.data.changeCreatureMovement;
+  switch (changed.__typename) {
+    case "ChangeCreatureMovementSuccess":
+      return showChanged(card.id, changed.revision);
+    case "ValidationErrors": {
+      const movementError = changed.errors.find((e) => e.field === "movement");
+      return {
+        ...kept,
+        movementError: movementError && statsErrorMessage(movementError),
       };
     }
     default:

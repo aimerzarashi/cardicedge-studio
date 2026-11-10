@@ -13,6 +13,7 @@ import {
   changeCardCost,
   changeCardRarity,
   changeCreatureElements,
+  changeCreatureMovement,
   changeCreatureStats,
   changeItemCategory,
   changeItemStatBonuses,
@@ -21,6 +22,7 @@ import {
   CategoryForm,
   CostForm,
   ElementsForm,
+  MovementForm,
   RarityForm,
   StatBonusesForm,
   StatsForm,
@@ -44,6 +46,7 @@ const cardQuery = graphql(`
         elements
         attack
         hitPoints
+        movement
       }
       ... on Item {
         category
@@ -175,6 +178,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   attack={card.attack}
                   hitPoints={card.hitPoints}
                 />
+                <MovementForm
+                  action={changeCreatureMovement}
+                  id={card.id}
+                  revision={card.revision}
+                  movement={card.movement}
+                />
               </>
             )}
             {card.__typename === "Item" && (
@@ -209,6 +218,8 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dd>{card.attack}</dd>
                 <dt>HP</dt>
                 <dd>{card.hitPoints}</dd>
+                <dt>移動</dt>
+                <dd>{card.movement}</dd>
               </>
             )}
             {card.__typename === "Item" && (
