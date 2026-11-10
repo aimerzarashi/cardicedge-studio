@@ -8,6 +8,7 @@ import {
   nameErrorMessage,
   RULE_LABELS,
   ruleStep,
+  spellEffectLabel,
   starterSetItemErrorMessage,
   starterSetLimitReachedMessage,
   starterSetPublishErrorMessage,
@@ -234,6 +235,30 @@ describe("クリーチャーの性能の文言", () => {
         min: 1,
       }),
       "HPは 1 以上にしてください",
+    );
+  });
+});
+
+describe("スペルの効果の文言", () => {
+  it("効果の種類ごとに、core が返した値で言う", () => {
+    assert.equal(
+      spellEffectLabel({ __typename: "SpellDrawCardsEffect", count: 2 }),
+      "カードを 2 枚引く",
+    );
+  });
+
+  it("効果なし（null）は「なし」と出す", () => {
+    assert.equal(spellEffectLabel(null), "なし");
+  });
+
+  it("引く枚数の下限の誤りは、core が返した field と下限で出す", () => {
+    assert.equal(
+      statsErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "effect.drawCards.count",
+        min: 1,
+      }),
+      "引く枚数は 1 以上にしてください",
     );
   });
 });

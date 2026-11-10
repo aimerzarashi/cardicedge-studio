@@ -44,6 +44,14 @@ export type MovementState = Notice &
     movementError?: string;
   };
 
+// スペルの効果のフォームの結果。誤りのときは選んだ種類と入力した枚数を残す
+export type EffectState = Notice &
+  Kept & {
+    kind?: string;
+    count?: string;
+    countError?: string;
+  };
+
 // アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
 export type StatBonusesState = Notice &
   Kept & {
@@ -298,6 +306,63 @@ export function MovementForm({
         )}
         <button type="submit" disabled={isPending}>
           移動を変える
+        </button>
+      </form>
+    </>
+  );
+}
+
+// 効果は種類を選んでから値を入れる（core の changeSpellEffect。種類ごとに値の項目が違うため。今は「カードを引く」だけ）。
+// 「なし」を選ぶと枚数は送らない
+export function EffectForm({
+  action,
+  id,
+  revision,
+  drawCount,
+}: {
+  action: (previous: EffectState, form: FormData) => Promise<EffectState>;
+  id: string;
+  revision: number;
+  // 今の効果が「カードを引く」なら引く枚数、効果なしなら null
+  drawCount: number | null;
+}) {
+  const [state, formAction, isPending] = useActionState(action, {});
+  const kept = state.revision === revision ? state : {};
+  const kind = kept.kind ?? (drawCount === null ? "none" : "drawCards");
+
+  return (
+    <>
+      {state.status && <p role="status">{state.status}</p>}
+      {state.error && <p role="alert">{state.error}</p>}
+      {/* 送った後にフォームが元に戻るとき、select は最初に描いたときの既定値に戻る（後から defaultValue を変えても効かない）ため、
+          選んだ種類も key に入れて作り直す。入れないと、誤りで断られた後に「なし」のまま送ってしまう */}
+      <form key={`${revision}:${kind}`} action={formAction}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="revision" value={revision} />
+        <label>
+          効果
+          <select name="kind" defaultValue={kind}>
+            <option value="none">なし</option>
+            <option value="drawCards">カードを引く</option>
+          </select>
+        </label>
+        <label>
+          引く枚数
+          <input
+            type="number"
+            name="count"
+            defaultValue={kept.count ?? drawCount ?? 1}
+            aria-invalid={kept.countError ? true : undefined}
+            aria-describedby={kept.countError ? "count-error" : undefined}
+          />
+        </label>
+        {kept.countError && (
+          <p id="count-error" role="alert">
+            {kept.countError}
+          </p>
+        )}
+        <button type="submit" disabled={isPending}>
+          効果を変える
         </button>
       </form>
     </>

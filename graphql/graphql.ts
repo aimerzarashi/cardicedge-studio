@@ -242,6 +242,16 @@ export type ChangeItemStatBonusesInput = {
   revision: number;
 };
 
+/** スペルの効果を変える入力 */
+export type ChangeSpellEffectInput = {
+  /** 変えた後の効果（null なら効果なし） */
+  effect?: SpellEffectInput | null | undefined;
+  /** スペルの公開用の ID */
+  id: string;
+  /** 画面が見ていたスペルの revision */
+  revision: number;
+};
+
 /** ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの） */
 export type CheckBoardLayoutInput = {
   /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
@@ -706,6 +716,17 @@ export type SetStarterSetUnlockNpcAvatarsInput = {
   unlockNpcAvatarIds: Array<string>;
 };
 
+/** カードを引く効果の入力 */
+export type SpellDrawCardsEffectInput = {
+  /** 引く枚数（1 以上。上限は無い） */
+  count: number;
+};
+
+/** スペルの効果の入力（種類のどれか 1 つだけ） */
+export type SpellEffectInput =
+  {   /** カードを引く */
+  drawCards: SpellDrawCardsEffectInput; };
+
 /** スターターセットの一覧の絞り込み */
 export type StarterSetFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
@@ -1147,6 +1168,36 @@ export type ChangeItemStatBonusesMutation = { changeItemStatBonuses:
     | { __typename: 'ValidationErrors' }
    };
 
+export type ChangeSpellEffectMutationVariables = Exact<{
+  input: ChangeSpellEffectInput;
+}>;
+
+
+export type ChangeSpellEffectMutation = { changeSpellEffect:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeSpellEffectSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
 export type CardQueryVariables = Exact<{
   id: string;
 }>;
@@ -1157,7 +1208,7 @@ export type CardQuery = { card:
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, movement: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
-    | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string }
+    | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect: { __typename: 'SpellDrawCardsEffect', count: number } | null }
    };
 
 export type RetireCardMutationVariables = Exact<{
@@ -2862,6 +2913,26 @@ export const ChangeItemStatBonusesDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeItemStatBonusesMutation, ChangeItemStatBonusesMutationVariables>;
+export const ChangeSpellEffectDocument = new TypedDocumentString(`
+    mutation ChangeSpellEffect($input: ChangeSpellEffectInput!) {
+  changeSpellEffect(input: $input) {
+    __typename
+    ... on ChangeSpellEffectSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeSpellEffectMutation, ChangeSpellEffectMutationVariables>;
 export const CardDocument = new TypedDocumentString(`
     query Card($id: UUID!) {
   card(id: $id) {
@@ -2886,6 +2957,14 @@ export const CardDocument = new TypedDocumentString(`
       category
       attackBonus
       hitPointsBonus
+    }
+    ... on Spell {
+      effect {
+        __typename
+        ... on SpellDrawCardsEffect {
+          count
+        }
+      }
     }
   }
 }

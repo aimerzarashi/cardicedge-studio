@@ -343,18 +343,32 @@ export function elementsErrorMessage(error: FieldError): string {
   }
 }
 
-// 攻撃力・体力の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
+// 性能の数の項目の呼び方（core が返した field で見分ける）
+const STAT_FIELD_LABELS: Record<string, string> = {
+  hitPoints: "HP",
+  movement: "移動",
+  "effect.drawCards.count": "引く枚数",
+};
+
+// 攻撃力・体力・移動・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
 export function statsErrorMessage(error: FieldError): string {
-  const label =
-    error.field === "hitPoints"
-      ? "HP"
-      : error.field === "movement"
-        ? "移動"
-        : "AT";
+  const label = STAT_FIELD_LABELS[error.field ?? ""] ?? "AT";
   switch (error.__typename) {
     case "FieldTooSmall":
       return `${label}は ${error.min} 以上にしてください`;
     default:
       return `${label}が正しくありません`;
+  }
+}
+
+// スペルの効果の表示。種類は core が返した __typename で見分け、効果なし（null）は「なし」
+export function spellEffectLabel(
+  effect: { __typename?: string; count?: number } | null | undefined,
+): string {
+  switch (effect?.__typename) {
+    case "SpellDrawCardsEffect":
+      return `カードを ${effect.count} 枚引く`;
+    default:
+      return "なし";
   }
 }

@@ -20,6 +20,7 @@ import {
 } from "../../messages";
 import { waitCard } from "../wait-card";
 import type {
+  EffectState,
   ElementsState,
   MovementState,
   SpecState,
@@ -359,6 +360,72 @@ export async function changeCreatureMovement(
       return {
         ...kept,
         movementError: movementError && statsErrorMessage(movementError),
+      };
+    }
+    default:
+      return failed(changed.__typename);
+  }
+}
+
+const changeSpellEffectMutation = graphql(`
+  mutation ChangeSpellEffect($input: ChangeSpellEffectInput!) {
+    changeSpellEffect(input: $input) {
+      __typename
+      ... on ChangeSpellEffectSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldTooSmall {
+            min
+          }
+        }
+      }
+    }
+  }
+`);
+
+// 「なし」は効果なし（null）を送り、引く枚数は読まない
+export async function changeSpellEffect(
+  _previous: EffectState,
+  form: FormData,
+): Promise<EffectState> {
+  const card = target(form);
+  const kind = String(form.get("kind") ?? "");
+  if (card === undefined || (kind !== "none" && kind !== "drawCards")) {
+    return { error: INVALID_TARGET };
+  }
+  const countValue = String(form.get("count") ?? "");
+  const kept = { revision: card.revision, kind, count: countValue };
+  let effect: { drawCards: { count: number } } | null = null;
+  if (kind === "drawCards") {
+    const count = integerOf(countValue);
+    if (count === undefined) {
+      return { ...kept, countError: "引く枚数は整数で入力してください" };
+    }
+    effect = { drawCards: { count } };
+  }
+
+  const result = await callCore(changeSpellEffectMutation, {
+    input: { id: card.id, revision: card.revision, effect },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+  const changed = result.data.changeSpellEffect;
+  switch (changed.__typename) {
+    case "ChangeSpellEffectSuccess":
+      return showChanged(card.id, changed.revision);
+    case "ValidationErrors": {
+      const countError = changed.errors.find(
+        (e) => e.field === "effect.drawCards.count",
+      );
+      return {
+        ...kept,
+        countError: countError && statsErrorMessage(countError),
       };
     }
     default:

@@ -432,3 +432,38 @@ test("準備中のアイテムの詳細で分類と AT・HP の増減を変え�
     /分類\s*防具\s*AT の増減\s*-5\s*HP の増減\s*\+30/,
   );
 });
+
+test("準備中のスペルの詳細で効果を変えると詳細に出て、引く枚数の誤りは入力したまま残る", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const name = uniqueName("ホープ");
+  await registerSpell(page, name);
+  await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  // 登録の直後は効果なし
+  await expect(page.getByRole("combobox", { name: "効果" })).toHaveValue(
+    "none",
+  );
+
+  await page.getByRole("combobox", { name: "効果" }).selectOption("drawCards");
+  await page.getByLabel("引く枚数").fill("0");
+  await page.getByRole("button", { name: "効果を変える" }).click();
+  await expect(page.getByText("引く枚数は 1 以上にしてください")).toBeVisible();
+  await expect(page.getByLabel("引く枚数")).toHaveValue("0");
+  await page.getByLabel("引く枚数").fill("2");
+  await page.getByRole("button", { name: "効果を変える" }).click();
+  await expect(page.getByText("保存しました")).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "効果" })).toHaveValue(
+    "drawCards",
+  );
+  await expect(page.getByLabel("引く枚数")).toHaveValue("2");
+
+  // 公開した後は表示だけ
+  await publishCard(page, name);
+  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  await expect(page.locator("dl").last()).toHaveText(
+    /効果\s*カードを 2 枚引く/,
+  );
+});

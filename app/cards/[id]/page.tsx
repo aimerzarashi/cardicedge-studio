@@ -7,6 +7,7 @@ import { dateTimeFormat } from "@/lib/format";
 import { ITEM_CATEGORY_LABELS, signedBonus } from "@/lib/item-category";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { STATUS_LABELS } from "@/lib/status";
+import { spellEffectLabel } from "../../messages";
 import { publishCard, retireCard } from "../actions";
 import { CardStatusButton } from "../card-status-button";
 import {
@@ -17,10 +18,12 @@ import {
   changeCreatureStats,
   changeItemCategory,
   changeItemStatBonuses,
+  changeSpellEffect,
 } from "./actions";
 import {
   CategoryForm,
   CostForm,
+  EffectForm,
   ElementsForm,
   MovementForm,
   RarityForm,
@@ -52,6 +55,14 @@ const cardQuery = graphql(`
         category
         attackBonus
         hitPointsBonus
+      }
+      ... on Spell {
+        effect {
+          __typename
+          ... on SpellDrawCardsEffect {
+            count
+          }
+        }
       }
     }
   }
@@ -203,6 +214,18 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 />
               </>
             )}
+            {card.__typename === "Spell" && (
+              <EffectForm
+                action={changeSpellEffect}
+                id={card.id}
+                revision={card.revision}
+                drawCount={
+                  card.effect?.__typename === "SpellDrawCardsEffect"
+                    ? card.effect.count
+                    : null
+                }
+              />
+            )}
           </>
         ) : (
           <dl>
@@ -230,6 +253,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dd>{signedBonus(card.attackBonus)}</dd>
                 <dt>HP の増減</dt>
                 <dd>{signedBonus(card.hitPointsBonus)}</dd>
+              </>
+            )}
+            {card.__typename === "Spell" && (
+              <>
+                <dt>効果</dt>
+                <dd>{spellEffectLabel(card.effect)}</dd>
               </>
             )}
           </dl>

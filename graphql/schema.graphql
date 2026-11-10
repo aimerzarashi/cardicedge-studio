@@ -1026,6 +1026,40 @@ type ChangeItemStatBonusesSuccess {
 	revision: Int!
 }
 """
+スペルの効果を変える入力
+"""
+input ChangeSpellEffectInput {
+	"""
+	スペルの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスペルの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の効果（null なら効果なし）
+	"""
+	effect: SpellEffectInput
+}
+"""
+スペルの効果を変える操作の結果（カードでない ID・スペル以外のカードの ID は CardNotFoundError）
+"""
+union ChangeSpellEffectResult = ChangeSpellEffectSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+スペルの効果を変えた（同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeSpellEffectSuccess {
+	"""
+	変えたスペルの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスペルの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの）
 """
 input CheckBoardLayoutInput {
@@ -2217,6 +2251,15 @@ type Mutation {
 		"""
 		input: DeletePresetDeckInput!
 	): DeletePresetDeckResult!
+	"""
+	スペルの効果を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeSpellEffect(
+		"""
+		変えるスペルと効果
+		"""
+		input: ChangeSpellEffectInput!
+	): ChangeSpellEffectResult!
 	"""
 	スペルを登録する（紐づいたオペレーターだけ）
 	"""
@@ -4062,6 +4105,10 @@ type Spell implements Card {
 	"""
 	rarity: CardRarity!
 	"""
+	効果（効果が無ければ null。効果の無いスペルは、対戦で使えない）
+	"""
+	effect: SpellEffect
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -4073,6 +4120,37 @@ type Spell implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+カードを引く効果（山札の先頭から引く）
+"""
+type SpellDrawCardsEffect {
+	"""
+	引く枚数（1 以上）
+	"""
+	count: Int!
+}
+"""
+カードを引く効果の入力
+"""
+input SpellDrawCardsEffectInput {
+	"""
+	引く枚数（1 以上。上限は無い）
+	"""
+	count: Int!
+}
+"""
+スペルの効果（種類は __typename で見分ける）
+"""
+union SpellEffect = SpellDrawCardsEffect
+"""
+スペルの効果の入力（種類のどれか 1 つだけ）
+"""
+input SpellEffectInput @oneOf {
+	"""
+	カードを引く
+	"""
+	drawCards: SpellDrawCardsEffectInput
 }
 """
 スターターセット
