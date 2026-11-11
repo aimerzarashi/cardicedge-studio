@@ -15,6 +15,17 @@ export function isItemCategory(value: string): value is ItemCategory {
   return (ITEM_CATEGORIES as string[]).includes(value);
 }
 
+// アイテム制限の表示（core が並べた順。無ければ「なし」）
+export function itemRestrictionsLabel(
+  itemRestrictions: readonly ItemCategory[],
+): string {
+  return itemRestrictions.length === 0
+    ? "なし"
+    : itemRestrictions
+        .map((category) => ITEM_CATEGORY_LABELS[category])
+        .join("・");
+}
+
 // 下げるアイテムと見分けるため、増やす値にも + を付ける（0 は増減が無いので符号を付けない）
 export function signedBonus(value: number): string {
   return value > 0 ? `+${value}` : `${value}`;

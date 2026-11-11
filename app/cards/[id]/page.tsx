@@ -4,7 +4,11 @@ import { CARD_TYPE_LABELS } from "@/lib/card-type";
 import { callCore } from "@/lib/core";
 import { elementsLabel } from "@/lib/creature-element";
 import { dateTimeFormat } from "@/lib/format";
-import { ITEM_CATEGORY_LABELS, signedBonus } from "@/lib/item-category";
+import {
+  ITEM_CATEGORY_LABELS,
+  itemRestrictionsLabel,
+  signedBonus,
+} from "@/lib/item-category";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { STATUS_LABELS } from "@/lib/status";
 import { spellEffectLabel, spellEffectValue } from "../../messages";
@@ -14,6 +18,7 @@ import {
   changeCardCost,
   changeCardRarity,
   changeCreatureElements,
+  changeCreatureItemRestrictions,
   changeCreatureMovement,
   changeCreatureStats,
   changeItemCategory,
@@ -25,6 +30,7 @@ import {
   CostForm,
   EffectForm,
   ElementsForm,
+  ItemRestrictionsForm,
   MovementForm,
   RarityForm,
   StatBonusesForm,
@@ -50,6 +56,7 @@ const cardQuery = graphql(`
         attack
         hitPoints
         movement
+        itemRestrictions
       }
       ... on Item {
         category
@@ -208,6 +215,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   revision={card.revision}
                   movement={card.movement}
                 />
+                <ItemRestrictionsForm
+                  action={changeCreatureItemRestrictions}
+                  id={card.id}
+                  revision={card.revision}
+                  itemRestrictions={card.itemRestrictions}
+                />
               </>
             )}
             {card.__typename === "Item" && (
@@ -252,6 +265,8 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dd>{card.hitPoints}</dd>
                 <dt>移動</dt>
                 <dd>{card.movement}</dd>
+                <dt>アイテム制限</dt>
+                <dd>{itemRestrictionsLabel(card.itemRestrictions)}</dd>
               </>
             )}
             {card.__typename === "Item" && (

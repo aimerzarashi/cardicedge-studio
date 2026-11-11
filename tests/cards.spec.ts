@@ -352,6 +352,16 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await page.getByRole("button", { name: "移動を変える" }).click();
   await expect(page.getByText("保存しました").nth(2)).toBeVisible();
   await expect(page.getByLabel("移動", { exact: true })).toHaveValue("0");
+
+  // アイテム制限は既定で無く、チェックした分類を持てなくする
+  await expect(page.getByLabel("防具", { exact: true })).not.toBeChecked();
+  await page.getByLabel("防具", { exact: true }).check();
+  await page.getByLabel("巻物", { exact: true }).check();
+  await page.getByRole("button", { name: "アイテム制限を変える" }).click();
+  await expect(page.getByText("保存しました").nth(3)).toBeVisible();
+  await expect(page.getByLabel("防具", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("巻物", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("武器", { exact: true })).not.toBeChecked();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

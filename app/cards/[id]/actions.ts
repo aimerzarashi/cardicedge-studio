@@ -64,6 +64,20 @@ const changeCardRarityMutation = graphql(`
   }
 `);
 
+const changeCreatureItemRestrictionsMutation = graphql(`
+  mutation ChangeCreatureItemRestrictions(
+    $input: ChangeCreatureItemRestrictionsInput!
+  ) {
+    changeCreatureItemRestrictions(input: $input) {
+      __typename
+      ... on ChangeCreatureItemRestrictionsSuccess {
+        id
+        revision
+      }
+    }
+  }
+`);
+
 const changeCreatureElementsMutation = graphql(`
   mutation ChangeCreatureElements($input: ChangeCreatureElementsInput!) {
     changeCreatureElements(input: $input) {
@@ -269,6 +283,33 @@ export async function changeCreatureElements(
         elements: values,
         fieldError: elementsErrorMessage(changed.errors[0]),
       };
+    default:
+      return failed(changed.__typename);
+  }
+}
+
+export async function changeCreatureItemRestrictions(
+  _previous: Notice,
+  form: FormData,
+): Promise<Notice> {
+  const card = target(form);
+  const values = form.getAll("itemRestrictions").map(String);
+  // 知らない値は改ざんされた送信なので送らない
+  const itemRestrictions = values.filter(isItemCategory);
+  if (card === undefined || itemRestrictions.length !== values.length) {
+    return { error: INVALID_TARGET };
+  }
+
+  const result = await callCore(changeCreatureItemRestrictionsMutation, {
+    input: { id: card.id, revision: card.revision, itemRestrictions },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+  const changed = result.data.changeCreatureItemRestrictions;
+  switch (changed.__typename) {
+    case "ChangeCreatureItemRestrictionsSuccess":
+      return showChanged(card.id, changed.revision);
     default:
       return failed(changed.__typename);
   }
