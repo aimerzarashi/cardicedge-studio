@@ -360,6 +360,7 @@ export type AbilitiesState = Notice &
     kinds?: string[];
     percent?: string;
     percentError?: string;
+    abilitiesError?: string;
   };
 
 // 能力はチェックで選び、値の要る能力（通行料の倍率）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
@@ -390,7 +391,10 @@ export function AbilitiesForm({
       <form key={revision} action={formAction}>
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="revision" value={revision} />
-        <fieldset>
+        <fieldset
+          aria-invalid={kept.abilitiesError ? true : undefined}
+          aria-describedby={kept.abilitiesError ? "abilities-error" : undefined}
+        >
           <legend>能力</legend>
           {CREATURE_ABILITY_KINDS.map((value) => (
             <label key={value}>
@@ -416,6 +420,11 @@ export function AbilitiesForm({
             />
           </label>
         </fieldset>
+        {kept.abilitiesError && (
+          <p id="abilities-error" role="alert">
+            {kept.abilitiesError}
+          </p>
+        )}
         {kept.percentError && (
           <p id="toll-multiplier-error" role="alert">
             {kept.percentError}

@@ -190,7 +190,7 @@ export type ChangeCardRarityInput = {
 
 /** クリーチャーの能力を変える入力 */
 export type ChangeCreatureAbilitiesInput = {
-  /** 変えた後の能力の並び（同じ種類は 1 つまで。無しは空） */
+  /** 変えた後の能力の並び（同じ種類は 1 つまで。先制と後手は同時に持てない。どちらも違えば FieldInvalidFormat（abilities）。無しは空） */
   abilities: Array<CreatureAbilityInput>;
   /** クリーチャーの公開用の ID */
   id: string;
@@ -298,6 +298,10 @@ export type CreatureAbilityInput = {
 export type CreatureAbilityKind =
   /** 防御型（侵略に出せず、クリーチャー移動もできない） */
   | 'DEFENSIVE'
+  /** 先制（戦闘で、先制の無い相手より先に攻撃する。後手と同時には持てない） */
+  | 'FIRST_STRIKE'
+  /** 後手（戦闘で、後手の無い相手より後に攻撃する。先制と同時には持てない） */
+  | 'LAST_STRIKE'
   /** 通行料の倍率（このクリーチャーのいる領地の通行料に掛ける） */
   | 'TOLL_MULTIPLIER';
 
@@ -1303,6 +1307,8 @@ export type CardQueryVariables = Exact<{
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<
+        | { kind: CreatureAbilityKind }
+        | { kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
         | { percent: number, kind: CreatureAbilityKind }
       > }
