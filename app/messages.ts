@@ -350,7 +350,6 @@ export function elementsErrorMessage(error: FieldError): string {
 // 性能の数の項目の呼び方（core が返した field で見分ける）
 const STAT_FIELD_LABELS: Record<string, string> = {
   hitPoints: "HP",
-  movement: "移動",
   "effect.drawCards.count": "引く枚数",
   "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
   "effect.rollDice.count": "サイコロの個数",
@@ -359,7 +358,7 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   "effect.damage.amount": "ダメージ",
 };
 
-// 攻撃力・体力・移動・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
+// 攻撃力・体力・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
 export function statsErrorMessage(error: FieldError): string {
   const label = STAT_FIELD_LABELS[error.field ?? ""] ?? "AT";
   switch (error.__typename) {

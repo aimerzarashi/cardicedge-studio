@@ -188,6 +188,16 @@ export type ChangeCardRarityInput = {
   revision: number;
 };
 
+/** クリーチャーの能力を変える入力 */
+export type ChangeCreatureAbilitiesInput = {
+  /** 変えた後の能力の並び（同じ種類は 1 つまで。無しは空） */
+  abilities: Array<CreatureAbilityInput>;
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
 /** クリーチャーの属性を変える入力 */
 export type ChangeCreatureElementsInput = {
   /** 変えた後の属性（1〜4 つ。重複は入力の誤り。無は単独。並びは問わず、保存は火・地・水・風の順にそろえる） */
@@ -204,16 +214,6 @@ export type ChangeCreatureItemRestrictionsInput = {
   id: string;
   /** 変えた後のアイテム制限（持てないアイテムの分類。重複なし。無しは空） */
   itemRestrictions: Array<ItemCategory>;
-  /** 画面が見ていたクリーチャーの revision */
-  revision: number;
-};
-
-/** クリーチャーの移動を変える入力 */
-export type ChangeCreatureMovementInput = {
-  /** クリーチャーの公開用の ID */
-  id: string;
-  /** 変えた後の移動（0 以上。上限は無い） */
-  movement: number;
   /** 画面が見ていたクリーチャーの revision */
   revision: number;
 };
@@ -285,6 +285,17 @@ export type CheckBoardLayoutInput = {
   /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
   width: number;
 };
+
+/** 能力 1 つの入力。値の要る能力を足すときは、その値の項目を足す */
+export type CreatureAbilityInput = {
+  /** 能力の種類 */
+  kind: CreatureAbilityKind;
+};
+
+/** クリーチャーの能力の種類 */
+export type CreatureAbilityKind =
+  /** 防御型（侵略に出せず、クリーチャー移動もできない） */
+  | 'DEFENSIVE';
 
 /** クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない） */
 export type CreatureElement =
@@ -1162,34 +1173,18 @@ export type ChangeCreatureElementsMutation = { changeCreatureElements:
       > }
    };
 
-export type ChangeCreatureMovementMutationVariables = Exact<{
-  input: ChangeCreatureMovementInput;
+export type ChangeCreatureAbilitiesMutationVariables = Exact<{
+  input: ChangeCreatureAbilitiesInput;
 }>;
 
 
-export type ChangeCreatureMovementMutation = { changeCreatureMovement:
+export type ChangeCreatureAbilitiesMutation = { changeCreatureAbilities:
     | { __typename: 'CardNotDraftError' }
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'ChangeCreatureMovementSuccess', id: string, revision: number }
+    | { __typename: 'ChangeCreatureAbilitiesSuccess', id: string, revision: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RevisionConflictError' }
-    | { __typename: 'ValidationErrors', errors: Array<
-        | { __typename: 'FieldDuplicated', field: string }
-        | { __typename: 'FieldInvalidFormat', field: string }
-        | { __typename: 'FieldNotAdjacent', field: string }
-        | { __typename: 'FieldNotFound', field: string }
-        | { __typename: 'FieldNotGreaterThan', field: string }
-        | { __typename: 'FieldNotPairable', field: string }
-        | { __typename: 'FieldOutOfRange', field: string }
-        | { __typename: 'FieldPairKindMismatch', field: string }
-        | { __typename: 'FieldPairedWithSelf', field: string }
-        | { __typename: 'FieldRequired', field: string }
-        | { __typename: 'FieldTooLong', field: string }
-        | { __typename: 'FieldTooSmall', min: number, field: string }
-        | { __typename: 'FieldTotalMismatch', field: string }
-        | { __typename: 'FieldTotalTooLarge', field: string }
-        | { __typename: 'FieldUnavailable', field: string }
-      > }
+    | { __typename: 'ValidationErrors' }
    };
 
 export type ChangeCreatureStatsMutationVariables = Exact<{
@@ -1287,7 +1282,7 @@ export type CardQueryVariables = Exact<{
 
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, movement: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement> }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<{ kind: CreatureAbilityKind }> }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
@@ -2962,26 +2957,17 @@ export const ChangeCreatureElementsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeCreatureElementsMutation, ChangeCreatureElementsMutationVariables>;
-export const ChangeCreatureMovementDocument = new TypedDocumentString(`
-    mutation ChangeCreatureMovement($input: ChangeCreatureMovementInput!) {
-  changeCreatureMovement(input: $input) {
+export const ChangeCreatureAbilitiesDocument = new TypedDocumentString(`
+    mutation ChangeCreatureAbilities($input: ChangeCreatureAbilitiesInput!) {
+  changeCreatureAbilities(input: $input) {
     __typename
-    ... on ChangeCreatureMovementSuccess {
+    ... on ChangeCreatureAbilitiesSuccess {
       id
       revision
     }
-    ... on ValidationErrors {
-      errors {
-        __typename
-        field
-        ... on FieldTooSmall {
-          min
-        }
-      }
-    }
   }
 }
-    `) as unknown as TypedDocumentString<ChangeCreatureMovementMutation, ChangeCreatureMovementMutationVariables>;
+    `) as unknown as TypedDocumentString<ChangeCreatureAbilitiesMutation, ChangeCreatureAbilitiesMutationVariables>;
 export const ChangeCreatureStatsDocument = new TypedDocumentString(`
     mutation ChangeCreatureStats($input: ChangeCreatureStatsInput!) {
   changeCreatureStats(input: $input) {
@@ -3062,9 +3048,11 @@ export const CardDocument = new TypedDocumentString(`
       elements
       attack
       hitPoints
-      movement
       itemRestrictions
       placementRestrictions
+      abilities {
+        kind
+      }
     }
     ... on Item {
       category
