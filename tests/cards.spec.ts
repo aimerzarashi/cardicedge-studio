@@ -316,25 +316,26 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
   await (await openCardRow(page, name)).getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+  const elements = page.getByRole("group", { name: "属性", exact: true });
   // 登録の直後は無属性
-  await expect(page.getByLabel("無", { exact: true })).toBeChecked();
+  await expect(elements.getByLabel("無", { exact: true })).toBeChecked();
 
   // 無は単独でしか持てない（決まりは core が判定する）
-  await page.getByLabel("火", { exact: true }).check();
+  await elements.getByLabel("火", { exact: true }).check();
   await page.getByRole("button", { name: "属性を変える" }).click();
   await expect(
     page.getByText("この属性の組み合わせにはできません"),
   ).toBeVisible();
-  await expect(page.getByLabel("火", { exact: true })).toBeChecked();
-  await expect(page.getByLabel("無", { exact: true })).toBeChecked();
+  await expect(elements.getByLabel("火", { exact: true })).toBeChecked();
+  await expect(elements.getByLabel("無", { exact: true })).toBeChecked();
 
-  await page.getByLabel("無", { exact: true }).uncheck();
-  await page.getByLabel("水", { exact: true }).check();
+  await elements.getByLabel("無", { exact: true }).uncheck();
+  await elements.getByLabel("水", { exact: true }).check();
   await page.getByRole("button", { name: "属性を変える" }).click();
   await expect(page.getByText("保存しました")).toBeVisible();
-  await expect(page.getByLabel("火", { exact: true })).toBeChecked();
-  await expect(page.getByLabel("水", { exact: true })).toBeChecked();
-  await expect(page.getByLabel("無", { exact: true })).not.toBeChecked();
+  await expect(elements.getByLabel("火", { exact: true })).toBeChecked();
+  await expect(elements.getByLabel("水", { exact: true })).toBeChecked();
+  await expect(elements.getByLabel("無", { exact: true })).not.toBeChecked();
 
   await page.getByLabel("AT", { exact: true }).fill("40");
   await page.getByLabel("HP", { exact: true }).fill("50");
@@ -362,6 +363,16 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByLabel("防具", { exact: true })).toBeChecked();
   await expect(page.getByLabel("巻物", { exact: true })).toBeChecked();
   await expect(page.getByLabel("武器", { exact: true })).not.toBeChecked();
+
+  // 配置制限は既定で無く、チェックした属性の土地に置けなくする（無は選べない）
+  const placement = page.getByRole("group", { name: /^配置制限/ });
+  await expect(placement.getByLabel("無", { exact: true })).toHaveCount(0);
+  await placement.getByLabel("地", { exact: true }).check();
+  await placement.getByLabel("風", { exact: true }).check();
+  await page.getByRole("button", { name: "配置制限を変える" }).click();
+  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  await expect(placement.getByLabel("地", { exact: true })).toBeChecked();
+  await expect(placement.getByLabel("火", { exact: true })).not.toBeChecked();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

@@ -218,6 +218,16 @@ export type ChangeCreatureMovementInput = {
   revision: number;
 };
 
+/** クリーチャーの配置制限を変える入力 */
+export type ChangeCreaturePlacementRestrictionsInput = {
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 変えた後の配置制限（置けない土地の属性。火・地・水・風で重複なし。無しは空） */
+  placementRestrictions: Array<CreatureElement>;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
 /** クリーチャーの攻撃力と体力を変える入力 */
 export type ChangeCreatureStatsInput = {
   /** 変えた後の攻撃力（AT。0 以上。上限は無い） */
@@ -1108,6 +1118,20 @@ export type ChangeCreatureItemRestrictionsMutation = { changeCreatureItemRestric
     | { __typename: 'ValidationErrors' }
    };
 
+export type ChangeCreaturePlacementRestrictionsMutationVariables = Exact<{
+  input: ChangeCreaturePlacementRestrictionsInput;
+}>;
+
+
+export type ChangeCreaturePlacementRestrictionsMutation = { changeCreaturePlacementRestrictions:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreaturePlacementRestrictionsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
 export type ChangeCreatureElementsMutationVariables = Exact<{
   input: ChangeCreatureElementsInput;
 }>;
@@ -1263,7 +1287,7 @@ export type CardQueryVariables = Exact<{
 
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, movement: number, itemRestrictions: Array<ItemCategory> }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, movement: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement> }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
@@ -2910,6 +2934,17 @@ export const ChangeCreatureItemRestrictionsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeCreatureItemRestrictionsMutation, ChangeCreatureItemRestrictionsMutationVariables>;
+export const ChangeCreaturePlacementRestrictionsDocument = new TypedDocumentString(`
+    mutation ChangeCreaturePlacementRestrictions($input: ChangeCreaturePlacementRestrictionsInput!) {
+  changeCreaturePlacementRestrictions(input: $input) {
+    __typename
+    ... on ChangeCreaturePlacementRestrictionsSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreaturePlacementRestrictionsMutation, ChangeCreaturePlacementRestrictionsMutationVariables>;
 export const ChangeCreatureElementsDocument = new TypedDocumentString(`
     mutation ChangeCreatureElements($input: ChangeCreatureElementsInput!) {
   changeCreatureElements(input: $input) {
@@ -3029,6 +3064,7 @@ export const CardDocument = new TypedDocumentString(`
       hitPoints
       movement
       itemRestrictions
+      placementRestrictions
     }
     ... on Item {
       category

@@ -9,6 +9,7 @@ import type {
 import {
   CREATURE_ELEMENT_LABELS,
   CREATURE_ELEMENTS,
+  PLACEMENT_RESTRICTION_ELEMENTS,
 } from "@/lib/creature-element";
 import { ITEM_CATEGORIES, ITEM_CATEGORY_LABELS } from "@/lib/item-category";
 import { RARITIES, RARITY_LABELS } from "@/lib/rarity";
@@ -198,6 +199,49 @@ export function ElementsForm({
         )}
         <button type="submit" disabled={isPending}>
           属性を変える
+        </button>
+      </form>
+    </>
+  );
+}
+
+// 置けない土地の属性をチェックする。チェックなしは制限なし（2026-11-11 オーナー。core#155）。選び方の誤りは画面の操作では起きない
+export function PlacementRestrictionsForm({
+  action,
+  id,
+  revision,
+  placementRestrictions,
+}: {
+  action: (previous: Notice, form: FormData) => Promise<Notice>;
+  id: string;
+  revision: number;
+  placementRestrictions: CreatureElement[];
+}) {
+  const [state, formAction, isPending] = useActionState(action, {});
+
+  return (
+    <>
+      {state.status && <p role="status">{state.status}</p>}
+      {state.error && <p role="alert">{state.error}</p>}
+      <form key={revision} action={formAction}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="revision" value={revision} />
+        <fieldset>
+          <legend>配置制限（チェックした属性の土地には置けない）</legend>
+          {PLACEMENT_RESTRICTION_ELEMENTS.map((value) => (
+            <label key={value}>
+              <input
+                type="checkbox"
+                name="placementRestrictions"
+                value={value}
+                defaultChecked={placementRestrictions.includes(value)}
+              />
+              {CREATURE_ELEMENT_LABELS[value]}
+            </label>
+          ))}
+        </fieldset>
+        <button type="submit" disabled={isPending}>
+          配置制限を変える
         </button>
       </form>
     </>

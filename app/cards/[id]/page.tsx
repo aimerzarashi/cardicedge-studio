@@ -2,7 +2,10 @@ import Link from "next/link";
 import { graphql } from "@/graphql";
 import { CARD_TYPE_LABELS } from "@/lib/card-type";
 import { callCore } from "@/lib/core";
-import { elementsLabel } from "@/lib/creature-element";
+import {
+  elementsLabel,
+  placementRestrictionsLabel,
+} from "@/lib/creature-element";
 import { dateTimeFormat } from "@/lib/format";
 import {
   ITEM_CATEGORY_LABELS,
@@ -20,6 +23,7 @@ import {
   changeCreatureElements,
   changeCreatureItemRestrictions,
   changeCreatureMovement,
+  changeCreaturePlacementRestrictions,
   changeCreatureStats,
   changeItemCategory,
   changeItemStatBonuses,
@@ -32,6 +36,7 @@ import {
   ElementsForm,
   ItemRestrictionsForm,
   MovementForm,
+  PlacementRestrictionsForm,
   RarityForm,
   StatBonusesForm,
   StatsForm,
@@ -57,6 +62,7 @@ const cardQuery = graphql(`
         hitPoints
         movement
         itemRestrictions
+        placementRestrictions
       }
       ... on Item {
         category
@@ -221,6 +227,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   revision={card.revision}
                   itemRestrictions={card.itemRestrictions}
                 />
+                <PlacementRestrictionsForm
+                  action={changeCreaturePlacementRestrictions}
+                  id={card.id}
+                  revision={card.revision}
+                  placementRestrictions={card.placementRestrictions}
+                />
               </>
             )}
             {card.__typename === "Item" && (
@@ -267,6 +279,10 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dd>{card.movement}</dd>
                 <dt>アイテム制限</dt>
                 <dd>{itemRestrictionsLabel(card.itemRestrictions)}</dd>
+                <dt>配置制限</dt>
+                <dd>
+                  {placementRestrictionsLabel(card.placementRestrictions)}
+                </dd>
               </>
             )}
             {card.__typename === "Item" && (
