@@ -1249,13 +1249,17 @@ interface CreatureAbility {
 	kind: CreatureAbilityKind!
 }
 """
-能力 1 つの入力。値の要る能力を足すときは、その値の項目を足す
+能力 1 つの入力
 """
 input CreatureAbilityInput {
 	"""
 	能力の種類
 	"""
 	kind: CreatureAbilityKind!
+	"""
+	通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る）
+	"""
+	percent: Int
 }
 """
 クリーチャーの能力の種類
@@ -1265,6 +1269,10 @@ enum CreatureAbilityKind {
 	防御型（侵略に出せず、クリーチャー移動もできない）
 	"""
 	DEFENSIVE
+	"""
+	通行料の倍率（このクリーチャーのいる領地の通行料に掛ける）
+	"""
+	TOLL_MULTIPLIER
 }
 """
 防御型
@@ -1299,6 +1307,19 @@ enum CreatureElement {
 	無
 	"""
 	NEUTRAL
+}
+"""
+通行料の倍率
+"""
+type CreatureTollMultiplierAbility implements CreatureAbility {
+	"""
+	能力の種類（TOLL_MULTIPLIER）
+	"""
+	kind: CreatureAbilityKind!
+	"""
+	倍率（百分率。150 で 1.5 倍。1 以上）
+	"""
+	percent: Int!
 }
 """
 日時（RFC 3339 の文字列。例: 2026-10-17T09:00:00Z）

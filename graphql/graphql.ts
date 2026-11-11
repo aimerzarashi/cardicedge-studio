@@ -286,16 +286,20 @@ export type CheckBoardLayoutInput = {
   width: number;
 };
 
-/** 能力 1 つの入力。値の要る能力を足すときは、その値の項目を足す */
+/** 能力 1 つの入力 */
 export type CreatureAbilityInput = {
   /** 能力の種類 */
   kind: CreatureAbilityKind;
+  /** 通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る） */
+  percent?: number | null | undefined;
 };
 
 /** クリーチャーの能力の種類 */
 export type CreatureAbilityKind =
   /** 防御型（侵略に出せず、クリーチャー移動もできない） */
-  | 'DEFENSIVE';
+  | 'DEFENSIVE'
+  /** 通行料の倍率（このクリーチャーのいる領地の通行料に掛ける） */
+  | 'TOLL_MULTIPLIER';
 
 /** クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない） */
 export type CreatureElement =
@@ -1184,7 +1188,23 @@ export type ChangeCreatureAbilitiesMutation = { changeCreatureAbilities:
     | { __typename: 'ChangeCreatureAbilitiesSuccess', id: string, revision: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RevisionConflictError' }
-    | { __typename: 'ValidationErrors' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
    };
 
 export type ChangeCreatureStatsMutationVariables = Exact<{
@@ -1282,7 +1302,10 @@ export type CardQueryVariables = Exact<{
 
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<{ kind: CreatureAbilityKind }> }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<
+        | { kind: CreatureAbilityKind }
+        | { percent: number, kind: CreatureAbilityKind }
+      > }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
@@ -2965,6 +2988,15 @@ export const ChangeCreatureAbilitiesDocument = new TypedDocumentString(`
       id
       revision
     }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
   }
 }
     `) as unknown as TypedDocumentString<ChangeCreatureAbilitiesMutation, ChangeCreatureAbilitiesMutationVariables>;
@@ -3052,6 +3084,9 @@ export const CardDocument = new TypedDocumentString(`
       placementRestrictions
       abilities {
         kind
+        ... on CreatureTollMultiplierAbility {
+          percent
+        }
       }
     }
     ... on Item {
