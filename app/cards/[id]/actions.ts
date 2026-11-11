@@ -433,7 +433,9 @@ export async function changeSpellEffect(
           ? { gainMagic: { perLap: value } }
           : entry.kind === "rollDice"
             ? { rollDice: { count: value } }
-            : { fixedDiceCurse: { value, turns: turns ?? 0 } };
+            : entry.kind === "fixedDiceCurse"
+              ? { fixedDiceCurse: { value, turns: turns ?? 0 } }
+              : { damage: { amount: value } };
   }
 
   const result = await callCore(changeSpellEffectMutation, {

@@ -440,7 +440,16 @@ test("準備中のスペルの詳細で効果を変えると詳細に出て、�
   const name = uniqueName("ホープ");
   await registerSpell(page, name);
   await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
-  await (await openCardRow(page, name)).getByRole("link", { name }).click();
+  // 効果の無いスペルは公開できず、理由が出る
+  const row = await openCardRow(page, name);
+  await row.getByRole("button", { name: `${name}を公開する` }).click();
+  await expect(
+    row.getByText(
+      "効果の無いスペルは公開できません。カードの詳細で効果を入れてください",
+    ),
+  ).toBeVisible();
+  await expect(row).toContainText("準備中");
+  await row.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
   // 登録の直後は効果なし
   await expect(page.getByRole("combobox", { name: "効果" })).toHaveValue(
