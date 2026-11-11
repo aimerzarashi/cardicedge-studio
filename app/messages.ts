@@ -337,6 +337,9 @@ export function costErrorMessage(error: FieldError): string {
   }
 }
 
+// 先制と後手は同時に持てない（core が断る。core#158）
+export const ABILITIES_CONFLICTED = "先制と後手は同時に選べません";
+
 // 属性の入力の誤り（組み合わせの決まりは core が判定し、ここには書き写さない）
 export function elementsErrorMessage(error: FieldError): string {
   switch (error.__typename) {

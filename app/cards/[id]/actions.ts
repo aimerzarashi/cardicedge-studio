@@ -10,6 +10,7 @@ import { isItemCategory } from "@/lib/item-category";
 import { isRarity } from "@/lib/rarity";
 import { type Notice, target } from "../../deck-form";
 import {
+  ABILITIES_CONFLICTED,
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
   CURSE_TURNS_FIELD,
@@ -457,16 +458,24 @@ export async function changeCreatureAbilities(
     case "ChangeCreatureAbilitiesSuccess":
       return showChanged(card.id, changed.revision);
     case "ValidationErrors": {
-      // 倍率の範囲の誤り（abilities.N.percent）だけが画面の操作で起きる
+      // 画面の操作で起きるのは、倍率の範囲の誤り（abilities.N.percent）と、並び全体の誤り（abilities）だけ。
+      // 並び全体の誤りは重複か先制と後手の同時の指定で、チェックでは同じ種類を重ねられないので後者として出す（core#158）
       const percentError = changed.errors.find((e) =>
         e.field.endsWith(".percent"),
       );
-      return {
-        ...kept,
-        percentError: percentError
-          ? statsErrorMessage({ ...percentError, field: "abilities.percent" })
-          : INVALID_TARGET,
-      };
+      if (percentError) {
+        return {
+          ...kept,
+          percentError: statsErrorMessage({
+            ...percentError,
+            field: "abilities.percent",
+          }),
+        };
+      }
+      if (changed.errors.some((e) => e.field === "abilities")) {
+        return { ...kept, abilitiesError: ABILITIES_CONFLICTED };
+      }
+      return { ...kept, error: INVALID_TARGET };
     }
     default:
       return failed(changed.__typename);

@@ -383,6 +383,17 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByLabel("通行料の倍率", { exact: true })).toBeChecked();
   await expect(page.getByLabel("通行料の倍率（%）")).toHaveValue("150");
   await expect(page.getByLabel("移動", { exact: true })).toHaveCount(0);
+
+  // 先制と後手は同時に選べず、誤りが文言で出て選んだものが残る
+  await page.getByLabel("先制", { exact: true }).check();
+  await page.getByLabel("後手", { exact: true }).check();
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("先制と後手は同時に選べません")).toBeVisible();
+  await expect(page.getByLabel("後手", { exact: true })).toBeChecked();
+  await page.getByLabel("後手", { exact: true }).uncheck();
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  await expect(page.getByLabel("先制", { exact: true })).toBeChecked();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

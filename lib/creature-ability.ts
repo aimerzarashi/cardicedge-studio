@@ -4,6 +4,8 @@ import type { CreatureAbilityKind } from "@/graphql/graphql";
 export const CREATURE_ABILITY_LABELS: Record<CreatureAbilityKind, string> = {
   DEFENSIVE: "防御型",
   TOLL_MULTIPLIER: "通行料の倍率",
+  FIRST_STRIKE: "先制",
+  LAST_STRIKE: "後手",
 };
 
 export const CREATURE_ABILITY_KINDS = Object.keys(
