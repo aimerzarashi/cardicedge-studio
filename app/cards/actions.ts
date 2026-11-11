@@ -12,6 +12,7 @@ import {
   INVALID_TARGET,
   NOT_REFLECTED,
   REVISION_CONFLICT,
+  SPELL_EFFECT_REQUIRED,
 } from "../messages";
 import { waitCard } from "./wait-card";
 
@@ -63,6 +64,8 @@ export async function publishCard(
     case "InvalidCardStatusTransitionError":
       refresh();
       return { error: INVALID_STATUS_TRANSITION };
+    case "SpellEffectRequiredError":
+      return { error: SPELL_EFFECT_REQUIRED };
     case "CardNotFoundError":
       refresh();
       return { error: "このカードは見つかりません" };

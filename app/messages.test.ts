@@ -293,6 +293,14 @@ describe("スペルの効果の文言", () => {
       }),
       "対象の次のサイコロの目を 6 にする呪い（1 ターン）",
     );
+    assert.deepEqual(
+      spellEffectValue({ __typename: "SpellDamageEffect", amount: 20 }),
+      { kind: "damage", value: 20, turns: null },
+    );
+    assert.equal(
+      spellEffectLabel({ __typename: "SpellDamageEffect", amount: 20 }),
+      "対象のクリーチャーに 20 ダメージ",
+    );
   });
 
   it("引く枚数の下限の誤りは、core が返した field と下限で出す", () => {

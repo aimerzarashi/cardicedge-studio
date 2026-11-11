@@ -2779,7 +2779,7 @@ input PublishCardInput {
 """
 カードを公開中にする操作の結果
 """
-union PublishCardResult = PublishCardSuccess | CardNotFoundError | RevisionConflictError | InvalidCardStatusTransitionError | ForbiddenError
+union PublishCardResult = PublishCardSuccess | CardNotFoundError | RevisionConflictError | InvalidCardStatusTransitionError | SpellEffectRequiredError | ForbiddenError
 """
 カードを公開中にした（すでに公開中なら何も変えず、revision も進まない）
 """
@@ -4122,6 +4122,24 @@ type Spell implements Card {
 	updatedAt: DateTime!
 }
 """
+対象のクリーチャーにダメージ（今の HP から amount を引き、0 になれば破壊する）
+"""
+type SpellDamageEffect {
+	"""
+	ダメージ（1 以上）
+	"""
+	amount: Int!
+}
+"""
+対象のクリーチャーにダメージの入力
+"""
+input SpellDamageEffectInput {
+	"""
+	ダメージ（1 以上。上限は無い）
+	"""
+	amount: Int!
+}
+"""
 カードを引く効果（山札の先頭から引く）
 """
 type SpellDrawCardsEffect {
@@ -4142,7 +4160,7 @@ input SpellDrawCardsEffectInput {
 """
 スペルの効果（種類は __typename で見分ける）
 """
-union SpellEffect = SpellDrawCardsEffect | SpellGainMagicEffect | SpellRollDiceEffect | SpellFixedDiceCurseEffect
+union SpellEffect = SpellDrawCardsEffect | SpellGainMagicEffect | SpellRollDiceEffect | SpellFixedDiceCurseEffect | SpellDamageEffect
 """
 スペルの効果の入力（種類のどれか 1 つだけ）
 """
@@ -4163,6 +4181,19 @@ input SpellEffectInput @oneOf {
 	次のサイコロの目を決める呪い
 	"""
 	fixedDiceCurse: SpellFixedDiceCurseEffectInput
+	"""
+	対象のクリーチャーにダメージ
+	"""
+	damage: SpellDamageEffectInput
+}
+"""
+効果の無いスペルを公開しようとした（効果の無いスペルは対戦で使えないため、公開できない）
+"""
+type SpellEffectRequiredError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
 }
 """
 次のサイコロの目を決める呪い（対象のプレイヤーが次に振ると、目は value になる。turns ターンで解ける）

@@ -31,6 +31,10 @@ export const INVALID_TARGET =
 export const INVALID_STATUS_TRANSITION =
   "今の状態ではこの操作はできません。最新の状態を表示しています";
 
+// 効果の無いスペルは対戦で使えないため、core が公開を断る（core#152）
+export const SPELL_EFFECT_REQUIRED =
+  "効果の無いスペルは公開できません。カードの詳細で効果を入れてください";
+
 type FieldError = {
   __typename: string;
   field?: string;
@@ -352,6 +356,7 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   "effect.rollDice.count": "サイコロの個数",
   "effect.fixedDiceCurse.value": "決める目",
   "effect.fixedDiceCurse.turns": "解けるまでのターン数",
+  "effect.damage.amount": "ダメージ",
 };
 
 // 攻撃力・体力・移動・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
@@ -373,6 +378,7 @@ export type SpellEffectView =
       perLap?: number;
       value?: number;
       turns?: number;
+      amount?: number;
     }
   | null
   | undefined;
@@ -407,6 +413,13 @@ export const SPELL_EFFECT_KINDS = [
     field: "effect.fixedDiceCurse.value",
     typename: "SpellFixedDiceCurseEffect",
   },
+  {
+    kind: "damage",
+    label: "クリーチャーにダメージ",
+    valueLabel: "ダメージ",
+    field: "effect.damage.amount",
+    typename: "SpellDamageEffect",
+  },
 ] as const;
 
 // 呪いの種類だけが持つ、解けるまでのターン数の項目（core の入力の項目）
@@ -431,7 +444,9 @@ export function spellEffectValue(effect: SpellEffectView): {
       ? effect.perLap
       : found.kind === "fixedDiceCurse"
         ? effect.value
-        : effect.count;
+        : found.kind === "damage"
+          ? effect.amount
+          : effect.count;
   return {
     kind: found.kind,
     value: value ?? null,
@@ -450,6 +465,8 @@ export function spellEffectLabel(effect: SpellEffectView): string {
       return `サイコロを ${effect.count} 個同時に振る`;
     case "SpellFixedDiceCurseEffect":
       return `対象の次のサイコロの目を ${effect.value} にする呪い（${effect.turns} ターン）`;
+    case "SpellDamageEffect":
+      return `対象のクリーチャーに ${effect.amount} ダメージ`;
     default:
       return "なし";
   }
