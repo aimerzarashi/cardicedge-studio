@@ -78,6 +78,20 @@ const changeCreatureItemRestrictionsMutation = graphql(`
   }
 `);
 
+const changeCreaturePlacementRestrictionsMutation = graphql(`
+  mutation ChangeCreaturePlacementRestrictions(
+    $input: ChangeCreaturePlacementRestrictionsInput!
+  ) {
+    changeCreaturePlacementRestrictions(input: $input) {
+      __typename
+      ... on ChangeCreaturePlacementRestrictionsSuccess {
+        id
+        revision
+      }
+    }
+  }
+`);
+
 const changeCreatureElementsMutation = graphql(`
   mutation ChangeCreatureElements($input: ChangeCreatureElementsInput!) {
     changeCreatureElements(input: $input) {
@@ -309,6 +323,33 @@ export async function changeCreatureItemRestrictions(
   const changed = result.data.changeCreatureItemRestrictions;
   switch (changed.__typename) {
     case "ChangeCreatureItemRestrictionsSuccess":
+      return showChanged(card.id, changed.revision);
+    default:
+      return failed(changed.__typename);
+  }
+}
+
+export async function changeCreaturePlacementRestrictions(
+  _previous: Notice,
+  form: FormData,
+): Promise<Notice> {
+  const card = target(form);
+  const values = form.getAll("placementRestrictions").map(String);
+  // 知らない値は改ざんされた送信なので送らない
+  const placementRestrictions = values.filter(isCreatureElement);
+  if (card === undefined || placementRestrictions.length !== values.length) {
+    return { error: INVALID_TARGET };
+  }
+
+  const result = await callCore(changeCreaturePlacementRestrictionsMutation, {
+    input: { id: card.id, revision: card.revision, placementRestrictions },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+  const changed = result.data.changeCreaturePlacementRestrictions;
+  switch (changed.__typename) {
+    case "ChangeCreaturePlacementRestrictionsSuccess":
       return showChanged(card.id, changed.revision);
     default:
       return failed(changed.__typename);
