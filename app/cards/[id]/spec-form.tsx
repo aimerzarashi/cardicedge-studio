@@ -204,6 +204,49 @@ export function ElementsForm({
   );
 }
 
+// 持てない分類をチェックする。チェックなしは制限なし（2026-11-11 オーナー。core#154）。選び方の誤りは画面の操作では起きない
+export function ItemRestrictionsForm({
+  action,
+  id,
+  revision,
+  itemRestrictions,
+}: {
+  action: (previous: Notice, form: FormData) => Promise<Notice>;
+  id: string;
+  revision: number;
+  itemRestrictions: ItemCategory[];
+}) {
+  const [state, formAction, isPending] = useActionState(action, {});
+
+  return (
+    <>
+      {state.status && <p role="status">{state.status}</p>}
+      {state.error && <p role="alert">{state.error}</p>}
+      <form key={revision} action={formAction}>
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="revision" value={revision} />
+        <fieldset>
+          <legend>アイテム制限（チェックした分類は持てない）</legend>
+          {ITEM_CATEGORIES.map((value) => (
+            <label key={value}>
+              <input
+                type="checkbox"
+                name="itemRestrictions"
+                value={value}
+                defaultChecked={itemRestrictions.includes(value)}
+              />
+              {ITEM_CATEGORY_LABELS[value]}
+            </label>
+          ))}
+        </fieldset>
+        <button type="submit" disabled={isPending}>
+          アイテム制限を変える
+        </button>
+      </form>
+    </>
+  );
+}
+
 export function StatsForm({
   action,
   id,
