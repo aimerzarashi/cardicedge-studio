@@ -3,9 +3,14 @@
 import { useActionState } from "react";
 import type {
   CardRarity,
+  CreatureAbilityKind,
   CreatureElement,
   ItemCategory,
 } from "@/graphql/graphql";
+import {
+  CREATURE_ABILITY_KINDS,
+  CREATURE_ABILITY_LABELS,
+} from "@/lib/creature-ability";
 import {
   CREATURE_ELEMENT_LABELS,
   CREATURE_ELEMENTS,
@@ -37,13 +42,6 @@ export type StatsState = Notice &
     hitPoints?: string;
     attackError?: string;
     hitPointsError?: string;
-  };
-
-// 移動のフォームの結果。形は攻撃力と体力のフォームと同じ
-export type MovementState = Notice &
-  Kept & {
-    movement?: string;
-    movementError?: string;
   };
 
 // スペルの効果のフォームの結果。誤りのときは選んだ種類と入力した枚数を残す
@@ -356,20 +354,19 @@ export function StatsForm({
   );
 }
 
-// 移動は AT・HP とは別の操作で変える（core の changeCreatureMovement。2026-11-10 オーナー）
-export function MovementForm({
+// 能力のチェックボックス。値の無い能力だけのあいだはチェックで足りる（値の要る能力を足すときに、種類ごとの入力にする。2026-11-11 オーナー。core#156）
+export function AbilitiesForm({
   action,
   id,
   revision,
-  movement,
+  abilities,
 }: {
-  action: (previous: MovementState, form: FormData) => Promise<MovementState>;
+  action: (previous: Notice, form: FormData) => Promise<Notice>;
   id: string;
   revision: number;
-  movement: number;
+  abilities: CreatureAbilityKind[];
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
-  const kept = state.revision === revision ? state : {};
 
   return (
     <>
@@ -378,24 +375,22 @@ export function MovementForm({
       <form key={revision} action={formAction}>
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="revision" value={revision} />
-        <label>
-          移動
-          <input
-            type="number"
-            name="movement"
-            required
-            defaultValue={kept.movement ?? movement}
-            aria-invalid={kept.movementError ? true : undefined}
-            aria-describedby={kept.movementError ? "movement-error" : undefined}
-          />
-        </label>
-        {kept.movementError && (
-          <p id="movement-error" role="alert">
-            {kept.movementError}
-          </p>
-        )}
+        <fieldset>
+          <legend>能力</legend>
+          {CREATURE_ABILITY_KINDS.map((value) => (
+            <label key={value}>
+              <input
+                type="checkbox"
+                name="abilities"
+                value={value}
+                defaultChecked={abilities.includes(value)}
+              />
+              {CREATURE_ABILITY_LABELS[value]}
+            </label>
+          ))}
+        </fieldset>
         <button type="submit" disabled={isPending}>
-          移動を変える
+          能力を変える
         </button>
       </form>
     </>

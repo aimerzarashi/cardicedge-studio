@@ -848,6 +848,40 @@ type ChangeCardRaritySuccess {
 	revision: Int!
 }
 """
+クリーチャーの能力を変える入力
+"""
+input ChangeCreatureAbilitiesInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の能力の並び（同じ種類は 1 つまで。無しは空）
+	"""
+	abilities: [CreatureAbilityInput!]!
+}
+"""
+クリーチャーの能力を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureAbilitiesResult = ChangeCreatureAbilitiesSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの能力を変えた（同じ並びなら何も変えず、revision も進まない）
+"""
+type ChangeCreatureAbilitiesSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 クリーチャーの属性を変える入力
 """
 input ChangeCreatureElementsInput {
@@ -906,40 +940,6 @@ union ChangeCreatureItemRestrictionsResult = ChangeCreatureItemRestrictionsSucce
 クリーチャーのアイテム制限を変えた（同じ集合なら何も変えず、revision も進まない）
 """
 type ChangeCreatureItemRestrictionsSuccess {
-	"""
-	変えたクリーチャーの公開用の ID
-	"""
-	id: UUID!
-	"""
-	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
-	"""
-	revision: Int!
-}
-"""
-クリーチャーの移動を変える入力
-"""
-input ChangeCreatureMovementInput {
-	"""
-	クリーチャーの公開用の ID
-	"""
-	id: UUID!
-	"""
-	画面が見ていたクリーチャーの revision
-	"""
-	revision: Int!
-	"""
-	変えた後の移動（0 以上。上限は無い）
-	"""
-	movement: Int!
-}
-"""
-クリーチャーの移動を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
-"""
-union ChangeCreatureMovementResult = ChangeCreatureMovementSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
-"""
-クリーチャーの移動を変えた（同じ値なら何も変えず、revision も進まない）
-"""
-type ChangeCreatureMovementSuccess {
 	"""
 	変えたクリーチャーの公開用の ID
 	"""
@@ -1215,10 +1215,6 @@ type Creature implements Card {
 	"""
 	hitPoints: Int!
 	"""
-	移動（領地コマンドのクリーチャーの移動で進めるマスの数。0 以上。0 は動けない）
-	"""
-	movement: Int!
-	"""
 	アイテム制限（持てないアイテムの分類。武器・防具・巻物の順。無ければ空）
 	"""
 	itemRestrictions: [ItemCategory!]!
@@ -1226,6 +1222,10 @@ type Creature implements Card {
 	配置制限（置けない土地の属性。火・地・水・風の順。無ければ空）
 	"""
 	placementRestrictions: [CreatureElement!]!
+	"""
+	能力（並びは決めた順。無ければ空）
+	"""
+	abilities: [CreatureAbility!]!
 	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
@@ -1238,6 +1238,42 @@ type Creature implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+クリーチャーの能力
+"""
+interface CreatureAbility {
+	"""
+	能力の種類
+	"""
+	kind: CreatureAbilityKind!
+}
+"""
+能力 1 つの入力。値の要る能力を足すときは、その値の項目を足す
+"""
+input CreatureAbilityInput {
+	"""
+	能力の種類
+	"""
+	kind: CreatureAbilityKind!
+}
+"""
+クリーチャーの能力の種類
+"""
+enum CreatureAbilityKind {
+	"""
+	防御型（侵略に出せず、クリーチャー移動もできない）
+	"""
+	DEFENSIVE
+}
+"""
+防御型
+"""
+type CreatureDefensiveAbility implements CreatureAbility {
+	"""
+	能力の種類（DEFENSIVE）
+	"""
+	kind: CreatureAbilityKind!
 }
 """
 クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない）
@@ -2067,14 +2103,14 @@ type Mutation {
 		input: ChangeCreatureStatsInput!
 	): ChangeCreatureStatsResult!
 	"""
-	クリーチャーの移動を変える（紐づいたオペレーターだけ。準備中だけ。AT・HP とは別の操作）
+	クリーチャーの能力を変える（紐づいたオペレーターだけ。準備中だけ。並びを全体で入れ替える）
 	"""
-	changeCreatureMovement(
+	changeCreatureAbilities(
 		"""
-		変えるクリーチャーと移動
+		変えるクリーチャーと能力
 		"""
-		input: ChangeCreatureMovementInput!
-	): ChangeCreatureMovementResult!
+		input: ChangeCreatureAbilitiesInput!
+	): ChangeCreatureAbilitiesResult!
 	"""
 	クリーチャーのアイテム制限を変える（紐づいたオペレーターだけ。準備中だけ）
 	"""

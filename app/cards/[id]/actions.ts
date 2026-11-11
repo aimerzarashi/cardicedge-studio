@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { graphql } from "@/graphql";
 import type { SpellEffectInput } from "@/graphql/graphql";
 import { callCore } from "@/lib/core";
+import { isCreatureAbilityKind } from "@/lib/creature-ability";
 import { isCreatureElement } from "@/lib/creature-element";
 import { isItemCategory } from "@/lib/item-category";
 import { isRarity } from "@/lib/rarity";
@@ -25,7 +26,6 @@ import { waitCard } from "../wait-card";
 import type {
   EffectState,
   ElementsState,
-  MovementState,
   SpecState,
   StatBonusesState,
   StatsState,
@@ -110,22 +110,13 @@ const changeCreatureElementsMutation = graphql(`
   }
 `);
 
-const changeCreatureMovementMutation = graphql(`
-  mutation ChangeCreatureMovement($input: ChangeCreatureMovementInput!) {
-    changeCreatureMovement(input: $input) {
+const changeCreatureAbilitiesMutation = graphql(`
+  mutation ChangeCreatureAbilities($input: ChangeCreatureAbilitiesInput!) {
+    changeCreatureAbilities(input: $input) {
       __typename
-      ... on ChangeCreatureMovementSuccess {
+      ... on ChangeCreatureAbilitiesSuccess {
         id
         revision
-      }
-      ... on ValidationErrors {
-        errors {
-          __typename
-          field
-          ... on FieldTooSmall {
-            min
-          }
-        }
       }
     }
   }
@@ -415,38 +406,32 @@ export async function changeCreatureStats(
   }
 }
 
-export async function changeCreatureMovement(
-  _previous: MovementState,
+export async function changeCreatureAbilities(
+  _previous: Notice,
   form: FormData,
-): Promise<MovementState> {
+): Promise<Notice> {
   const card = target(form);
-  if (card === undefined) {
+  const values = form.getAll("abilities").map(String);
+  // 知らない値は改ざんされた送信なので送らない
+  const kinds = values.filter(isCreatureAbilityKind);
+  if (card === undefined || kinds.length !== values.length) {
     return { error: INVALID_TARGET };
   }
-  const movementValue = String(form.get("movement") ?? "");
-  const movement = integerOf(movementValue);
-  const kept = { revision: card.revision, movement: movementValue };
-  if (movement === undefined) {
-    return { ...kept, movementError: "移動は整数で入力してください" };
-  }
 
-  const result = await callCore(changeCreatureMovementMutation, {
-    input: { id: card.id, revision: card.revision, movement },
+  const result = await callCore(changeCreatureAbilitiesMutation, {
+    input: {
+      id: card.id,
+      revision: card.revision,
+      abilities: kinds.map((kind) => ({ kind })),
+    },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
-  const changed = result.data.changeCreatureMovement;
+  const changed = result.data.changeCreatureAbilities;
   switch (changed.__typename) {
-    case "ChangeCreatureMovementSuccess":
+    case "ChangeCreatureAbilitiesSuccess":
       return showChanged(card.id, changed.revision);
-    case "ValidationErrors": {
-      const movementError = changed.errors.find((e) => e.field === "movement");
-      return {
-        ...kept,
-        movementError: movementError && statsErrorMessage(movementError),
-      };
-    }
     default:
       return failed(changed.__typename);
   }
