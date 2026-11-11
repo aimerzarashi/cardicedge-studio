@@ -350,6 +350,7 @@ export function elementsErrorMessage(error: FieldError): string {
 // 性能の数の項目の呼び方（core が返した field で見分ける）
 const STAT_FIELD_LABELS: Record<string, string> = {
   hitPoints: "HP",
+  "abilities.percent": "通行料の倍率",
   "effect.drawCards.count": "引く枚数",
   "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
   "effect.rollDice.count": "サイコロの個数",

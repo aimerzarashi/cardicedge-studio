@@ -65,6 +65,9 @@ const cardQuery = graphql(`
         placementRestrictions
         abilities {
           kind
+          ... on CreatureTollMultiplierAbility {
+            percent
+          }
         }
       }
       ... on Item {
@@ -234,7 +237,7 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   action={changeCreatureAbilities}
                   id={card.id}
                   revision={card.revision}
-                  abilities={card.abilities.map(({ kind }) => kind)}
+                  abilities={card.abilities}
                 />
               </>
             )}

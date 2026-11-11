@@ -24,6 +24,7 @@ import {
 } from "../../messages";
 import { waitCard } from "../wait-card";
 import type {
+  AbilitiesState,
   EffectState,
   ElementsState,
   SpecState,
@@ -117,6 +118,15 @@ const changeCreatureAbilitiesMutation = graphql(`
       ... on ChangeCreatureAbilitiesSuccess {
         id
         revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldTooSmall {
+            min
+          }
+        }
       }
     }
   }
@@ -407,9 +417,9 @@ export async function changeCreatureStats(
 }
 
 export async function changeCreatureAbilities(
-  _previous: Notice,
+  _previous: AbilitiesState,
   form: FormData,
-): Promise<Notice> {
+): Promise<AbilitiesState> {
   const card = target(form);
   const values = form.getAll("abilities").map(String);
   // 知らない値は改ざんされた送信なので送らない
@@ -417,12 +427,26 @@ export async function changeCreatureAbilities(
   if (card === undefined || kinds.length !== values.length) {
     return { error: INVALID_TARGET };
   }
+  const percentValue = String(form.get("tollMultiplierPercent") ?? "");
+  const kept = {
+    revision: card.revision,
+    kinds: values,
+    percent: percentValue,
+  };
+  // 倍率は通行料の倍率を選んだときだけ送る（値の範囲は core が決める）
+  const tolled = kinds.includes("TOLL_MULTIPLIER");
+  const percent = integerOf(percentValue);
+  if (tolled && percent === undefined) {
+    return { ...kept, percentError: "通行料の倍率は整数で入力してください" };
+  }
 
   const result = await callCore(changeCreatureAbilitiesMutation, {
     input: {
       id: card.id,
       revision: card.revision,
-      abilities: kinds.map((kind) => ({ kind })),
+      abilities: kinds.map((kind) =>
+        kind === "TOLL_MULTIPLIER" ? { kind, percent } : { kind },
+      ),
     },
   });
   if (!result.ok) {
@@ -432,6 +456,18 @@ export async function changeCreatureAbilities(
   switch (changed.__typename) {
     case "ChangeCreatureAbilitiesSuccess":
       return showChanged(card.id, changed.revision);
+    case "ValidationErrors": {
+      // 倍率の範囲の誤り（abilities.N.percent）だけが画面の操作で起きる
+      const percentError = changed.errors.find((e) =>
+        e.field.endsWith(".percent"),
+      );
+      return {
+        ...kept,
+        percentError: percentError
+          ? statsErrorMessage({ ...percentError, field: "abilities.percent" })
+          : INVALID_TARGET,
+      };
+    }
     default:
       return failed(changed.__typename);
   }

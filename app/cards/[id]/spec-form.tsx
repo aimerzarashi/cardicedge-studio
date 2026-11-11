@@ -3,13 +3,13 @@
 import { useActionState } from "react";
 import type {
   CardRarity,
-  CreatureAbilityKind,
   CreatureElement,
   ItemCategory,
 } from "@/graphql/graphql";
 import {
   CREATURE_ABILITY_KINDS,
   CREATURE_ABILITY_LABELS,
+  type CreatureAbilityView,
 } from "@/lib/creature-ability";
 import {
   CREATURE_ELEMENT_LABELS,
@@ -354,19 +354,34 @@ export function StatsForm({
   );
 }
 
-// 能力のチェックボックス。値の無い能力だけのあいだはチェックで足りる（値の要る能力を足すときに、種類ごとの入力にする。2026-11-11 オーナー。core#156）
+// 能力の結果。誤りのときは選んだ種類と入力した倍率を残す
+export type AbilitiesState = Notice &
+  Kept & {
+    kinds?: string[];
+    percent?: string;
+    percentError?: string;
+  };
+
+// 能力はチェックで選び、値の要る能力（通行料の倍率）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
 export function AbilitiesForm({
   action,
   id,
   revision,
   abilities,
 }: {
-  action: (previous: Notice, form: FormData) => Promise<Notice>;
+  action: (previous: AbilitiesState, form: FormData) => Promise<AbilitiesState>;
   id: string;
   revision: number;
-  abilities: CreatureAbilityKind[];
+  abilities: CreatureAbilityView[];
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
+  const kept = state.revision === revision ? state : {};
+  const kinds: string[] = kept.kinds ?? abilities.map(({ kind }) => kind);
+  const percent =
+    kept.percent ??
+    String(
+      abilities.find(({ kind }) => kind === "TOLL_MULTIPLIER")?.percent ?? 150,
+    );
 
   return (
     <>
@@ -383,12 +398,29 @@ export function AbilitiesForm({
                 type="checkbox"
                 name="abilities"
                 value={value}
-                defaultChecked={abilities.includes(value)}
+                defaultChecked={kinds.includes(value)}
               />
               {CREATURE_ABILITY_LABELS[value]}
             </label>
           ))}
+          <label>
+            通行料の倍率（%）
+            <input
+              type="number"
+              name="tollMultiplierPercent"
+              defaultValue={percent}
+              aria-invalid={kept.percentError ? true : undefined}
+              aria-describedby={
+                kept.percentError ? "toll-multiplier-error" : undefined
+              }
+            />
+          </label>
         </fieldset>
+        {kept.percentError && (
+          <p id="toll-multiplier-error" role="alert">
+            {kept.percentError}
+          </p>
+        )}
         <button type="submit" disabled={isPending}>
           能力を変える
         </button>

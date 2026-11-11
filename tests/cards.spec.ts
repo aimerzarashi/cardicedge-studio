@@ -368,6 +368,20 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await page.getByRole("button", { name: "能力を変える" }).click();
   await expect(page.getByText("保存しました").nth(4)).toBeVisible();
   await expect(page.getByLabel("防御型", { exact: true })).toBeChecked();
+
+  // 値の要る能力は、範囲の誤りが文言で出て入力が残る
+  await page.getByLabel("通行料の倍率", { exact: true }).check();
+  await page.getByLabel("通行料の倍率（%）").fill("0");
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(
+    page.getByText("通行料の倍率は 1 以上にしてください"),
+  ).toBeVisible();
+  await expect(page.getByLabel("通行料の倍率（%）")).toHaveValue("0");
+  await page.getByLabel("通行料の倍率（%）").fill("150");
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  await expect(page.getByLabel("通行料の倍率", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("通行料の倍率（%）")).toHaveValue("150");
   await expect(page.getByLabel("移動", { exact: true })).toHaveCount(0);
 });
 
