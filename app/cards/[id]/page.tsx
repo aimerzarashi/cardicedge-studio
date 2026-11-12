@@ -68,6 +68,10 @@ const cardQuery = graphql(`
           ... on CreatureTollMultiplierAbility {
             percent
           }
+          ... on CreatureBattleModifierAbility {
+            attackModifier
+            hitPointsModifier
+          }
         }
       }
       ... on Item {

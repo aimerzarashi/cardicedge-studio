@@ -288,6 +288,10 @@ export type CheckBoardLayoutInput = {
 
 /** 能力 1 つの入力 */
 export type CreatureAbilityInput = {
+  /** 戦闘中の AT の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る） */
+  attackModifier?: number | null | undefined;
+  /** 戦闘中の HP の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る） */
+  hitPointsModifier?: number | null | undefined;
   /** 能力の種類 */
   kind: CreatureAbilityKind;
   /** 通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る） */
@@ -296,13 +300,15 @@ export type CreatureAbilityInput = {
 
 /** クリーチャーの能力の種類 */
 export type CreatureAbilityKind =
-  /** 防御型（侵略に出せず、クリーチャー移動もできない） */
+  /** 戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する） */
+  | 'BATTLE_MODIFIER'
+  /** 防御型（侵略できない。移動できない。守ることはできる） */
   | 'DEFENSIVE'
   /** 先制（戦闘で、先制の無い相手より先に攻撃する。後手と同時には持てない） */
   | 'FIRST_STRIKE'
   /** 後手（戦闘で、後手の無い相手より後に攻撃する。先制と同時には持てない） */
   | 'LAST_STRIKE'
-  /** 通行料の倍率（このクリーチャーのいる領地の通行料に掛ける） */
+  /** 通行料の倍率（いる領地の通行料を払うときに倍率を掛ける） */
   | 'TOLL_MULTIPLIER';
 
 /** クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない） */
@@ -1307,6 +1313,7 @@ export type CardQueryVariables = Exact<{
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<
+        | { attackModifier: number, hitPointsModifier: number, kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
@@ -3092,6 +3099,10 @@ export const CardDocument = new TypedDocumentString(`
         kind
         ... on CreatureTollMultiplierAbility {
           percent
+        }
+        ... on CreatureBattleModifierAbility {
+          attackModifier
+          hitPointsModifier
         }
       }
     }
