@@ -1260,17 +1260,25 @@ input CreatureAbilityInput {
 	通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る）
 	"""
 	percent: Int
+	"""
+	戦闘中の AT の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る）
+	"""
+	attackModifier: Int
+	"""
+	戦闘中の HP の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る）
+	"""
+	hitPointsModifier: Int
 }
 """
 クリーチャーの能力の種類
 """
 enum CreatureAbilityKind {
 	"""
-	防御型（侵略に出せず、クリーチャー移動もできない）
+	防御型（侵略できない。移動できない。守ることはできる）
 	"""
 	DEFENSIVE
 	"""
-	通行料の倍率（このクリーチャーのいる領地の通行料に掛ける）
+	通行料の倍率（いる領地の通行料を払うときに倍率を掛ける）
 	"""
 	TOLL_MULTIPLIER
 	"""
@@ -1281,6 +1289,27 @@ enum CreatureAbilityKind {
 	後手（戦闘で、後手の無い相手より後に攻撃する。先制と同時には持てない）
 	"""
 	LAST_STRIKE
+	"""
+	戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する）
+	"""
+	BATTLE_MODIFIER
+}
+"""
+戦闘中の増減
+"""
+type CreatureBattleModifierAbility implements CreatureAbility {
+	"""
+	能力の種類（BATTLE_MODIFIER）
+	"""
+	kind: CreatureAbilityKind!
+	"""
+	戦闘中の AT の増減（負も 0 もある）
+	"""
+	attackModifier: Int!
+	"""
+	戦闘中の HP の増減（負も 0 もある）
+	"""
+	hitPointsModifier: Int!
 }
 """
 防御型

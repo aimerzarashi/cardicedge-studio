@@ -384,6 +384,16 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByLabel("通行料の倍率（%）")).toHaveValue("150");
   await expect(page.getByLabel("移動", { exact: true })).toHaveCount(0);
 
+  // 戦闘中の増減は AT・HP の増減を入れ、負も 0 も保存できる
+  await page.getByLabel("戦闘中の増減", { exact: true }).check();
+  await page.getByLabel("AT の増減").fill("0");
+  await page.getByLabel("HP の増減").fill("-20");
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  await expect(page.getByLabel("戦闘中の増減", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("AT の増減")).toHaveValue("0");
+  await expect(page.getByLabel("HP の増減")).toHaveValue("-20");
+
   // 先制と後手は同時に選べず、誤りが文言で出て選んだものが残る
   await page.getByLabel("先制", { exact: true }).check();
   await page.getByLabel("後手", { exact: true }).check();
@@ -394,6 +404,11 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await page.getByRole("button", { name: "能力を変える" }).click();
   await expect(page.getByText("保存しました").nth(4)).toBeVisible();
   await expect(page.getByLabel("先制", { exact: true })).toBeChecked();
+
+  // 公開すると、増減は符号つきで能力の表示に出る
+  await publishCard(page, name);
+  await page.getByRole("link", { name }).click();
+  await expect(page.getByText(/戦闘中の増減（AT 0、HP -20）/)).toBeVisible();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

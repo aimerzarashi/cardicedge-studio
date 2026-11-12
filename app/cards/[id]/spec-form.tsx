@@ -360,10 +360,14 @@ export type AbilitiesState = Notice &
     kinds?: string[];
     percent?: string;
     percentError?: string;
+    attackModifier?: string;
+    hitPointsModifier?: string;
+    attackModifierError?: string;
+    hitPointsModifierError?: string;
     abilitiesError?: string;
   };
 
-// 能力はチェックで選び、値の要る能力（通行料の倍率）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
+// 能力はチェックで選び、値の要る能力（通行料の倍率・戦闘中の増減）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
 export function AbilitiesForm({
   action,
   id,
@@ -383,6 +387,13 @@ export function AbilitiesForm({
     String(
       abilities.find(({ kind }) => kind === "TOLL_MULTIPLIER")?.percent ?? 150,
     );
+  const battleModifier = abilities.find(
+    ({ kind }) => kind === "BATTLE_MODIFIER",
+  );
+  const attackModifier =
+    kept.attackModifier ?? String(battleModifier?.attackModifier ?? 0);
+  const hitPointsModifier =
+    kept.hitPointsModifier ?? String(battleModifier?.hitPointsModifier ?? 0);
 
   return (
     <>
@@ -419,6 +430,34 @@ export function AbilitiesForm({
               }
             />
           </label>
+          <label>
+            AT の増減
+            <input
+              type="number"
+              name="battleModifierAttack"
+              defaultValue={attackModifier}
+              aria-invalid={kept.attackModifierError ? true : undefined}
+              aria-describedby={
+                kept.attackModifierError
+                  ? "battle-modifier-attack-error"
+                  : undefined
+              }
+            />
+          </label>
+          <label>
+            HP の増減
+            <input
+              type="number"
+              name="battleModifierHitPoints"
+              defaultValue={hitPointsModifier}
+              aria-invalid={kept.hitPointsModifierError ? true : undefined}
+              aria-describedby={
+                kept.hitPointsModifierError
+                  ? "battle-modifier-hit-points-error"
+                  : undefined
+              }
+            />
+          </label>
         </fieldset>
         {kept.abilitiesError && (
           <p id="abilities-error" role="alert">
@@ -428,6 +467,16 @@ export function AbilitiesForm({
         {kept.percentError && (
           <p id="toll-multiplier-error" role="alert">
             {kept.percentError}
+          </p>
+        )}
+        {kept.attackModifierError && (
+          <p id="battle-modifier-attack-error" role="alert">
+            {kept.attackModifierError}
+          </p>
+        )}
+        {kept.hitPointsModifierError && (
+          <p id="battle-modifier-hit-points-error" role="alert">
+            {kept.hitPointsModifierError}
           </p>
         )}
         <button type="submit" disabled={isPending}>

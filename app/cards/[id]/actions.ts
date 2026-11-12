@@ -429,10 +429,14 @@ export async function changeCreatureAbilities(
     return { error: INVALID_TARGET };
   }
   const percentValue = String(form.get("tollMultiplierPercent") ?? "");
+  const attackValue = String(form.get("battleModifierAttack") ?? "");
+  const hitPointsValue = String(form.get("battleModifierHitPoints") ?? "");
   const kept = {
     revision: card.revision,
     kinds: values,
     percent: percentValue,
+    attackModifier: attackValue,
+    hitPointsModifier: hitPointsValue,
   };
   // 倍率は通行料の倍率を選んだときだけ送る（値の範囲は core が決める）
   const tolled = kinds.includes("TOLL_MULTIPLIER");
@@ -440,14 +444,41 @@ export async function changeCreatureAbilities(
   if (tolled && percent === undefined) {
     return { ...kept, percentError: "通行料の倍率は整数で入力してください" };
   }
+  // 増減は戦闘中の増減を選んだときだけ送る（負も 0 もよい。core が両方の有無を判定する）
+  const modified = kinds.includes("BATTLE_MODIFIER");
+  const attackModifier = integerOf(attackValue);
+  const hitPointsModifier = integerOf(hitPointsValue);
+  if (
+    modified &&
+    (attackModifier === undefined || hitPointsModifier === undefined)
+  ) {
+    return {
+      ...kept,
+      attackModifierError:
+        attackModifier === undefined
+          ? "AT の増減は整数で入力してください"
+          : undefined,
+      hitPointsModifierError:
+        hitPointsModifier === undefined
+          ? "HP の増減は整数で入力してください"
+          : undefined,
+    };
+  }
 
   const result = await callCore(changeCreatureAbilitiesMutation, {
     input: {
       id: card.id,
       revision: card.revision,
-      abilities: kinds.map((kind) =>
-        kind === "TOLL_MULTIPLIER" ? { kind, percent } : { kind },
-      ),
+      abilities: kinds.map((kind) => {
+        switch (kind) {
+          case "TOLL_MULTIPLIER":
+            return { kind, percent };
+          case "BATTLE_MODIFIER":
+            return { kind, attackModifier, hitPointsModifier };
+          default:
+            return { kind };
+        }
+      }),
     },
   });
   if (!result.ok) {
