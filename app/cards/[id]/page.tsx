@@ -11,7 +11,7 @@ import { dateTimeFormat } from "@/lib/format";
 import {
   ITEM_CATEGORY_LABELS,
   itemRestrictionsLabel,
-  signedBonus,
+  signedModifier,
 } from "@/lib/item-category";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { STATUS_LABELS } from "@/lib/status";
@@ -27,7 +27,7 @@ import {
   changeCreaturePlacementRestrictions,
   changeCreatureStats,
   changeItemCategory,
-  changeItemStatBonuses,
+  changeItemStatModifiers,
   changeSpellEffect,
 } from "./actions";
 import {
@@ -39,7 +39,7 @@ import {
   ItemRestrictionsForm,
   PlacementRestrictionsForm,
   RarityForm,
-  StatBonusesForm,
+  StatModifiersForm,
   StatsForm,
 } from "./spec-form";
 
@@ -76,8 +76,8 @@ const cardQuery = graphql(`
       }
       ... on Item {
         category
-        attackBonus
-        hitPointsBonus
+        attackModifier
+        hitPointsModifier
       }
       ... on Spell {
         effect {
@@ -253,12 +253,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   revision={card.revision}
                   category={card.category}
                 />
-                <StatBonusesForm
-                  action={changeItemStatBonuses}
+                <StatModifiersForm
+                  action={changeItemStatModifiers}
                   id={card.id}
                   revision={card.revision}
-                  attackBonus={card.attackBonus}
-                  hitPointsBonus={card.hitPointsBonus}
+                  attackModifier={card.attackModifier}
+                  hitPointsModifier={card.hitPointsModifier}
                 />
               </>
             )}
@@ -300,9 +300,9 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dt>分類</dt>
                 <dd>{ITEM_CATEGORY_LABELS[card.category]}</dd>
                 <dt>AT の増減</dt>
-                <dd>{signedBonus(card.attackBonus)}</dd>
+                <dd>{signedModifier(card.attackModifier)}</dd>
                 <dt>HP の増減</dt>
-                <dd>{signedBonus(card.hitPointsBonus)}</dd>
+                <dd>{signedModifier(card.hitPointsModifier)}</dd>
               </>
             )}
             {card.__typename === "Spell" && (

@@ -55,12 +55,12 @@ export type EffectState = Notice &
   };
 
 // アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
-export type StatBonusesState = Notice &
+export type StatModifiersState = Notice &
   Kept & {
-    attackBonus?: string;
-    hitPointsBonus?: string;
-    attackBonusError?: string;
-    hitPointsBonusError?: string;
+    attackModifier?: string;
+    hitPointsModifier?: string;
+    attackModifierError?: string;
+    hitPointsModifierError?: string;
   };
 
 const initialState: SpecState = {};
@@ -601,21 +601,21 @@ export function CategoryForm({
   );
 }
 
-export function StatBonusesForm({
+export function StatModifiersForm({
   action,
   id,
   revision,
-  attackBonus,
-  hitPointsBonus,
+  attackModifier,
+  hitPointsModifier,
 }: {
   action: (
-    previous: StatBonusesState,
+    previous: StatModifiersState,
     form: FormData,
-  ) => Promise<StatBonusesState>;
+  ) => Promise<StatModifiersState>;
   id: string;
   revision: number;
-  attackBonus: number;
-  hitPointsBonus: number;
+  attackModifier: number;
+  hitPointsModifier: number;
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const kept = state.revision === revision ? state : {};
@@ -631,36 +631,38 @@ export function StatBonusesForm({
           AT の増減
           <input
             type="number"
-            name="attackBonus"
+            name="attackModifier"
             required
-            defaultValue={kept.attackBonus ?? attackBonus}
-            aria-invalid={kept.attackBonusError ? true : undefined}
+            defaultValue={kept.attackModifier ?? attackModifier}
+            aria-invalid={kept.attackModifierError ? true : undefined}
             aria-describedby={
-              kept.attackBonusError ? "attack-bonus-error" : undefined
+              kept.attackModifierError ? "attack-modifier-error" : undefined
             }
           />
         </label>
-        {kept.attackBonusError && (
-          <p id="attack-bonus-error" role="alert">
-            {kept.attackBonusError}
+        {kept.attackModifierError && (
+          <p id="attack-modifier-error" role="alert">
+            {kept.attackModifierError}
           </p>
         )}
         <label>
           HP の増減
           <input
             type="number"
-            name="hitPointsBonus"
+            name="hitPointsModifier"
             required
-            defaultValue={kept.hitPointsBonus ?? hitPointsBonus}
-            aria-invalid={kept.hitPointsBonusError ? true : undefined}
+            defaultValue={kept.hitPointsModifier ?? hitPointsModifier}
+            aria-invalid={kept.hitPointsModifierError ? true : undefined}
             aria-describedby={
-              kept.hitPointsBonusError ? "hit-points-bonus-error" : undefined
+              kept.hitPointsModifierError
+                ? "hit-points-modifier-error"
+                : undefined
             }
           />
         </label>
-        {kept.hitPointsBonusError && (
-          <p id="hit-points-bonus-error" role="alert">
-            {kept.hitPointsBonusError}
+        {kept.hitPointsModifierError && (
+          <p id="hit-points-modifier-error" role="alert">
+            {kept.hitPointsModifierError}
           </p>
         )}
         <button type="submit" disabled={isPending}>

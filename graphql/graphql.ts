@@ -251,11 +251,11 @@ export type ChangeItemCategoryInput = {
 };
 
 /** アイテムの戦闘中の AT・HP の増減を変える入力 */
-export type ChangeItemStatBonusesInput = {
+export type ChangeItemStatModifiersInput = {
   /** 戦闘中に足す攻撃力（負は下げる） */
-  attackBonus: number;
+  attackModifier: number;
   /** 戦闘中に足す体力（負は下げる） */
-  hitPointsBonus: number;
+  hitPointsModifier: number;
   /** 変えるアイテムの公開用の ID */
   id: string;
   /** 画面が見ていたカードの更新の番号 */
@@ -1261,15 +1261,15 @@ export type ChangeItemCategoryMutation = { changeItemCategory:
     | { __typename: 'ValidationErrors' }
    };
 
-export type ChangeItemStatBonusesMutationVariables = Exact<{
-  input: ChangeItemStatBonusesInput;
+export type ChangeItemStatModifiersMutationVariables = Exact<{
+  input: ChangeItemStatModifiersInput;
 }>;
 
 
-export type ChangeItemStatBonusesMutation = { changeItemStatBonuses:
+export type ChangeItemStatModifiersMutation = { changeItemStatModifiers:
     | { __typename: 'CardNotDraftError' }
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'ChangeItemStatBonusesSuccess', id: string, revision: number }
+    | { __typename: 'ChangeItemStatModifiersSuccess', id: string, revision: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RevisionConflictError' }
     | { __typename: 'ValidationErrors' }
@@ -1320,7 +1320,7 @@ export type CardQuery = { card:
         | { percent: number, kind: CreatureAbilityKind }
       > }
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackBonus: number, hitPointsBonus: number }
+    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackModifier: number, hitPointsModifier: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
         | { __typename: 'SpellDamageEffect', amount: number }
         | { __typename: 'SpellDrawCardsEffect', count: number }
@@ -3044,17 +3044,17 @@ export const ChangeItemCategoryDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeItemCategoryMutation, ChangeItemCategoryMutationVariables>;
-export const ChangeItemStatBonusesDocument = new TypedDocumentString(`
-    mutation ChangeItemStatBonuses($input: ChangeItemStatBonusesInput!) {
-  changeItemStatBonuses(input: $input) {
+export const ChangeItemStatModifiersDocument = new TypedDocumentString(`
+    mutation ChangeItemStatModifiers($input: ChangeItemStatModifiersInput!) {
+  changeItemStatModifiers(input: $input) {
     __typename
-    ... on ChangeItemStatBonusesSuccess {
+    ... on ChangeItemStatModifiersSuccess {
       id
       revision
     }
   }
 }
-    `) as unknown as TypedDocumentString<ChangeItemStatBonusesMutation, ChangeItemStatBonusesMutationVariables>;
+    `) as unknown as TypedDocumentString<ChangeItemStatModifiersMutation, ChangeItemStatModifiersMutationVariables>;
 export const ChangeSpellEffectDocument = new TypedDocumentString(`
     mutation ChangeSpellEffect($input: ChangeSpellEffectInput!) {
   changeSpellEffect(input: $input) {
@@ -3108,8 +3108,8 @@ export const CardDocument = new TypedDocumentString(`
     }
     ... on Item {
       category
-      attackBonus
-      hitPointsBonus
+      attackModifier
+      hitPointsModifier
     }
     ... on Spell {
       effect {
