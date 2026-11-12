@@ -72,6 +72,10 @@ const cardQuery = graphql(`
             attackModifier
             hitPointsModifier
           }
+          ... on CreatureBattleRandomStatsAbility {
+            minimum
+            maximum
+          }
         }
       }
       ... on Item {

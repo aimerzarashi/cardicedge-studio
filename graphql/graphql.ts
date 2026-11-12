@@ -294,6 +294,10 @@ export type CreatureAbilityInput = {
   hitPointsModifier?: number | null | undefined;
   /** 能力の種類 */
   kind: CreatureAbilityKind;
+  /** 戦闘中の AT・HP の最大（最小以上。BATTLE_RANDOM_STATS だけに要る） */
+  maximum?: number | null | undefined;
+  /** 戦闘中の AT・HP の最小（1 以上。BATTLE_RANDOM_STATS だけに要る） */
+  minimum?: number | null | undefined;
   /** 通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る） */
   percent?: number | null | undefined;
 };
@@ -302,6 +306,8 @@ export type CreatureAbilityInput = {
 export type CreatureAbilityKind =
   /** 戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する） */
   | 'BATTLE_MODIFIER'
+  /** 戦闘中のランダム（戦闘中、AT・HP が最小〜最大のランダムな値になる。別々に引く） */
+  | 'BATTLE_RANDOM_STATS'
   /** 防御型（侵略できない。移動できない。守ることはできる） */
   | 'DEFENSIVE'
   /** 先制（戦闘で、先制の無い相手より先に攻撃する。後手と同時には持てない） */
@@ -1314,6 +1320,7 @@ export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<
         | { attackModifier: number, hitPointsModifier: number, kind: CreatureAbilityKind }
+        | { minimum: number, maximum: number, kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
@@ -3103,6 +3110,10 @@ export const CardDocument = new TypedDocumentString(`
         ... on CreatureBattleModifierAbility {
           attackModifier
           hitPointsModifier
+        }
+        ... on CreatureBattleRandomStatsAbility {
+          minimum
+          maximum
         }
       }
     }

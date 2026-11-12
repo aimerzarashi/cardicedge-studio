@@ -394,6 +394,23 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByLabel("AT の増減")).toHaveValue("0");
   await expect(page.getByLabel("HP の増減")).toHaveValue("-20");
 
+  // 戦闘中のランダムは最小・最大を入れ、最大が最小より小さいと誤りが文言で出て入力が残る
+  await page.getByLabel("戦闘中のランダム", { exact: true }).check();
+  await page.getByLabel("最小").fill("70");
+  await page.getByLabel("最大").fill("10");
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("最大は 70 以上にしてください")).toBeVisible();
+  await expect(page.getByLabel("最大")).toHaveValue("10");
+  await page.getByLabel("最小").fill("10");
+  await page.getByLabel("最大").fill("70");
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  await expect(
+    page.getByLabel("戦闘中のランダム", { exact: true }),
+  ).toBeChecked();
+  await expect(page.getByLabel("最小")).toHaveValue("10");
+  await expect(page.getByLabel("最大")).toHaveValue("70");
+
   // 先制と後手は同時に選べず、誤りが文言で出て選んだものが残る
   await page.getByLabel("先制", { exact: true }).check();
   await page.getByLabel("後手", { exact: true }).check();
@@ -409,6 +426,7 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await publishCard(page, name);
   await page.getByRole("link", { name }).click();
   await expect(page.getByText(/戦闘中の増減（AT 0、HP -20）/)).toBeVisible();
+  await expect(page.getByText(/戦闘中のランダム（10〜70）/)).toBeVisible();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

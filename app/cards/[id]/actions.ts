@@ -431,12 +431,16 @@ export async function changeCreatureAbilities(
   const percentValue = String(form.get("tollMultiplierPercent") ?? "");
   const attackValue = String(form.get("battleModifierAttack") ?? "");
   const hitPointsValue = String(form.get("battleModifierHitPoints") ?? "");
+  const minimumValue = String(form.get("battleRandomMinimum") ?? "");
+  const maximumValue = String(form.get("battleRandomMaximum") ?? "");
   const kept = {
     revision: card.revision,
     kinds: values,
     percent: percentValue,
     attackModifier: attackValue,
     hitPointsModifier: hitPointsValue,
+    minimum: minimumValue,
+    maximum: maximumValue,
   };
   // 倍率は通行料の倍率を選んだときだけ送る（値の範囲は core が決める）
   const tolled = kinds.includes("TOLL_MULTIPLIER");
@@ -464,6 +468,19 @@ export async function changeCreatureAbilities(
           : undefined,
     };
   }
+  // 最小・最大は戦闘中のランダムを選んだときだけ送る（範囲の誤りは core が決める）
+  const randomized = kinds.includes("BATTLE_RANDOM_STATS");
+  const minimum = integerOf(minimumValue);
+  const maximum = integerOf(maximumValue);
+  if (randomized && (minimum === undefined || maximum === undefined)) {
+    return {
+      ...kept,
+      minimumError:
+        minimum === undefined ? "最小は整数で入力してください" : undefined,
+      maximumError:
+        maximum === undefined ? "最大は整数で入力してください" : undefined,
+    };
+  }
 
   const result = await callCore(changeCreatureAbilitiesMutation, {
     input: {
@@ -475,6 +492,8 @@ export async function changeCreatureAbilities(
             return { kind, percent };
           case "BATTLE_MODIFIER":
             return { kind, attackModifier, hitPointsModifier };
+          case "BATTLE_RANDOM_STATS":
+            return { kind, minimum, maximum };
           default:
             return { kind };
         }
@@ -489,11 +508,28 @@ export async function changeCreatureAbilities(
     case "ChangeCreatureAbilitiesSuccess":
       return showChanged(card.id, changed.revision);
     case "ValidationErrors": {
-      // 画面の操作で起きるのは、倍率の範囲の誤り（abilities.N.percent）と、並び全体の誤り（abilities）だけ。
+      // 画面の操作で起きるのは、倍率・最小・最大の範囲の誤り（abilities.N.percent・minimum・maximum）と、並び全体の誤り（abilities）だけ。
       // 並び全体の誤りは重複か先制と後手の同時の指定で、チェックでは同じ種類を重ねられないので後者として出す（core#158）
       const percentError = changed.errors.find((e) =>
         e.field.endsWith(".percent"),
       );
+      const minimumError = changed.errors.find((e) =>
+        e.field.endsWith(".minimum"),
+      );
+      const maximumError = changed.errors.find((e) =>
+        e.field.endsWith(".maximum"),
+      );
+      if (minimumError || maximumError) {
+        return {
+          ...kept,
+          minimumError:
+            minimumError &&
+            statsErrorMessage({ ...minimumError, field: "abilities.minimum" }),
+          maximumError:
+            maximumError &&
+            statsErrorMessage({ ...maximumError, field: "abilities.maximum" }),
+        };
+      }
       if (percentError) {
         return {
           ...kept,
