@@ -1,5 +1,5 @@
 import type { CreatureAbilityKind } from "@/graphql/graphql";
-import { signedBonus } from "@/lib/item-category";
+import { signedModifier } from "@/lib/item-category";
 
 // Record<CreatureAbilityKind, …> にするのは、core に能力が足されたときの足し忘れを型検査で見つけるため
 export const CREATURE_ABILITY_LABELS: Record<CreatureAbilityKind, string> = {
@@ -35,7 +35,7 @@ export function abilityLabel(ability: CreatureAbilityView): string {
     ability.attackModifier !== undefined &&
     ability.hitPointsModifier !== undefined
   ) {
-    return `${label}（AT ${signedBonus(ability.attackModifier)}、HP ${signedBonus(ability.hitPointsModifier)}）`;
+    return `${label}（AT ${signedModifier(ability.attackModifier)}、HP ${signedModifier(ability.hitPointsModifier)}）`;
   }
   return ability.percent === undefined ? label : `${label} ${ability.percent}%`;
 }

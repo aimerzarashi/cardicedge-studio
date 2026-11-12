@@ -1058,7 +1058,7 @@ type ChangeItemCategorySuccess {
 """
 アイテムの戦闘中の AT・HP の増減を変える入力
 """
-input ChangeItemStatBonusesInput {
+input ChangeItemStatModifiersInput {
 	"""
 	変えるアイテムの公開用の ID
 	"""
@@ -1070,20 +1070,20 @@ input ChangeItemStatBonusesInput {
 	"""
 	戦闘中に足す攻撃力（負は下げる）
 	"""
-	attackBonus: Int!
+	attackModifier: Int!
 	"""
 	戦闘中に足す体力（負は下げる）
 	"""
-	hitPointsBonus: Int!
+	hitPointsModifier: Int!
 }
 """
 アイテムの増減を変える操作の結果（カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
 """
-union ChangeItemStatBonusesResult = ChangeItemStatBonusesSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+union ChangeItemStatModifiersResult = ChangeItemStatModifiersSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
 """
 アイテムの戦闘中の AT・HP の増減を変えた（どちらも同じ値なら revision は進まない）
 """
-type ChangeItemStatBonusesSuccess {
+type ChangeItemStatModifiersSuccess {
 	"""
 	変えたアイテムの公開用の ID
 	"""
@@ -1970,11 +1970,11 @@ type Item implements Card {
 	"""
 	戦闘中に足す攻撃力（負は下げる）
 	"""
-	attackBonus: Int!
+	attackModifier: Int!
 	"""
 	戦闘中に足す体力（負は下げる）
 	"""
-	hitPointsBonus: Int!
+	hitPointsModifier: Int!
 	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
@@ -2289,12 +2289,12 @@ type Mutation {
 	"""
 	アイテムの戦闘中の AT・HP の増減を変える（紐づいたオペレーターだけ。準備中だけ。2 つは一緒に変える）
 	"""
-	changeItemStatBonuses(
+	changeItemStatModifiers(
 		"""
 		変えるアイテムと増減
 		"""
-		input: ChangeItemStatBonusesInput!
-	): ChangeItemStatBonusesResult!
+		input: ChangeItemStatModifiersInput!
+	): ChangeItemStatModifiersResult!
 	"""
 	アイテムを登録する（紐づいたオペレーターだけ）
 	"""

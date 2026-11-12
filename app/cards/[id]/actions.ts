@@ -29,7 +29,7 @@ import type {
   EffectState,
   ElementsState,
   SpecState,
-  StatBonusesState,
+  StatModifiersState,
   StatsState,
 } from "./spec-form";
 
@@ -166,11 +166,11 @@ const changeItemCategoryMutation = graphql(`
   }
 `);
 
-const changeItemStatBonusesMutation = graphql(`
-  mutation ChangeItemStatBonuses($input: ChangeItemStatBonusesInput!) {
-    changeItemStatBonuses(input: $input) {
+const changeItemStatModifiersMutation = graphql(`
+  mutation ChangeItemStatModifiers($input: ChangeItemStatModifiersInput!) {
+    changeItemStatModifiers(input: $input) {
       __typename
-      ... on ChangeItemStatBonusesSuccess {
+      ... on ChangeItemStatModifiersSuccess {
         id
         revision
       }
@@ -632,48 +632,48 @@ export async function changeItemCategory(
   }
 }
 
-export async function changeItemStatBonuses(
-  _previous: StatBonusesState,
+export async function changeItemStatModifiers(
+  _previous: StatModifiersState,
   form: FormData,
-): Promise<StatBonusesState> {
+): Promise<StatModifiersState> {
   const card = target(form);
   if (card === undefined) {
     return { error: INVALID_TARGET };
   }
-  const attackValue = String(form.get("attackBonus") ?? "");
-  const hitPointsValue = String(form.get("hitPointsBonus") ?? "");
-  const attackBonus = integerOf(attackValue);
-  const hitPointsBonus = integerOf(hitPointsValue);
-  if (attackBonus === undefined || hitPointsBonus === undefined) {
+  const attackValue = String(form.get("attackModifier") ?? "");
+  const hitPointsValue = String(form.get("hitPointsModifier") ?? "");
+  const attackModifier = integerOf(attackValue);
+  const hitPointsModifier = integerOf(hitPointsValue);
+  if (attackModifier === undefined || hitPointsModifier === undefined) {
     return {
       revision: card.revision,
-      attackBonus: attackValue,
-      hitPointsBonus: hitPointsValue,
-      attackBonusError:
-        attackBonus === undefined
+      attackModifier: attackValue,
+      hitPointsModifier: hitPointsValue,
+      attackModifierError:
+        attackModifier === undefined
           ? "AT の増減は整数で入力してください"
           : undefined,
-      hitPointsBonusError:
-        hitPointsBonus === undefined
+      hitPointsModifierError:
+        hitPointsModifier === undefined
           ? "HP の増減は整数で入力してください"
           : undefined,
     };
   }
 
-  const result = await callCore(changeItemStatBonusesMutation, {
+  const result = await callCore(changeItemStatModifiersMutation, {
     input: {
       id: card.id,
       revision: card.revision,
-      attackBonus,
-      hitPointsBonus,
+      attackModifier,
+      hitPointsModifier,
     },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
-  const changed = result.data.changeItemStatBonuses;
+  const changed = result.data.changeItemStatModifiers;
   switch (changed.__typename) {
-    case "ChangeItemStatBonusesSuccess":
+    case "ChangeItemStatModifiersSuccess":
       return showChanged(card.id, changed.revision);
     default:
       return failed(changed.__typename);

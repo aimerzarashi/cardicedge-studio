@@ -27,6 +27,6 @@ export function itemRestrictionsLabel(
 }
 
 // 下げるアイテムと見分けるため、増やす値にも + を付ける（0 は増減が無いので符号を付けない）
-export function signedBonus(value: number): string {
+export function signedModifier(value: number): string {
   return value > 0 ? `+${value}` : `${value}`;
 }
