@@ -1268,6 +1268,14 @@ input CreatureAbilityInput {
 	戦闘中の HP の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る）
 	"""
 	hitPointsModifier: Int
+	"""
+	戦闘中の AT・HP の最小（1 以上。BATTLE_RANDOM_STATS だけに要る）
+	"""
+	minimum: Int
+	"""
+	戦闘中の AT・HP の最大（最小以上。BATTLE_RANDOM_STATS だけに要る）
+	"""
+	maximum: Int
 }
 """
 クリーチャーの能力の種類
@@ -1293,6 +1301,10 @@ enum CreatureAbilityKind {
 	戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する）
 	"""
 	BATTLE_MODIFIER
+	"""
+	戦闘中のランダム（戦闘中、AT・HP が最小〜最大のランダムな値になる。別々に引く）
+	"""
+	BATTLE_RANDOM_STATS
 }
 """
 戦闘中の増減
@@ -1310,6 +1322,23 @@ type CreatureBattleModifierAbility implements CreatureAbility {
 	戦闘中の HP の増減（負も 0 もある）
 	"""
 	hitPointsModifier: Int!
+}
+"""
+戦闘中のランダム
+"""
+type CreatureBattleRandomStatsAbility implements CreatureAbility {
+	"""
+	能力の種類（BATTLE_RANDOM_STATS）
+	"""
+	kind: CreatureAbilityKind!
+	"""
+	戦闘中の AT・HP の最小（1 以上）
+	"""
+	minimum: Int!
+	"""
+	戦闘中の AT・HP の最大（最小以上）
+	"""
+	maximum: Int!
 }
 """
 防御型

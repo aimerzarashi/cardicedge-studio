@@ -8,6 +8,7 @@ export const CREATURE_ABILITY_LABELS: Record<CreatureAbilityKind, string> = {
   FIRST_STRIKE: "先制",
   LAST_STRIKE: "後手",
   BATTLE_MODIFIER: "戦闘中の増減",
+  BATTLE_RANDOM_STATS: "戦闘中のランダム",
 };
 
 export const CREATURE_ABILITY_KINDS = Object.keys(
@@ -26,9 +27,11 @@ export type CreatureAbilityView = {
   percent?: number;
   attackModifier?: number;
   hitPointsModifier?: number;
+  minimum?: number;
+  maximum?: number;
 };
 
-// 能力 1 つの表示（値があれば添える。例: 通行料の倍率 150%、戦闘中の増減（AT 0、HP -20））
+// 能力 1 つの表示（値があれば添える。例: 通行料の倍率 150%、戦闘中の増減（AT 0、HP -20）、戦闘中のランダム（10〜70））
 export function abilityLabel(ability: CreatureAbilityView): string {
   const label = CREATURE_ABILITY_LABELS[ability.kind];
   if (
@@ -36,6 +39,9 @@ export function abilityLabel(ability: CreatureAbilityView): string {
     ability.hitPointsModifier !== undefined
   ) {
     return `${label}（AT ${signedModifier(ability.attackModifier)}、HP ${signedModifier(ability.hitPointsModifier)}）`;
+  }
+  if (ability.minimum !== undefined && ability.maximum !== undefined) {
+    return `${label}（${ability.minimum}〜${ability.maximum}）`;
   }
   return ability.percent === undefined ? label : `${label} ${ability.percent}%`;
 }

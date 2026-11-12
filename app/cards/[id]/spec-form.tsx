@@ -365,9 +365,13 @@ export type AbilitiesState = Notice &
     attackModifierError?: string;
     hitPointsModifierError?: string;
     abilitiesError?: string;
+    minimum?: string;
+    maximum?: string;
+    minimumError?: string;
+    maximumError?: string;
   };
 
-// 能力はチェックで選び、値の要る能力（通行料の倍率・戦闘中の増減）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
+// 能力はチェックで選び、値の要る能力（通行料の倍率・戦闘中の増減・戦闘中のランダム）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
 export function AbilitiesForm({
   action,
   id,
@@ -394,6 +398,11 @@ export function AbilitiesForm({
     kept.attackModifier ?? String(battleModifier?.attackModifier ?? 0);
   const hitPointsModifier =
     kept.hitPointsModifier ?? String(battleModifier?.hitPointsModifier ?? 0);
+  const battleRandom = abilities.find(
+    ({ kind }) => kind === "BATTLE_RANDOM_STATS",
+  );
+  const minimum = kept.minimum ?? String(battleRandom?.minimum ?? 10);
+  const maximum = kept.maximum ?? String(battleRandom?.maximum ?? 70);
 
   return (
     <>
@@ -458,6 +467,30 @@ export function AbilitiesForm({
               }
             />
           </label>
+          <label>
+            最小
+            <input
+              type="number"
+              name="battleRandomMinimum"
+              defaultValue={minimum}
+              aria-invalid={kept.minimumError ? true : undefined}
+              aria-describedby={
+                kept.minimumError ? "battle-random-minimum-error" : undefined
+              }
+            />
+          </label>
+          <label>
+            最大
+            <input
+              type="number"
+              name="battleRandomMaximum"
+              defaultValue={maximum}
+              aria-invalid={kept.maximumError ? true : undefined}
+              aria-describedby={
+                kept.maximumError ? "battle-random-maximum-error" : undefined
+              }
+            />
+          </label>
         </fieldset>
         {kept.abilitiesError && (
           <p id="abilities-error" role="alert">
@@ -477,6 +510,16 @@ export function AbilitiesForm({
         {kept.hitPointsModifierError && (
           <p id="battle-modifier-hit-points-error" role="alert">
             {kept.hitPointsModifierError}
+          </p>
+        )}
+        {kept.minimumError && (
+          <p id="battle-random-minimum-error" role="alert">
+            {kept.minimumError}
+          </p>
+        )}
+        {kept.maximumError && (
+          <p id="battle-random-maximum-error" role="alert">
+            {kept.maximumError}
           </p>
         )}
         <button type="submit" disabled={isPending}>
