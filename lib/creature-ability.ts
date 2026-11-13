@@ -1,4 +1,5 @@
-import type { CreatureAbilityKind } from "@/graphql/graphql";
+import type { CreatureAbilityKind, CreatureElement } from "@/graphql/graphql";
+import { elementsLabel } from "@/lib/creature-element";
 import { signedModifier } from "@/lib/item-category";
 
 // Record<CreatureAbilityKind, …> にするのは、core に能力が足されたときの足し忘れを型検査で見つけるため
@@ -9,6 +10,7 @@ export const CREATURE_ABILITY_LABELS: Record<CreatureAbilityKind, string> = {
   LAST_STRIKE: "後手",
   BATTLE_MODIFIER: "戦闘中の増減",
   BATTLE_RANDOM_STATS: "戦闘中のランダム",
+  ATTACK_IMMUNITY: "攻撃無効",
 };
 
 export const CREATURE_ABILITY_KINDS = Object.keys(
@@ -29,11 +31,15 @@ export type CreatureAbilityView = {
   hitPointsModifier?: number;
   minimum?: number;
   maximum?: number;
+  elements?: CreatureElement[];
 };
 
-// 能力 1 つの表示（値があれば添える。例: 通行料の倍率 150%、戦闘中の増減（AT 0、HP -20）、戦闘中のランダム（10〜70））
+// 能力 1 つの表示（値があれば添える。例: 通行料の倍率 150%、戦闘中の増減（AT 0、HP -20）、戦闘中のランダム（10〜70）、攻撃無効（火地））
 export function abilityLabel(ability: CreatureAbilityView): string {
   const label = CREATURE_ABILITY_LABELS[ability.kind];
+  if (ability.elements !== undefined) {
+    return `${label}（${elementsLabel(ability.elements)}）`;
+  }
   if (
     ability.attackModifier !== undefined &&
     ability.hitPointsModifier !== undefined

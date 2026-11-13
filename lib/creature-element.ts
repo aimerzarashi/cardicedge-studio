@@ -22,6 +22,11 @@ export const PLACEMENT_RESTRICTION_ELEMENTS = CREATURE_ELEMENTS.filter(
   (element) => element !== "NEUTRAL",
 );
 
+// 攻撃無効に選べる属性（無は選べない。core#174）
+export const ATTACK_IMMUNITY_ELEMENTS = CREATURE_ELEMENTS.filter(
+  (element) => element !== "NEUTRAL",
+);
+
 // 配置制限の表示（無ければ「なし」）
 export function placementRestrictionsLabel(
   elements: readonly CreatureElement[],
