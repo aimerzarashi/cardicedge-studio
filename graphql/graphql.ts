@@ -330,6 +330,12 @@ export type CreatureElement =
   /** 風 */
   | 'WIND';
 
+/** 対象のクリーチャーにダメージの入力 */
+export type DamageSpellEffectInput = {
+  /** ダメージ（1 以上。上限は無い） */
+  amount: number;
+};
+
 /** 変えるカードと、その枚数 */
 export type DeckCardCountInput = {
   /** カード（Creature・Item・Spell）の公開用の ID */
@@ -386,6 +392,26 @@ export type DeleteStarterSetInput = {
   revision: number;
 };
 
+/** カードを引く効果の入力 */
+export type DrawCardsSpellEffectInput = {
+  /** 引く枚数（1 以上。上限は無い） */
+  count: number;
+};
+
+/** サイコロの目を固定する効果の入力 */
+export type FixedDiceSpellEffectInput = {
+  /** 効き続けるターン数（1 以上） */
+  turns: number;
+  /** 固定する目（1 以上） */
+  value: number;
+};
+
+/** 魔力を得る効果の入力 */
+export type GainMagicSpellEffectInput = {
+  /** 周回数 1 つあたりの魔力（1 以上。上限は無い） */
+  perLap: number;
+};
+
 /** 配布デッキの一覧の絞り込み */
 export type GrantDeckFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
@@ -423,6 +449,14 @@ export type LandTileInput = {
   x: number;
   /** 行（0 以上、高さ − 1 以下） */
   y: number;
+};
+
+/** サイコロを複数振る効果の入力 */
+export type MultipleDiceSpellEffectInput = {
+  /** 振るサイコロの個数（2 以上。上限は無い） */
+  count: number;
+  /** 効き続けるターン数（1 以上） */
+  turns: number;
 };
 
 /** NPC のアバターの一覧の絞り込み */
@@ -767,50 +801,18 @@ export type SetStarterSetUnlockNpcAvatarsInput = {
   unlockNpcAvatarIds: Array<string>;
 };
 
-/** 対象のクリーチャーにダメージの入力 */
-export type SpellDamageEffectInput = {
-  /** ダメージ（1 以上。上限は無い） */
-  amount: number;
-};
-
-/** カードを引く効果の入力 */
-export type SpellDrawCardsEffectInput = {
-  /** 引く枚数（1 以上。上限は無い） */
-  count: number;
-};
-
 /** スペルの効果の入力（種類のどれか 1 つだけ） */
 export type SpellEffectInput =
   {   /** 対象のクリーチャーにダメージ */
-  damage: SpellDamageEffectInput; drawCards?: never; fixedDiceCurse?: never; gainMagic?: never; rollDice?: never; }
+  damage: DamageSpellEffectInput; drawCards?: never; fixedDice?: never; gainMagic?: never; multipleDice?: never; }
   |  { damage?: never;   /** カードを引く */
-  drawCards: SpellDrawCardsEffectInput; fixedDiceCurse?: never; gainMagic?: never; rollDice?: never; }
-  |  { damage?: never; drawCards?: never;   /** 次のサイコロの目を決める呪い */
-  fixedDiceCurse: SpellFixedDiceCurseEffectInput; gainMagic?: never; rollDice?: never; }
-  |  { damage?: never; drawCards?: never; fixedDiceCurse?: never;   /** 魔力を得る */
-  gainMagic: SpellGainMagicEffectInput; rollDice?: never; }
-  |  { damage?: never; drawCards?: never; fixedDiceCurse?: never; gainMagic?: never;   /** サイコロを複数振る */
-  rollDice: SpellRollDiceEffectInput; };
-
-/** 次のサイコロの目を決める呪いの入力 */
-export type SpellFixedDiceCurseEffectInput = {
-  /** 解けるまでのターン数（1 以上） */
-  turns: number;
-  /** 決める目（1 以上） */
-  value: number;
-};
-
-/** 魔力を得る効果の入力 */
-export type SpellGainMagicEffectInput = {
-  /** 周回数 1 つあたりの魔力（1 以上。上限は無い） */
-  perLap: number;
-};
-
-/** サイコロを複数振る効果の入力 */
-export type SpellRollDiceEffectInput = {
-  /** 振るサイコロの個数（2 以上。上限は無い） */
-  count: number;
-};
+  drawCards: DrawCardsSpellEffectInput; fixedDice?: never; gainMagic?: never; multipleDice?: never; }
+  |  { damage?: never; drawCards?: never;   /** サイコロの目を固定する */
+  fixedDice: FixedDiceSpellEffectInput; gainMagic?: never; multipleDice?: never; }
+  |  { damage?: never; drawCards?: never; fixedDice?: never;   /** 魔力を得る */
+  gainMagic: GainMagicSpellEffectInput; multipleDice?: never; }
+  |  { damage?: never; drawCards?: never; fixedDice?: never; gainMagic?: never;   /** サイコロを複数振る */
+  multipleDice: MultipleDiceSpellEffectInput; };
 
 /** スターターセットの一覧の絞り込み */
 export type StarterSetFilter = {
@@ -1329,11 +1331,11 @@ export type CardQuery = { card:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackModifier: number, hitPointsModifier: number }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
-        | { __typename: 'SpellDamageEffect', amount: number }
-        | { __typename: 'SpellDrawCardsEffect', count: number }
-        | { __typename: 'SpellFixedDiceCurseEffect', value: number, turns: number }
-        | { __typename: 'SpellGainMagicEffect', perLap: number }
-        | { __typename: 'SpellRollDiceEffect', count: number }
+        | { __typename: 'DamageSpellEffect', amount: number }
+        | { __typename: 'DrawCardsSpellEffect', count: number }
+        | { __typename: 'FixedDiceSpellEffect', value: number, turns: number }
+        | { __typename: 'GainMagicSpellEffect', perLap: number }
+        | { __typename: 'MultipleDiceSpellEffect', count: number, turns: number }
        | null }
    };
 
@@ -3125,20 +3127,21 @@ export const CardDocument = new TypedDocumentString(`
     ... on Spell {
       effect {
         __typename
-        ... on SpellDrawCardsEffect {
+        ... on DrawCardsSpellEffect {
           count
         }
-        ... on SpellGainMagicEffect {
+        ... on GainMagicSpellEffect {
           perLap
         }
-        ... on SpellRollDiceEffect {
+        ... on MultipleDiceSpellEffect {
           count
+          turns
         }
-        ... on SpellFixedDiceCurseEffect {
+        ... on FixedDiceSpellEffect {
           value
           turns
         }
-        ... on SpellDamageEffect {
+        ... on DamageSpellEffect {
           amount
         }
       }

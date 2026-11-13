@@ -13,7 +13,6 @@ import {
   ABILITIES_CONFLICTED,
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
-  CURSE_TURNS_FIELD,
   costErrorMessage,
   elementsErrorMessage,
   FORBIDDEN,
@@ -599,10 +598,10 @@ export async function changeSpellEffect(
       };
     }
     const turns = integerOf(turnsText);
-    if (entry.kind === "fixedDiceCurse" && turns === undefined) {
+    if (entry.turnsField && turns === undefined) {
       return {
         ...kept,
-        turnsError: "解けるまでのターン数は整数で入力してください",
+        turnsError: "効き続けるターン数は整数で入力してください",
       };
     }
     effect =
@@ -610,10 +609,10 @@ export async function changeSpellEffect(
         ? { drawCards: { count: value } }
         : entry.kind === "gainMagic"
           ? { gainMagic: { perLap: value } }
-          : entry.kind === "rollDice"
-            ? { rollDice: { count: value } }
-            : entry.kind === "fixedDiceCurse"
-              ? { fixedDiceCurse: { value, turns: turns ?? 0 } }
+          : entry.kind === "multipleDice"
+            ? { multipleDice: { count: value, turns: turns ?? 0 } }
+            : entry.kind === "fixedDice"
+              ? { fixedDice: { value, turns: turns ?? 0 } }
               : { damage: { amount: value } };
   }
 
@@ -630,7 +629,7 @@ export async function changeSpellEffect(
     case "ValidationErrors": {
       const valueError = changed.errors.find((e) => e.field === entry?.field);
       const turnsError = changed.errors.find(
-        (e) => e.field === CURSE_TURNS_FIELD,
+        (e) => entry?.turnsField && e.field === entry.turnsField,
       );
       return {
         ...kept,

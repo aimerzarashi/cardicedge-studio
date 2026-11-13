@@ -541,7 +541,7 @@ export function EffectForm({
   action: (previous: EffectState, form: FormData) => Promise<EffectState>;
   id: string;
   revision: number;
-  // 今の効果の種類と値（効果なしは kind が none。ターン数は呪いだけ）
+  // 今の効果の種類と値（効果なしは kind が none。ターン数はターンをまたいで効き続ける効果だけ）
   effect: { kind: string; value: number | null; turns: number | null };
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
@@ -584,7 +584,7 @@ export function EffectForm({
           </p>
         )}
         <label>
-          解けるまでのターン数（呪いだけ）
+          効き続けるターン数（サイコロを複数振る・サイコロの目を固定するだけ）
           <input
             type="number"
             name="turns"

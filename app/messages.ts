@@ -358,9 +358,10 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   "abilities.maximum": "最大",
   "effect.drawCards.count": "引く枚数",
   "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
-  "effect.rollDice.count": "サイコロの個数",
-  "effect.fixedDiceCurse.value": "決める目",
-  "effect.fixedDiceCurse.turns": "解けるまでのターン数",
+  "effect.multipleDice.count": "サイコロの個数",
+  "effect.multipleDice.turns": "効き続けるターン数",
+  "effect.fixedDice.value": "固定する目",
+  "effect.fixedDice.turns": "効き続けるターン数",
   "effect.damage.amount": "ダメージ",
 };
 
@@ -388,51 +389,54 @@ export type SpellEffectView =
   | null
   | undefined;
 
-// スペルの効果の種類（フォームの選択肢の値・呼び方・値の呼び方と、core の入力の項目と出力の型の名前の対応）
+// スペルの効果の種類（フォームの選択肢の値・呼び方・値の呼び方と、core の入力の項目と出力の型の名前の対応）。
+// ターンをまたいで効き続ける効果だけが、ターン数の項目（turnsField）を持つ
 export const SPELL_EFFECT_KINDS = [
   {
     kind: "drawCards",
     label: "カードを引く",
     valueLabel: "引く枚数",
     field: "effect.drawCards.count",
-    typename: "SpellDrawCardsEffect",
+    typename: "DrawCardsSpellEffect",
+    turnsField: null,
   },
   {
     kind: "gainMagic",
     label: "魔力を得る",
     valueLabel: "周回数 1 つあたりの魔力",
     field: "effect.gainMagic.perLap",
-    typename: "SpellGainMagicEffect",
+    typename: "GainMagicSpellEffect",
+    turnsField: null,
   },
   {
-    kind: "rollDice",
+    kind: "multipleDice",
     label: "サイコロを複数振る",
     valueLabel: "サイコロの個数",
-    field: "effect.rollDice.count",
-    typename: "SpellRollDiceEffect",
+    field: "effect.multipleDice.count",
+    typename: "MultipleDiceSpellEffect",
+    turnsField: "effect.multipleDice.turns",
   },
   {
-    kind: "fixedDiceCurse",
-    label: "次のサイコロの目を決める呪い",
-    valueLabel: "決める目",
-    field: "effect.fixedDiceCurse.value",
-    typename: "SpellFixedDiceCurseEffect",
+    kind: "fixedDice",
+    label: "サイコロの目を固定する",
+    valueLabel: "固定する目",
+    field: "effect.fixedDice.value",
+    typename: "FixedDiceSpellEffect",
+    turnsField: "effect.fixedDice.turns",
   },
   {
     kind: "damage",
     label: "クリーチャーにダメージ",
     valueLabel: "ダメージ",
     field: "effect.damage.amount",
-    typename: "SpellDamageEffect",
+    typename: "DamageSpellEffect",
+    turnsField: null,
   },
 ] as const;
 
-// 呪いの種類だけが持つ、解けるまでのターン数の項目（core の入力の項目）
-export const CURSE_TURNS_FIELD = "effect.fixedDiceCurse.turns";
-
 export type SpellEffectKind = (typeof SPELL_EFFECT_KINDS)[number]["kind"];
 
-// フォームに入れる今の効果の種類と値（効果なしは kind が none で値は null。ターン数は呪いだけ）
+// フォームに入れる今の効果の種類と値（効果なしは kind が none で値は null。ターン数はターンをまたいで効き続ける効果だけ）
 export function spellEffectValue(effect: SpellEffectView): {
   kind: SpellEffectKind | "none";
   value: number | null;
@@ -447,7 +451,7 @@ export function spellEffectValue(effect: SpellEffectView): {
   const value =
     found.kind === "gainMagic"
       ? effect.perLap
-      : found.kind === "fixedDiceCurse"
+      : found.kind === "fixedDice"
         ? effect.value
         : found.kind === "damage"
           ? effect.amount
@@ -455,22 +459,22 @@ export function spellEffectValue(effect: SpellEffectView): {
   return {
     kind: found.kind,
     value: value ?? null,
-    turns: found.kind === "fixedDiceCurse" ? (effect.turns ?? null) : null,
+    turns: found.turnsField ? (effect.turns ?? null) : null,
   };
 }
 
 // スペルの効果の表示。種類は core が返した __typename で見分け、効果なし（null）は「なし」
 export function spellEffectLabel(effect: SpellEffectView): string {
   switch (effect?.__typename) {
-    case "SpellDrawCardsEffect":
+    case "DrawCardsSpellEffect":
       return `カードを ${effect.count} 枚引く`;
-    case "SpellGainMagicEffect":
+    case "GainMagicSpellEffect":
       return `（周回数 + 1）× ${effect.perLap} の魔力を得る`;
-    case "SpellRollDiceEffect":
-      return `サイコロを ${effect.count} 個同時に振る`;
-    case "SpellFixedDiceCurseEffect":
-      return `対象の次のサイコロの目を ${effect.value} にする呪い（${effect.turns} ターン）`;
-    case "SpellDamageEffect":
+    case "MultipleDiceSpellEffect":
+      return `対象のサイコロを ${effect.count} 個同時に振る（${effect.turns} ターン）`;
+    case "FixedDiceSpellEffect":
+      return `対象のサイコロの目を ${effect.value} に固定する（${effect.turns} ターン）`;
+    case "DamageSpellEffect":
       return `対象のクリーチャーに ${effect.amount} ダメージ`;
     default:
       return "なし";

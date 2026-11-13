@@ -86,20 +86,21 @@ const cardQuery = graphql(`
       ... on Spell {
         effect {
           __typename
-          ... on SpellDrawCardsEffect {
+          ... on DrawCardsSpellEffect {
             count
           }
-          ... on SpellGainMagicEffect {
+          ... on GainMagicSpellEffect {
             perLap
           }
-          ... on SpellRollDiceEffect {
+          ... on MultipleDiceSpellEffect {
             count
+            turns
           }
-          ... on SpellFixedDiceCurseEffect {
+          ... on FixedDiceSpellEffect {
             value
             turns
           }
-          ... on SpellDamageEffect {
+          ... on DamageSpellEffect {
             amount
           }
         }

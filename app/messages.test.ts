@@ -243,7 +243,7 @@ describe("クリーチャーの性能の文言", () => {
 describe("スペルの効果の文言", () => {
   it("効果の種類ごとに、core が返した値で言う", () => {
     assert.equal(
-      spellEffectLabel({ __typename: "SpellDrawCardsEffect", count: 2 }),
+      spellEffectLabel({ __typename: "DrawCardsSpellEffect", count: 2 }),
       "カードを 2 枚引く",
     );
   });
@@ -254,12 +254,16 @@ describe("スペルの効果の文言", () => {
 
   it("魔力を得る・サイコロを複数振るも、core が返した値で言う", () => {
     assert.equal(
-      spellEffectLabel({ __typename: "SpellGainMagicEffect", perLap: 100 }),
+      spellEffectLabel({ __typename: "GainMagicSpellEffect", perLap: 100 }),
       "（周回数 + 1）× 100 の魔力を得る",
     );
     assert.equal(
-      spellEffectLabel({ __typename: "SpellRollDiceEffect", count: 2 }),
-      "サイコロを 2 個同時に振る",
+      spellEffectLabel({
+        __typename: "MultipleDiceSpellEffect",
+        count: 2,
+        turns: 1,
+      }),
+      "対象のサイコロを 2 個同時に振る（1 ターン）",
     );
   });
 
@@ -270,35 +274,39 @@ describe("スペルの効果の文言", () => {
       turns: null,
     });
     assert.deepEqual(
-      spellEffectValue({ __typename: "SpellGainMagicEffect", perLap: 100 }),
+      spellEffectValue({ __typename: "GainMagicSpellEffect", perLap: 100 }),
       { kind: "gainMagic", value: 100, turns: null },
     );
     assert.deepEqual(
-      spellEffectValue({ __typename: "SpellRollDiceEffect", count: 2 }),
-      { kind: "rollDice", value: 2, turns: null },
+      spellEffectValue({
+        __typename: "MultipleDiceSpellEffect",
+        count: 2,
+        turns: 3,
+      }),
+      { kind: "multipleDice", value: 2, turns: 3 },
     );
     assert.deepEqual(
       spellEffectValue({
-        __typename: "SpellFixedDiceCurseEffect",
+        __typename: "FixedDiceSpellEffect",
         value: 6,
         turns: 1,
       }),
-      { kind: "fixedDiceCurse", value: 6, turns: 1 },
+      { kind: "fixedDice", value: 6, turns: 1 },
     );
     assert.equal(
       spellEffectLabel({
-        __typename: "SpellFixedDiceCurseEffect",
+        __typename: "FixedDiceSpellEffect",
         value: 6,
         turns: 1,
       }),
-      "対象の次のサイコロの目を 6 にする呪い（1 ターン）",
+      "対象のサイコロの目を 6 に固定する（1 ターン）",
     );
     assert.deepEqual(
-      spellEffectValue({ __typename: "SpellDamageEffect", amount: 20 }),
+      spellEffectValue({ __typename: "DamageSpellEffect", amount: 20 }),
       { kind: "damage", value: 20, turns: null },
     );
     assert.equal(
-      spellEffectLabel({ __typename: "SpellDamageEffect", amount: 20 }),
+      spellEffectLabel({ __typename: "DamageSpellEffect", amount: 20 }),
       "対象のクリーチャーに 20 ダメージ",
     );
   });
