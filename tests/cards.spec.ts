@@ -422,11 +422,28 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(page.getByText("保存しました").nth(4)).toBeVisible();
   await expect(page.getByLabel("先制", { exact: true })).toBeChecked();
 
-  // 公開すると、増減は符号つきで能力の表示に出る
+  // 攻撃無効は属性を選ばないと誤りが文言で出る。選ぶと保存され、選んだ属性が残る
+  await page.getByLabel("攻撃無効", { exact: true }).check();
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(
+    page.getByText("攻撃無効の属性を 1 つ以上選んでください"),
+  ).toBeVisible();
+  const immunity = page.getByRole("group", { name: "攻撃無効の属性" });
+  await expect(immunity.getByLabel("無", { exact: true })).toHaveCount(0);
+  await immunity.getByLabel("地", { exact: true }).check();
+  await immunity.getByLabel("火", { exact: true }).check();
+  await page.getByRole("button", { name: "能力を変える" }).click();
+  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  await expect(page.getByLabel("攻撃無効", { exact: true })).toBeChecked();
+  await expect(immunity.getByLabel("火", { exact: true })).toBeChecked();
+  await expect(immunity.getByLabel("地", { exact: true })).toBeChecked();
+
+  // 公開すると、増減は符号つきで、攻撃無効は属性つきで能力の表示に出る
   await publishCard(page, name);
   await page.getByRole("link", { name }).click();
   await expect(page.getByText(/戦闘中の増減（AT 0、HP -20）/)).toBeVisible();
   await expect(page.getByText(/戦闘中のランダム（10〜70）/)).toBeVisible();
+  await expect(page.getByText(/攻撃無効（火地）/)).toBeVisible();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({

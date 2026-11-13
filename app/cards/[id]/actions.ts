@@ -11,6 +11,7 @@ import { isRarity } from "@/lib/rarity";
 import { type Notice, target } from "../../deck-form";
 import {
   ABILITIES_CONFLICTED,
+  ATTACK_IMMUNITY_ELEMENTS_REQUIRED,
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
   costErrorMessage,
@@ -432,6 +433,12 @@ export async function changeCreatureAbilities(
   const hitPointsValue = String(form.get("battleModifierHitPoints") ?? "");
   const minimumValue = String(form.get("battleRandomMinimum") ?? "");
   const maximumValue = String(form.get("battleRandomMaximum") ?? "");
+  const elementValues = form.getAll("attackImmunityElements").map(String);
+  // 知らない値は改ざんされた送信なので送らない
+  const elements = elementValues.filter(isCreatureElement);
+  if (elements.length !== elementValues.length) {
+    return { error: INVALID_TARGET };
+  }
   const kept = {
     revision: card.revision,
     kinds: values,
@@ -440,6 +447,7 @@ export async function changeCreatureAbilities(
     hitPointsModifier: hitPointsValue,
     minimum: minimumValue,
     maximum: maximumValue,
+    attackImmunityElements: elementValues,
   };
   // 倍率は通行料の倍率を選んだときだけ送る（値の範囲は core が決める）
   const tolled = kinds.includes("TOLL_MULTIPLIER");
@@ -481,6 +489,14 @@ export async function changeCreatureAbilities(
     };
   }
 
+  // 属性は攻撃無効を選んだときだけ送る（無を選べないのと空の誤りは core も確かめる）
+  if (kinds.includes("ATTACK_IMMUNITY") && elements.length === 0) {
+    return {
+      ...kept,
+      attackImmunityElementsError: ATTACK_IMMUNITY_ELEMENTS_REQUIRED,
+    };
+  }
+
   const result = await callCore(changeCreatureAbilitiesMutation, {
     input: {
       id: card.id,
@@ -493,6 +509,8 @@ export async function changeCreatureAbilities(
             return { kind, attackModifier, hitPointsModifier };
           case "BATTLE_RANDOM_STATS":
             return { kind, minimum, maximum };
+          case "ATTACK_IMMUNITY":
+            return { kind, elements };
           default:
             return { kind };
         }
@@ -518,6 +536,12 @@ export async function changeCreatureAbilities(
       const maximumError = changed.errors.find((e) =>
         e.field.endsWith(".maximum"),
       );
+      if (changed.errors.some((e) => e.field.endsWith(".elements"))) {
+        return {
+          ...kept,
+          attackImmunityElementsError: ATTACK_IMMUNITY_ELEMENTS_REQUIRED,
+        };
+      }
       if (minimumError || maximumError) {
         return {
           ...kept,

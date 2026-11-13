@@ -12,6 +12,7 @@ import {
   type CreatureAbilityView,
 } from "@/lib/creature-ability";
 import {
+  ATTACK_IMMUNITY_ELEMENTS,
   CREATURE_ELEMENT_LABELS,
   CREATURE_ELEMENTS,
   PLACEMENT_RESTRICTION_ELEMENTS,
@@ -369,9 +370,11 @@ export type AbilitiesState = Notice &
     maximum?: string;
     minimumError?: string;
     maximumError?: string;
+    attackImmunityElements?: string[];
+    attackImmunityElementsError?: string;
   };
 
-// 能力はチェックで選び、値の要る能力（通行料の倍率・戦闘中の増減・戦闘中のランダム）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
+// 能力はチェックで選び、値の要る能力（通行料の倍率・戦闘中の増減・戦闘中のランダム・攻撃無効）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
 export function AbilitiesForm({
   action,
   id,
@@ -403,6 +406,10 @@ export function AbilitiesForm({
   );
   const minimum = kept.minimum ?? String(battleRandom?.minimum ?? 10);
   const maximum = kept.maximum ?? String(battleRandom?.maximum ?? 70);
+  const attackImmunityElements: string[] =
+    kept.attackImmunityElements ??
+    abilities.find(({ kind }) => kind === "ATTACK_IMMUNITY")?.elements ??
+    [];
 
   return (
     <>
@@ -491,6 +498,27 @@ export function AbilitiesForm({
               }
             />
           </label>
+          <fieldset
+            aria-invalid={kept.attackImmunityElementsError ? true : undefined}
+            aria-describedby={
+              kept.attackImmunityElementsError
+                ? "attack-immunity-elements-error"
+                : undefined
+            }
+          >
+            <legend>攻撃無効の属性</legend>
+            {ATTACK_IMMUNITY_ELEMENTS.map((value) => (
+              <label key={value}>
+                <input
+                  type="checkbox"
+                  name="attackImmunityElements"
+                  value={value}
+                  defaultChecked={attackImmunityElements.includes(value)}
+                />
+                {CREATURE_ELEMENT_LABELS[value]}
+              </label>
+            ))}
+          </fieldset>
         </fieldset>
         {kept.abilitiesError && (
           <p id="abilities-error" role="alert">
@@ -520,6 +548,11 @@ export function AbilitiesForm({
         {kept.maximumError && (
           <p id="battle-random-maximum-error" role="alert">
             {kept.maximumError}
+          </p>
+        )}
+        {kept.attackImmunityElementsError && (
+          <p id="attack-immunity-elements-error" role="alert">
+            {kept.attackImmunityElementsError}
           </p>
         )}
         <button type="submit" disabled={isPending}>

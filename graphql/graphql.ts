@@ -290,6 +290,8 @@ export type CheckBoardLayoutInput = {
 export type CreatureAbilityInput = {
   /** 戦闘中の AT の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る） */
   attackModifier?: number | null | undefined;
+  /** 攻撃無効が効く相手の属性（火・地・水・風から 1 つ以上。ATTACK_IMMUNITY だけに要る） */
+  elements?: Array<CreatureElement> | null | undefined;
   /** 戦闘中の HP の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る） */
   hitPointsModifier?: number | null | undefined;
   /** 能力の種類 */
@@ -304,6 +306,8 @@ export type CreatureAbilityInput = {
 
 /** クリーチャーの能力の種類 */
 export type CreatureAbilityKind =
+  /** 攻撃無効（戦闘で、属性のどれかが合うクリーチャーから攻撃を受けたとき、ダメージが 0 になる） */
+  | 'ATTACK_IMMUNITY'
   /** 戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する） */
   | 'BATTLE_MODIFIER'
   /** 戦闘中のランダム（戦闘中、AT・HP が最小〜最大のランダムな値になる。別々に引く） */
@@ -1321,6 +1325,7 @@ export type CardQueryVariables = Exact<{
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
     | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<
+        | { elements: Array<CreatureElement>, kind: CreatureAbilityKind }
         | { attackModifier: number, hitPointsModifier: number, kind: CreatureAbilityKind }
         | { minimum: number, maximum: number, kind: CreatureAbilityKind }
         | { kind: CreatureAbilityKind }
@@ -3116,6 +3121,9 @@ export const CardDocument = new TypedDocumentString(`
         ... on CreatureBattleRandomStatsAbility {
           minimum
           maximum
+        }
+        ... on CreatureAttackImmunityAbility {
+          elements
         }
       }
     }
