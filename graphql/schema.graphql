@@ -1406,6 +1406,24 @@ type CreatureTollMultiplierAbility implements CreatureAbility {
 	percent: Int!
 }
 """
+対象のクリーチャーにダメージ（今の HP から amount を引き、0 になれば破壊する）
+"""
+type DamageSpellEffect {
+	"""
+	ダメージ（1 以上）
+	"""
+	amount: Int!
+}
+"""
+対象のクリーチャーにダメージの入力
+"""
+input DamageSpellEffectInput {
+	"""
+	ダメージ（1 以上。上限は無い）
+	"""
+	amount: Int!
+}
+"""
 日時（RFC 3339 の文字列。例: 2026-10-17T09:00:00Z）
 """
 scalar DateTime
@@ -1592,6 +1610,24 @@ type DeleteStarterSetSuccess {
 	id: UUID!
 }
 """
+カードを引く効果（山札の先頭から引く）
+"""
+type DrawCardsSpellEffect {
+	"""
+	引く枚数（1 以上）
+	"""
+	count: Int!
+}
+"""
+カードを引く効果の入力
+"""
+input DrawCardsSpellEffectInput {
+	"""
+	引く枚数（1 以上。上限は無い）
+	"""
+	count: Int!
+}
+"""
 一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
 """
 type FieldDuplicated implements FieldError {
@@ -1764,6 +1800,32 @@ type FieldUnavailable implements FieldError {
 	field: String!
 }
 """
+サイコロの目を固定する効果（対象のプレイヤーが振るとき、目は value になる。turns ターン効き続ける）
+"""
+type FixedDiceSpellEffect {
+	"""
+	固定する目（1 以上）
+	"""
+	value: Int!
+	"""
+	効き続けるターン数（1 以上。かかった人が自分のターンを終えるたびに 1 減り、0 で終わる）
+	"""
+	turns: Int!
+}
+"""
+サイコロの目を固定する効果の入力
+"""
+input FixedDiceSpellEffectInput {
+	"""
+	固定する目（1 以上）
+	"""
+	value: Int!
+	"""
+	効き続けるターン数（1 以上）
+	"""
+	turns: Int!
+}
+"""
 操作する権限が無い（JWT は正しいが、core のオペレーターとして登録されていない等）
 """
 type ForbiddenError {
@@ -1771,6 +1833,24 @@ type ForbiddenError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
+}
+"""
+魔力を得る効果（使った人が（周回数 + 1）× perLap の魔力を得る。周回数はその対戦で周回を終えた回数）
+"""
+type GainMagicSpellEffect {
+	"""
+	周回数 1 つあたりの魔力（1 以上）
+	"""
+	perLap: Int!
+}
+"""
+魔力を得る効果の入力
+"""
+input GainMagicSpellEffectInput {
+	"""
+	周回数 1 つあたりの魔力（1 以上。上限は無い）
+	"""
+	perLap: Int!
 }
 """
 ゲーム全体のルール
@@ -2088,6 +2168,32 @@ type MatchRules {
 	対戦の始めに配る手札の枚数
 	"""
 	startingHandCards: Int!
+}
+"""
+サイコロを複数振る効果（対象のプレイヤーが振るとき、count 個を同時に振り、合計の分だけ進む。turns ターン効き続ける）
+"""
+type MultipleDiceSpellEffect {
+	"""
+	振るサイコロの個数（2 以上）
+	"""
+	count: Int!
+	"""
+	効き続けるターン数（1 以上。かかった人が自分のターンを終えるたびに 1 減り、0 で終わる）
+	"""
+	turns: Int!
+}
+"""
+サイコロを複数振る効果の入力
+"""
+input MultipleDiceSpellEffectInput {
+	"""
+	振るサイコロの個数（2 以上。上限は無い）
+	"""
+	count: Int!
+	"""
+	効き続けるターン数（1 以上）
+	"""
+	turns: Int!
 }
 type Mutation {
 	"""
@@ -4357,45 +4463,9 @@ type Spell implements Card {
 	updatedAt: DateTime!
 }
 """
-対象のクリーチャーにダメージ（今の HP から amount を引き、0 になれば破壊する）
+スペルの効果（種類は __typename で見分ける。スペルは使ったときに発動する）
 """
-type SpellDamageEffect {
-	"""
-	ダメージ（1 以上）
-	"""
-	amount: Int!
-}
-"""
-対象のクリーチャーにダメージの入力
-"""
-input SpellDamageEffectInput {
-	"""
-	ダメージ（1 以上。上限は無い）
-	"""
-	amount: Int!
-}
-"""
-カードを引く効果（山札の先頭から引く）
-"""
-type SpellDrawCardsEffect {
-	"""
-	引く枚数（1 以上）
-	"""
-	count: Int!
-}
-"""
-カードを引く効果の入力
-"""
-input SpellDrawCardsEffectInput {
-	"""
-	引く枚数（1 以上。上限は無い）
-	"""
-	count: Int!
-}
-"""
-スペルの効果（種類は __typename で見分ける）
-"""
-union SpellEffect = SpellDrawCardsEffect | SpellGainMagicEffect | SpellRollDiceEffect | SpellFixedDiceCurseEffect | SpellDamageEffect
+union SpellEffect = DrawCardsSpellEffect | GainMagicSpellEffect | MultipleDiceSpellEffect | FixedDiceSpellEffect | DamageSpellEffect
 """
 スペルの効果の入力（種類のどれか 1 つだけ）
 """
@@ -4403,23 +4473,23 @@ input SpellEffectInput @oneOf {
 	"""
 	カードを引く
 	"""
-	drawCards: SpellDrawCardsEffectInput
+	drawCards: DrawCardsSpellEffectInput
 	"""
 	魔力を得る
 	"""
-	gainMagic: SpellGainMagicEffectInput
+	gainMagic: GainMagicSpellEffectInput
 	"""
 	サイコロを複数振る
 	"""
-	rollDice: SpellRollDiceEffectInput
+	multipleDice: MultipleDiceSpellEffectInput
 	"""
-	次のサイコロの目を決める呪い
+	サイコロの目を固定する
 	"""
-	fixedDiceCurse: SpellFixedDiceCurseEffectInput
+	fixedDice: FixedDiceSpellEffectInput
 	"""
 	対象のクリーチャーにダメージ
 	"""
-	damage: SpellDamageEffectInput
+	damage: DamageSpellEffectInput
 }
 """
 効果の無いスペルを公開しようとした（効果の無いスペルは対戦で使えないため、公開できない）
@@ -4429,68 +4499,6 @@ type SpellEffectRequiredError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
-}
-"""
-次のサイコロの目を決める呪い（対象のプレイヤーが次に振ると、目は value になる。turns ターンで解ける）
-"""
-type SpellFixedDiceCurseEffect {
-	"""
-	決める目（1 以上）
-	"""
-	value: Int!
-	"""
-	解けるまでのターン数（1 以上。かけられた人が自分のターンを終えるたびに 1 減り、0 で解ける）
-	"""
-	turns: Int!
-}
-"""
-次のサイコロの目を決める呪いの入力
-"""
-input SpellFixedDiceCurseEffectInput {
-	"""
-	決める目（1 以上）
-	"""
-	value: Int!
-	"""
-	解けるまでのターン数（1 以上）
-	"""
-	turns: Int!
-}
-"""
-魔力を得る効果（使った人が（周回数 + 1）× perLap の魔力を得る。周回数はその対戦で周回を終えた回数）
-"""
-type SpellGainMagicEffect {
-	"""
-	周回数 1 つあたりの魔力（1 以上）
-	"""
-	perLap: Int!
-}
-"""
-魔力を得る効果の入力
-"""
-input SpellGainMagicEffectInput {
-	"""
-	周回数 1 つあたりの魔力（1 以上。上限は無い）
-	"""
-	perLap: Int!
-}
-"""
-サイコロを複数振る効果（使った人は、そのターンのサイコロを count 個同時に振り、合計の分だけ進む）
-"""
-type SpellRollDiceEffect {
-	"""
-	振るサイコロの個数（2 以上）
-	"""
-	count: Int!
-}
-"""
-サイコロを複数振る効果の入力
-"""
-input SpellRollDiceEffectInput {
-	"""
-	振るサイコロの個数（2 以上。上限は無い）
-	"""
-	count: Int!
 }
 """
 スターターセット
