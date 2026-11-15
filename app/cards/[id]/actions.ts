@@ -2,11 +2,12 @@
 
 import { refresh } from "next/cache";
 import { graphql } from "@/graphql";
-import type { SpellEffectInput } from "@/graphql/graphql";
+import type { ItemEffectKind, SpellEffectInput } from "@/graphql/graphql";
 import { callCore } from "@/lib/core";
 import { isCreatureAbilityKind } from "@/lib/creature-ability";
 import { isCreatureElement } from "@/lib/creature-element";
 import { isItemCategory } from "@/lib/item-category";
+import { ITEM_EFFECT_VALUE_LABELS, isItemEffectKind } from "@/lib/item-effect";
 import { isRarity } from "@/lib/rarity";
 import { type Notice, target } from "../../deck-form";
 import {
@@ -18,7 +19,9 @@ import {
   elementsErrorMessage,
   FORBIDDEN,
   INVALID_TARGET,
+  ITEM_EFFECT_NOT_ALLOWED,
   NOT_REFLECTED,
+  OPPONENT_ELEMENTS_INVALID,
   REVISION_CONFLICT,
   SPELL_EFFECT_KINDS,
   statsErrorMessage,
@@ -28,8 +31,8 @@ import type {
   AbilitiesState,
   EffectState,
   ElementsState,
+  ItemEffectsState,
   SpecState,
-  StatModifiersState,
   StatsState,
 } from "./spec-form";
 
@@ -166,13 +169,22 @@ const changeItemCategoryMutation = graphql(`
   }
 `);
 
-const changeItemStatModifiersMutation = graphql(`
-  mutation ChangeItemStatModifiers($input: ChangeItemStatModifiersInput!) {
-    changeItemStatModifiers(input: $input) {
+const changeItemEffectsMutation = graphql(`
+  mutation ChangeItemEffects($input: ChangeItemEffectsInput!) {
+    changeItemEffects(input: $input) {
       __typename
-      ... on ChangeItemStatModifiersSuccess {
+      ... on ChangeItemEffectsSuccess {
         id
         revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+          field
+          ... on FieldTooSmall {
+            min
+          }
+        }
       }
     }
   }
@@ -686,55 +698,141 @@ export async function changeItemCategory(
   switch (changed.__typename) {
     case "ChangeItemCategorySuccess":
       return showChanged(card.id, changed.revision);
+    case "ItemEffectNotAllowedError":
+      return { error: ITEM_EFFECT_NOT_ALLOWED };
     default:
       return failed(changed.__typename);
   }
 }
 
-export async function changeItemStatModifiers(
-  _previous: StatModifiersState,
+// 選んだ種類を core の並びの順（画面の選択肢の順）で送る。値は値の要る効果だけに入れ、範囲の誤りは core が決める
+export async function changeItemEffects(
+  _previous: ItemEffectsState,
   form: FormData,
-): Promise<StatModifiersState> {
+): Promise<ItemEffectsState> {
   const card = target(form);
-  if (card === undefined) {
+  const values = form.getAll("effects").map(String);
+  // 知らない値は改ざんされた送信なので送らない
+  const kinds = values.filter(isItemEffectKind);
+  const elementValues = form.getAll("opponentElements").map(String);
+  const opponentElements = elementValues.filter(isCreatureElement);
+  if (
+    card === undefined ||
+    kinds.length !== values.length ||
+    opponentElements.length !== elementValues.length
+  ) {
     return { error: INVALID_TARGET };
   }
-  const attackValue = String(form.get("attackModifier") ?? "");
-  const hitPointsValue = String(form.get("hitPointsModifier") ?? "");
-  const attackModifier = integerOf(attackValue);
-  const hitPointsModifier = integerOf(hitPointsValue);
-  if (attackModifier === undefined || hitPointsModifier === undefined) {
-    return {
-      revision: card.revision,
-      attackModifier: attackValue,
-      hitPointsModifier: hitPointsValue,
-      attackModifierError:
-        attackModifier === undefined
-          ? "AT の増減は整数で入力してください"
-          : undefined,
-      hitPointsModifierError:
-        hitPointsModifier === undefined
-          ? "HP の増減は整数で入力してください"
-          : undefined,
-    };
+  const entered: Partial<Record<ItemEffectKind, string>> = {};
+  for (const kind of VALUED_ITEM_EFFECTS) {
+    entered[kind] = String(form.get(`value.${kind}`) ?? "");
+  }
+  const percentValue = String(form.get("attackMultiplierPercent") ?? "");
+  const kept = {
+    revision: card.revision,
+    kinds: values,
+    values: entered,
+    percent: percentValue,
+    opponentElements: elementValues,
+  };
+  const valueErrors: Partial<Record<ItemEffectKind, string>> = {};
+  for (const kind of VALUED_ITEM_EFFECTS) {
+    if (kinds.includes(kind) && integerOf(entered[kind] ?? "") === undefined) {
+      valueErrors[kind] =
+        `${ITEM_EFFECT_VALUE_LABELS[kind]}は整数で入力してください`;
+    }
+  }
+  const percent = integerOf(percentValue);
+  const percentError =
+    kinds.includes("ATTACK_MULTIPLIER") && percent === undefined
+      ? "強打の倍率は整数で入力してください"
+      : undefined;
+  if (Object.keys(valueErrors).length > 0 || percentError) {
+    return { ...kept, valueErrors, percentError };
   }
 
-  const result = await callCore(changeItemStatModifiersMutation, {
+  const result = await callCore(changeItemEffectsMutation, {
     input: {
       id: card.id,
       revision: card.revision,
-      attackModifier,
-      hitPointsModifier,
+      effects: kinds.map((kind) => {
+        switch (kind) {
+          case "ATTACK_MODIFIER":
+          case "HIT_POINTS_MODIFIER":
+          case "ATTACK_OVERRIDE":
+            return { kind, value: integerOf(entered[kind] ?? "") };
+          case "ATTACK_MULTIPLIER":
+            // 属性を選ばなければ制約なし（いつも発動する）
+            return {
+              kind,
+              percent,
+              constraints:
+                opponentElements.length === 0
+                  ? []
+                  : [
+                      {
+                        kind: "OPPONENT_ELEMENT" as const,
+                        elements: opponentElements,
+                      },
+                    ],
+            };
+          default:
+            return { kind };
+        }
+      }),
     },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
-  const changed = result.data.changeItemStatModifiers;
+  const changed = result.data.changeItemEffects;
   switch (changed.__typename) {
-    case "ChangeItemStatModifiersSuccess":
+    case "ChangeItemEffectsSuccess":
       return showChanged(card.id, changed.revision);
+    case "ItemEffectNotAllowedError":
+      return { ...kept, error: ITEM_EFFECT_NOT_ALLOWED };
+    case "ValidationErrors": {
+      // 画面の操作で起きるのは、上書き・倍率の範囲の誤り（effects.N.value・effects.N.percent）と、相手の属性の誤りだけ
+      const indexOf = (kind: ItemEffectKind) => kinds.indexOf(kind);
+      const fieldOf = (field: string) =>
+        changed.errors.find((e) => e.field === field);
+      const overrideError = fieldOf(
+        `effects.${indexOf("ATTACK_OVERRIDE")}.value`,
+      );
+      const multiplierError = fieldOf(
+        `effects.${indexOf("ATTACK_MULTIPLIER")}.percent`,
+      );
+      if (changed.errors.some((e) => e.field.endsWith(".elements"))) {
+        return { ...kept, opponentElementsError: OPPONENT_ELEMENTS_INVALID };
+      }
+      if (overrideError || multiplierError) {
+        return {
+          ...kept,
+          valueErrors: overrideError
+            ? {
+                ATTACK_OVERRIDE: statsErrorMessage({
+                  ...overrideError,
+                  field: "effects.attackOverride",
+                }),
+              }
+            : {},
+          percentError:
+            multiplierError &&
+            statsErrorMessage({
+              ...multiplierError,
+              field: "effects.attackMultiplier",
+            }),
+        };
+      }
+      return { ...kept, error: INVALID_TARGET };
+    }
     default:
       return failed(changed.__typename);
   }
 }
+
+const VALUED_ITEM_EFFECTS: ItemEffectKind[] = [
+  "ATTACK_MODIFIER",
+  "HIT_POINTS_MODIFIER",
+  "ATTACK_OVERRIDE",
+];

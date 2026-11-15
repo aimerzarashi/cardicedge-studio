@@ -1041,7 +1041,7 @@ input ChangeItemCategoryInput {
 """
 アイテムの分類を変える操作の結果（カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
 """
-union ChangeItemCategoryResult = ChangeItemCategorySuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+union ChangeItemCategoryResult = ChangeItemCategorySuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ItemEffectNotAllowedError | ForbiddenError
 """
 アイテムの分類を変えた（同じ値なら revision は進まない）
 """
@@ -1056,9 +1056,9 @@ type ChangeItemCategorySuccess {
 	revision: Int!
 }
 """
-アイテムの戦闘中の AT・HP の増減を変える入力
+アイテムの効果の並びを変える入力
 """
-input ChangeItemStatModifiersInput {
+input ChangeItemEffectsInput {
 	"""
 	変えるアイテムの公開用の ID
 	"""
@@ -1068,22 +1068,18 @@ input ChangeItemStatModifiersInput {
 	"""
 	revision: Int!
 	"""
-	戦闘中に足す攻撃力（負は下げる）
+	変えた後の効果の並び（全体。並びの順に当てる）
 	"""
-	attackModifier: Int!
-	"""
-	戦闘中に足す体力（負は下げる）
-	"""
-	hitPointsModifier: Int!
+	effects: [ItemEffectInput!]!
 }
 """
-アイテムの増減を変える操作の結果（カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
+アイテムの効果の並びを変える操作の結果（入力の誤りの項目は effects.N・effects.N.value・effects.N.percent・effects.N.constraints.M・effects.N.constraints.M.elements。カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
 """
-union ChangeItemStatModifiersResult = ChangeItemStatModifiersSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+union ChangeItemEffectsResult = ChangeItemEffectsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ItemEffectNotAllowedError | ForbiddenError
 """
-アイテムの戦闘中の AT・HP の増減を変えた（どちらも同じ値なら revision は進まない）
+アイテムの効果の並びを変えた（同じ並びなら revision は進まない）
 """
-type ChangeItemStatModifiersSuccess {
+type ChangeItemEffectsSuccess {
 	"""
 	変えたアイテムの公開用の ID
 	"""
@@ -2098,13 +2094,13 @@ type Item implements Card {
 	"""
 	category: ItemCategory!
 	"""
-	戦闘中に足す攻撃力（負は下げる）
+	効果の並び（入れた順。無ければ空）
 	"""
-	attackModifier: Int!
+	effects: [ItemEffect!]!
 	"""
-	戦闘中に足す体力（負は下げる）
+	今の分類で持てる効果の種類（画面が選べるものだけを出すため。分類ごとの決まりは core が持つ）
 	"""
-	hitPointsModifier: Int!
+	allowedEffectKinds: [ItemEffectKind!]!
 	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
@@ -2117,6 +2113,49 @@ type Item implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+AT の増減
+"""
+type ItemAttackModifierEffect implements ItemEffect {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+	"""
+	増減の値（負は下げる）
+	"""
+	value: Int!
+}
+"""
+AT の倍率
+"""
+type ItemAttackMultiplierEffect implements ItemEffect {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+	"""
+	倍率（百分率。150 で 1.5 倍。1 以上）
+	"""
+	percent: Int!
+	"""
+	発動する制約（すべてを満たすときに発動する。無ければ空でいつも発動する）
+	"""
+	constraints: [ItemConstraint!]!
+}
+"""
+AT の上書き
+"""
+type ItemAttackOverrideEffect implements ItemEffect {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+	"""
+	上書きした後の AT（0 以上）
+	"""
+	value: Int!
 }
 """
 アイテムの分類
@@ -2134,6 +2173,136 @@ enum ItemCategory {
 	巻物
 	"""
 	SCROLL
+}
+"""
+効果の制約（種類ごとの型）
+"""
+interface ItemConstraint {
+	"""
+	制約の種類
+	"""
+	kind: ItemConstraintKind!
+}
+"""
+効果の制約の入力
+"""
+input ItemConstraintInput {
+	"""
+	制約の種類
+	"""
+	kind: ItemConstraintKind!
+	"""
+	相手の属性（1 つ以上・重複なし）
+	"""
+	elements: [CreatureElement!]
+}
+"""
+効果の制約の種類
+"""
+enum ItemConstraintKind {
+	"""
+	相手の属性（戦う相手のクリーチャーの属性のどれかが合うとき）
+	"""
+	OPPONENT_ELEMENT
+}
+"""
+アイテムの効果（種類ごとの型）
+"""
+interface ItemEffect {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+}
+"""
+アイテムの効果の入力（種類に要る値だけを入れる。AT・HP の増減・AT の上書きは value、AT の倍率は percent と constraints）
+"""
+input ItemEffectInput {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+	"""
+	AT・HP の増減の値・上書きした後の AT
+	"""
+	value: Int
+	"""
+	AT の倍率（百分率）
+	"""
+	percent: Int
+	"""
+	AT の倍率の制約（すべてを満たすときに発動する）
+	"""
+	constraints: [ItemConstraintInput!]
+}
+"""
+アイテムの効果の種類
+"""
+enum ItemEffectKind {
+	"""
+	AT の増減（戦闘中、AT が決まった値だけ増減する）
+	"""
+	ATTACK_MODIFIER
+	"""
+	HP の増減（戦闘中、HP が決まった値だけ増減する）
+	"""
+	HIT_POINTS_MODIFIER
+	"""
+	AT の上書き（戦闘中、AT が決まった値になる）
+	"""
+	ATTACK_OVERRIDE
+	"""
+	AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ）
+	"""
+	ATTACK_MULTIPLIER
+	"""
+	地形効果を無視する（相手の地形効果を無視してダメージを与える）
+	"""
+	IGNORE_TERRAIN_EFFECT
+}
+"""
+アイテムの分類で持てない効果がある（効果を変えるとき・分類を変えるとき。持てる効果は分類ごとに決まっている）
+"""
+type ItemEffectNotAllowedError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+HP の増減
+"""
+type ItemHitPointsModifierEffect implements ItemEffect {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+	"""
+	増減の値（負は下げる）
+	"""
+	value: Int!
+}
+"""
+地形効果を無視する
+"""
+type ItemIgnoreTerrainEffect implements ItemEffect {
+	"""
+	効果の種類
+	"""
+	kind: ItemEffectKind!
+}
+"""
+相手の属性の制約
+"""
+type ItemOpponentElementConstraint implements ItemConstraint {
+	"""
+	制約の種類
+	"""
+	kind: ItemConstraintKind!
+	"""
+	合えば満たす相手の属性（火・地・水・風・無の順。1 つ以上）
+	"""
+	elements: [CreatureElement!]!
 }
 """
 土地（ふつうのマス。公開するボードの、拠点・チェックポイント以外のマス）
@@ -2443,14 +2612,14 @@ type Mutation {
 		input: ChangeItemCategoryInput!
 	): ChangeItemCategoryResult!
 	"""
-	アイテムの戦闘中の AT・HP の増減を変える（紐づいたオペレーターだけ。準備中だけ。2 つは一緒に変える）
+	アイテムの効果の並びを変える（紐づいたオペレーターだけ。準備中だけ。分類で持てる効果だけ）
 	"""
-	changeItemStatModifiers(
+	changeItemEffects(
 		"""
-		変えるアイテムと増減
+		変えるアイテムと効果の並び
 		"""
-		input: ChangeItemStatModifiersInput!
-	): ChangeItemStatModifiersResult!
+		input: ChangeItemEffectsInput!
+	): ChangeItemEffectsResult!
 	"""
 	アイテムを登録する（紐づいたオペレーターだけ）
 	"""

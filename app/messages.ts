@@ -339,6 +339,10 @@ export function costErrorMessage(error: FieldError): string {
 
 // 先制と後手は同時に持てない（core が断る。core#158）
 export const ABILITIES_CONFLICTED = "先制と後手は同時に選べません";
+// アイテムの分類で持てない効果がある（効果を変えるとき・分類を変えるとき。分類ごとの決まりは core が持つ）
+export const ITEM_EFFECT_NOT_ALLOWED =
+  "今の分類では持てない効果があります。先に効果を外してから分類を変えてください";
+export const OPPONENT_ELEMENTS_INVALID = "強打する相手の属性が正しくありません";
 export const ATTACK_IMMUNITY_ELEMENTS_REQUIRED =
   "攻撃無効の属性を 1 つ以上選んでください";
 
@@ -365,6 +369,8 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   "effect.fixedDice.value": "固定する目",
   "effect.fixedDice.turns": "効き続けるターン数",
   "effect.damage.amount": "ダメージ",
+  "effects.attackOverride": "上書きした後の AT",
+  "effects.attackMultiplier": "強打の倍率",
 };
 
 // 攻撃力・体力・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）

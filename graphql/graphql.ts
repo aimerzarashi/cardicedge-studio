@@ -250,12 +250,10 @@ export type ChangeItemCategoryInput = {
   revision: number;
 };
 
-/** アイテムの戦闘中の AT・HP の増減を変える入力 */
-export type ChangeItemStatModifiersInput = {
-  /** 戦闘中に足す攻撃力（負は下げる） */
-  attackModifier: number;
-  /** 戦闘中に足す体力（負は下げる） */
-  hitPointsModifier: number;
+/** アイテムの効果の並びを変える入力 */
+export type ChangeItemEffectsInput = {
+  /** 変えた後の効果の並び（全体。並びの順に当てる） */
+  effects: Array<ItemEffectInput>;
   /** 変えるアイテムの公開用の ID */
   id: string;
   /** 画面が見ていたカードの更新の番号 */
@@ -444,6 +442,44 @@ export type ItemCategory =
   | 'SCROLL'
   /** 武器 */
   | 'WEAPON';
+
+/** 効果の制約の入力 */
+export type ItemConstraintInput = {
+  /** 相手の属性（1 つ以上・重複なし） */
+  elements?: Array<CreatureElement> | null | undefined;
+  /** 制約の種類 */
+  kind: ItemConstraintKind;
+};
+
+/** 効果の制約の種類 */
+export type ItemConstraintKind =
+  /** 相手の属性（戦う相手のクリーチャーの属性のどれかが合うとき） */
+  | 'OPPONENT_ELEMENT';
+
+/** アイテムの効果の入力（種類に要る値だけを入れる。AT・HP の増減・AT の上書きは value、AT の倍率は percent と constraints） */
+export type ItemEffectInput = {
+  /** AT の倍率の制約（すべてを満たすときに発動する） */
+  constraints?: Array<ItemConstraintInput> | null | undefined;
+  /** 効果の種類 */
+  kind: ItemEffectKind;
+  /** AT の倍率（百分率） */
+  percent?: number | null | undefined;
+  /** AT・HP の増減の値・上書きした後の AT */
+  value?: number | null | undefined;
+};
+
+/** アイテムの効果の種類 */
+export type ItemEffectKind =
+  /** AT の増減（戦闘中、AT が決まった値だけ増減する） */
+  | 'ATTACK_MODIFIER'
+  /** AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ） */
+  | 'ATTACK_MULTIPLIER'
+  /** AT の上書き（戦闘中、AT が決まった値になる） */
+  | 'ATTACK_OVERRIDE'
+  /** HP の増減（戦闘中、HP が決まった値だけ増減する） */
+  | 'HIT_POINTS_MODIFIER'
+  /** 地形効果を無視する（相手の地形効果を無視してダメージを与える） */
+  | 'IGNORE_TERRAIN_EFFECT';
 
 /** 置く土地の入力 */
 export type LandTileInput = {
@@ -1269,22 +1305,40 @@ export type ChangeItemCategoryMutation = { changeItemCategory:
     | { __typename: 'CardNotFoundError' }
     | { __typename: 'ChangeItemCategorySuccess', id: string, revision: number }
     | { __typename: 'ForbiddenError' }
+    | { __typename: 'ItemEffectNotAllowedError' }
     | { __typename: 'RevisionConflictError' }
     | { __typename: 'ValidationErrors' }
    };
 
-export type ChangeItemStatModifiersMutationVariables = Exact<{
-  input: ChangeItemStatModifiersInput;
+export type ChangeItemEffectsMutationVariables = Exact<{
+  input: ChangeItemEffectsInput;
 }>;
 
 
-export type ChangeItemStatModifiersMutation = { changeItemStatModifiers:
+export type ChangeItemEffectsMutation = { changeItemEffects:
     | { __typename: 'CardNotDraftError' }
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'ChangeItemStatModifiersSuccess', id: string, revision: number }
+    | { __typename: 'ChangeItemEffectsSuccess', id: string, revision: number }
     | { __typename: 'ForbiddenError' }
+    | { __typename: 'ItemEffectNotAllowedError' }
     | { __typename: 'RevisionConflictError' }
-    | { __typename: 'ValidationErrors' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
    };
 
 export type ChangeSpellEffectMutationVariables = Exact<{
@@ -1334,7 +1388,13 @@ export type CardQuery = { card:
         | { percent: number, kind: CreatureAbilityKind }
       > }
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, attackModifier: number, hitPointsModifier: number }
+    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, allowedEffectKinds: Array<ItemEffectKind>, effects: Array<
+        | { __typename: 'ItemAttackModifierEffect', value: number, kind: ItemEffectKind }
+        | { __typename: 'ItemAttackMultiplierEffect', percent: number, kind: ItemEffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: ItemConstraintKind }> }
+        | { __typename: 'ItemAttackOverrideEffect', value: number, kind: ItemEffectKind }
+        | { __typename: 'ItemHitPointsModifierEffect', value: number, kind: ItemEffectKind }
+        | { __typename: 'ItemIgnoreTerrainEffect', kind: ItemEffectKind }
+      > }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
         | { __typename: 'DamageSpellEffect', amount: number }
         | { __typename: 'DrawCardsSpellEffect', count: number }
@@ -3058,17 +3118,26 @@ export const ChangeItemCategoryDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeItemCategoryMutation, ChangeItemCategoryMutationVariables>;
-export const ChangeItemStatModifiersDocument = new TypedDocumentString(`
-    mutation ChangeItemStatModifiers($input: ChangeItemStatModifiersInput!) {
-  changeItemStatModifiers(input: $input) {
+export const ChangeItemEffectsDocument = new TypedDocumentString(`
+    mutation ChangeItemEffects($input: ChangeItemEffectsInput!) {
+  changeItemEffects(input: $input) {
     __typename
-    ... on ChangeItemStatModifiersSuccess {
+    ... on ChangeItemEffectsSuccess {
       id
       revision
     }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
   }
 }
-    `) as unknown as TypedDocumentString<ChangeItemStatModifiersMutation, ChangeItemStatModifiersMutationVariables>;
+    `) as unknown as TypedDocumentString<ChangeItemEffectsMutation, ChangeItemEffectsMutationVariables>;
 export const ChangeSpellEffectDocument = new TypedDocumentString(`
     mutation ChangeSpellEffect($input: ChangeSpellEffectInput!) {
   changeSpellEffect(input: $input) {
@@ -3129,8 +3198,29 @@ export const CardDocument = new TypedDocumentString(`
     }
     ... on Item {
       category
-      attackModifier
-      hitPointsModifier
+      allowedEffectKinds
+      effects {
+        __typename
+        kind
+        ... on ItemAttackModifierEffect {
+          value
+        }
+        ... on ItemHitPointsModifierEffect {
+          value
+        }
+        ... on ItemAttackOverrideEffect {
+          value
+        }
+        ... on ItemAttackMultiplierEffect {
+          percent
+          constraints {
+            kind
+            ... on ItemOpponentElementConstraint {
+              elements
+            }
+          }
+        }
+      }
     }
     ... on Spell {
       effect {
