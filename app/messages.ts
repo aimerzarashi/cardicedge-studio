@@ -337,14 +337,22 @@ export function costErrorMessage(error: FieldError): string {
   }
 }
 
-// 先制と後手は同時に持てない（core が断る。core#158）
-export const ABILITIES_CONFLICTED = "先制と後手は同時に選べません";
+// 先制（先に攻撃する）と後手（後に攻撃する）は一緒に持てない（core が並び全体の effects で断る。core#158・core#178）
+export const EFFECTS_CONFLICTED = "先制と後手は一緒に選べません";
 // アイテムの分類で持てない効果がある（効果を変えるとき・分類を変えるとき。分類ごとの決まりは core が持つ）
 export const ITEM_EFFECT_NOT_ALLOWED =
   "今の分類では持てない効果があります。先に効果を外してから分類を変えてください";
-export const OPPONENT_ELEMENTS_INVALID = "強打する相手の属性が正しくありません";
-export const ATTACK_IMMUNITY_ELEMENTS_REQUIRED =
-  "攻撃無効の属性を 1 つ以上選んでください";
+export const OPPONENT_ELEMENTS_INVALID = "相手の属性が正しくありません";
+
+// 効果の値の欄の入力の誤り（欄の名前は lib/effect.ts の EFFECT_FIELDS、下限は core が返した値を使う。最大の下限は最小）
+export function effectFieldErrorMessage(
+  label: string,
+  error: { __typename: string; min?: number },
+): string {
+  return error.__typename === "FieldTooSmall"
+    ? `${label}は ${error.min} 以上にしてください`
+    : `${label}が正しくありません`;
+}
 
 // 属性の入力の誤り（組み合わせの決まりは core が判定し、ここには書き写さない）
 export function elementsErrorMessage(error: FieldError): string {
@@ -359,9 +367,6 @@ export function elementsErrorMessage(error: FieldError): string {
 // 性能の数の項目の呼び方（core が返した field で見分ける）
 const STAT_FIELD_LABELS: Record<string, string> = {
   hitPoints: "HP",
-  "abilities.percent": "通行料の倍率",
-  "abilities.minimum": "最小",
-  "abilities.maximum": "最大",
   "effect.drawCards.count": "引く枚数",
   "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
   "effect.multipleDice.count": "サイコロの個数",
@@ -369,8 +374,6 @@ const STAT_FIELD_LABELS: Record<string, string> = {
   "effect.fixedDice.value": "固定する目",
   "effect.fixedDice.turns": "効き続けるターン数",
   "effect.damage.amount": "ダメージ",
-  "effects.attackOverride": "上書きした後の AT",
-  "effects.attackMultiplier": "強打の倍率",
 };
 
 // 攻撃力・体力・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）

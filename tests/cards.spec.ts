@@ -307,7 +307,7 @@ test("準備中のカードの詳細でコストと希少度を変えると、�
   await expect(row.locator("td").nth(4)).toHaveText("R");
 });
 
-test("準備中のクリーチャーの詳細で属性と AT・HP を変えると詳細に出て、属性の組み合わせの誤りは選んだまま残る", async ({
+test("準備中のクリーチャーの詳細で属性・AT と HP・制限・効果を変えると詳細に出て、誤りは入力したまま残る", async ({
   page,
 }) => {
   await loginAsOperator(page);
@@ -364,86 +364,76 @@ test("準備中のクリーチャーの詳細で属性と AT・HP を変える�
   await expect(placement.getByLabel("地", { exact: true })).toBeChecked();
   await expect(placement.getByLabel("火", { exact: true })).not.toBeChecked();
 
-  await page.getByLabel("防御型", { exact: true }).check();
-  await page.getByRole("button", { name: "能力を変える" }).click();
+  // 効果はアイテムと同じ部品で、クリーチャーが持てる種類（core の allowedEffectKinds）だけを出す（core#178）
+  await expect(
+    page.getByLabel("地形効果を無視する", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByLabel("侵略できない", { exact: true }).check();
+  await page.getByLabel("移動できない", { exact: true }).check();
+  await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(page.getByText("保存しました").nth(4)).toBeVisible();
-  await expect(page.getByLabel("防御型", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("侵略できない", { exact: true })).toBeChecked();
 
-  // 値の要る能力は、範囲の誤りが文言で出て入力が残る
+  // 値の要る効果は、範囲の誤りが文言で出て入力が残る
   await page.getByLabel("通行料の倍率", { exact: true }).check();
   await page.getByLabel("通行料の倍率（%）").fill("0");
-  await page.getByRole("button", { name: "能力を変える" }).click();
+  await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(
-    page.getByText("通行料の倍率は 1 以上にしてください"),
+    page.getByText("通行料の倍率（%）は 1 以上にしてください"),
   ).toBeVisible();
   await expect(page.getByLabel("通行料の倍率（%）")).toHaveValue("0");
   await page.getByLabel("通行料の倍率（%）").fill("150");
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
-  await expect(page.getByLabel("通行料の倍率", { exact: true })).toBeChecked();
-  await expect(page.getByLabel("通行料の倍率（%）")).toHaveValue("150");
-  await expect(page.getByLabel("移動", { exact: true })).toHaveCount(0);
 
-  // 戦闘中の増減は AT・HP の増減を入れ、負も 0 も保存できる
-  await page.getByLabel("戦闘中の増減", { exact: true }).check();
-  await page.getByLabel("AT の増減").fill("0");
-  await page.getByLabel("HP の増減").fill("-20");
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
-  await expect(page.getByLabel("戦闘中の増減", { exact: true })).toBeChecked();
-  await expect(page.getByLabel("AT の増減")).toHaveValue("0");
-  await expect(page.getByLabel("HP の増減")).toHaveValue("-20");
-
-  // 戦闘中のランダムは最小・最大を入れ、最大が最小より小さいと誤りが文言で出て入力が残る
-  await page.getByLabel("戦闘中のランダム", { exact: true }).check();
-  await page.getByLabel("最小").fill("70");
-  await page.getByLabel("最大").fill("10");
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(page.getByText("最大は 70 以上にしてください")).toBeVisible();
-  await expect(page.getByLabel("最大")).toHaveValue("10");
-  await page.getByLabel("最小").fill("10");
-  await page.getByLabel("最大").fill("70");
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
+  // HP の増減は負も保存できる。上書きは範囲で、最大が最小より小さいと誤りが文言で出て入力が残る
+  await page.getByLabel("HP の増減", { exact: true }).check();
+  await page.getByLabel("HP の増減の値").fill("-20");
+  await page.getByLabel("HP の上書き", { exact: true }).check();
+  await page.getByLabel("上書きした後の HP の最小").fill("70");
+  await page.getByLabel("上書きした後の HP の最大").fill("10");
+  await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(
-    page.getByLabel("戦闘中のランダム", { exact: true }),
-  ).toBeChecked();
-  await expect(page.getByLabel("最小")).toHaveValue("10");
-  await expect(page.getByLabel("最大")).toHaveValue("70");
-
-  // 先制と後手は同時に選べず、誤りが文言で出て選んだものが残る
-  await page.getByLabel("先制", { exact: true }).check();
-  await page.getByLabel("後手", { exact: true }).check();
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(page.getByText("先制と後手は同時に選べません")).toBeVisible();
-  await expect(page.getByLabel("後手", { exact: true })).toBeChecked();
-  await page.getByLabel("後手", { exact: true }).uncheck();
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(page.getByText("保存しました").nth(4)).toBeVisible();
-  await expect(page.getByLabel("先制", { exact: true })).toBeChecked();
-
-  // 攻撃無効は属性を選ばないと誤りが文言で出る。選ぶと保存され、選んだ属性が残る
-  await page.getByLabel("攻撃無効", { exact: true }).check();
-  await page.getByRole("button", { name: "能力を変える" }).click();
-  await expect(
-    page.getByText("攻撃無効の属性を 1 つ以上選んでください"),
+    page.getByText("上書きした後の HP の最大は 70 以上にしてください"),
   ).toBeVisible();
-  const immunity = page.getByRole("group", { name: "攻撃無効の属性" });
-  await expect(immunity.getByLabel("無", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("上書きした後の HP の最大")).toHaveValue("10");
+  await page.getByLabel("上書きした後の HP の最小").fill("10");
+  await page.getByLabel("上書きした後の HP の最大").fill("70");
+
+  // 先制と後手は一緒に選べず、誤りが文言で出て選んだものが残る
+  await page.getByLabel("先制（先に攻撃する）", { exact: true }).check();
+  await page.getByLabel("後手（後に攻撃する）", { exact: true }).check();
+  await page.getByRole("button", { name: "効果を変える" }).click();
+  await expect(page.getByText("先制と後手は一緒に選べません")).toBeVisible();
+  await expect(
+    page.getByLabel("後手（後に攻撃する）", { exact: true }),
+  ).toBeChecked();
+  await page.getByLabel("後手（後に攻撃する）", { exact: true }).uncheck();
+
+  // 攻撃無効は相手の属性を制約にする（無も選べる）
+  await page
+    .getByLabel("攻撃無効（受けるダメージを 0 にする）", { exact: true })
+    .check();
+  const immunity = page.getByRole("group", {
+    name: /攻撃無効にする相手の属性/,
+  });
+  await expect(immunity.getByLabel("無", { exact: true })).toHaveCount(1);
   await immunity.getByLabel("地", { exact: true }).check();
   await immunity.getByLabel("火", { exact: true }).check();
-  await page.getByRole("button", { name: "能力を変える" }).click();
+  await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(page.getByText("保存しました").nth(4)).toBeVisible();
-  await expect(page.getByLabel("攻撃無効", { exact: true })).toBeChecked();
+  await expect(
+    page.getByLabel("先制（先に攻撃する）", { exact: true }),
+  ).toBeChecked();
+  await expect(page.getByLabel("上書きした後の HP の最大")).toHaveValue("70");
   await expect(immunity.getByLabel("火", { exact: true })).toBeChecked();
-  await expect(immunity.getByLabel("地", { exact: true })).toBeChecked();
 
-  // 公開すると、増減は符号つきで、攻撃無効は属性つきで能力の表示に出る
+  // 公開すると、効果は core の並び（選択肢の順）で表示に出る
   await publishCard(page, name);
   await page.getByRole("link", { name }).click();
-  await expect(page.getByText(/戦闘中の増減（AT 0、HP -20）/)).toBeVisible();
-  await expect(page.getByText(/戦闘中のランダム（10〜70）/)).toBeVisible();
-  await expect(page.getByText(/攻撃無効（火地）/)).toBeVisible();
+  await expect(
+    page.getByText(
+      "HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない",
+    ),
+  ).toBeVisible();
 });
 
 test("コストに 0 未満を入れると入力の誤りが表示され、入力した値が残る", async ({
@@ -513,7 +503,8 @@ test("準備中のアイテムの詳細で分類と効果を変えると詳細�
 
   // 巻物の効果（AT の上書き・強打・地形効果を無視する）。強打は相手の属性を制約にする
   await page.getByLabel("AT の上書き", { exact: true }).check();
-  await page.getByLabel("上書きした後の AT").fill("30");
+  await page.getByLabel("上書きした後の AT の最小").fill("30");
+  await page.getByLabel("上書きした後の AT の最大").fill("30");
   await page.getByLabel("強打（AT の倍率）", { exact: true }).check();
   await page.getByLabel("強打の倍率（%）").fill("150");
   await page
@@ -524,7 +515,7 @@ test("準備中のアイテムの詳細で分類と効果を変えると詳細�
   await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(page.getByText("保存しました").nth(1)).toBeVisible();
   await expect(page.getByLabel("AT の上書き", { exact: true })).toBeChecked();
-  await expect(page.getByLabel("上書きした後の AT")).toHaveValue("30");
+  await expect(page.getByLabel("上書きした後の AT の最小")).toHaveValue("30");
 
   // 巻物の効果を持ったままでは防具に変えられない
   await page.getByLabel("分類").selectOption("ARMOR");

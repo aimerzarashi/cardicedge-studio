@@ -1,4 +1,51 @@
 """
+AT の増減
+"""
+type AttackModifierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	増減の値（負は下げる）
+	"""
+	value: Int!
+}
+"""
+AT の倍率
+"""
+type AttackMultiplierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	倍率（百分率。150 で 1.5 倍。1 以上）
+	"""
+	percent: Int!
+	"""
+	発動する制約（すべてを満たすときに発動する。無ければ空でいつも発動する）
+	"""
+	constraints: [EffectConstraint!]!
+}
+"""
+AT の上書き
+"""
+type AttackOverrideEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	上書きした後の AT の最小（0 以上）
+	"""
+	minimum: Int!
+	"""
+	上書きした後の AT の最大（最小以上）
+	"""
+	maximum: Int!
+}
+"""
 拠点がちょうど 1 つでない（公開するボードの拠点はちょうど 1 つ）
 """
 type BaseCountProblem implements BoardPublishProblem {
@@ -848,9 +895,9 @@ type ChangeCardRaritySuccess {
 	revision: Int!
 }
 """
-クリーチャーの能力を変える入力
+クリーチャーの効果の並びを変える入力
 """
-input ChangeCreatureAbilitiesInput {
+input ChangeCreatureEffectsInput {
 	"""
 	クリーチャーの公開用の ID
 	"""
@@ -860,18 +907,18 @@ input ChangeCreatureAbilitiesInput {
 	"""
 	revision: Int!
 	"""
-	変えた後の能力の並び（同じ種類は 1 つまで。先制と後手は同時に持てない。どちらも違えば FieldInvalidFormat（abilities）。無しは空）
+	変えた後の効果の並び（全体。並びの順に当てる。同じ種類を重ねてよい。クリーチャーが持てない種類は FieldInvalidFormat（effects.N）、先に攻撃すると後に攻撃するを一緒に持つのは FieldInvalidFormat（effects）。無しは空）
 	"""
-	abilities: [CreatureAbilityInput!]!
+	effects: [EffectInput!]!
 }
 """
-クリーチャーの能力を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+クリーチャーの効果の並びを変える操作の結果（入力の誤りの項目は changeItemEffects と同じ。カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
 """
-union ChangeCreatureAbilitiesResult = ChangeCreatureAbilitiesSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+union ChangeCreatureEffectsResult = ChangeCreatureEffectsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
 """
-クリーチャーの能力を変えた（同じ並びなら何も変えず、revision も進まない）
+クリーチャーの効果の並びを変えた（同じ並びなら何も変えず、revision も進まない）
 """
-type ChangeCreatureAbilitiesSuccess {
+type ChangeCreatureEffectsSuccess {
 	"""
 	変えたクリーチャーの公開用の ID
 	"""
@@ -964,7 +1011,7 @@ input ChangeCreaturePlacementRestrictionsInput {
 	"""
 	変えた後の配置制限（置けない土地の属性。火・地・水・風で重複なし。無しは空）
 	"""
-	placementRestrictions: [CreatureElement!]!
+	placementRestrictions: [BoardTileElement!]!
 }
 """
 クリーチャーの配置制限を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
@@ -1070,10 +1117,10 @@ input ChangeItemEffectsInput {
 	"""
 	変えた後の効果の並び（全体。並びの順に当てる）
 	"""
-	effects: [ItemEffectInput!]!
+	effects: [EffectInput!]!
 }
 """
-アイテムの効果の並びを変える操作の結果（入力の誤りの項目は effects.N・effects.N.value・effects.N.percent・effects.N.constraints.M・effects.N.constraints.M.elements。カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
+アイテムの効果の並びを変える操作の結果（入力の誤りの項目は effects.N・effects.N.value・effects.N.minimum・effects.N.maximum・effects.N.percent・effects.N.constraints.M・effects.N.constraints.M.elements。カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
 """
 union ChangeItemEffectsResult = ChangeItemEffectsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ItemEffectNotAllowedError | ForbiddenError
 """
@@ -1217,11 +1264,15 @@ type Creature implements Card {
 	"""
 	配置制限（置けない土地の属性。火・地・水・風の順。無ければ空）
 	"""
-	placementRestrictions: [CreatureElement!]!
+	placementRestrictions: [BoardTileElement!]!
 	"""
-	能力（並びは決めた順。無ければ空）
+	効果の並び（入れた順。無ければ空）
 	"""
-	abilities: [CreatureAbility!]!
+	effects: [Effect!]!
+	"""
+	クリーチャーが持てる効果の種類（画面が選べるものだけを出すため。決まりは core が持つ）
+	"""
+	allowedEffectKinds: [EffectKind!]!
 	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
@@ -1234,137 +1285,6 @@ type Creature implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
-}
-"""
-クリーチャーの能力
-"""
-interface CreatureAbility {
-	"""
-	能力の種類
-	"""
-	kind: CreatureAbilityKind!
-}
-"""
-能力 1 つの入力
-"""
-input CreatureAbilityInput {
-	"""
-	能力の種類
-	"""
-	kind: CreatureAbilityKind!
-	"""
-	通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る）
-	"""
-	percent: Int
-	"""
-	戦闘中の AT の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る）
-	"""
-	attackModifier: Int
-	"""
-	戦闘中の HP の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る）
-	"""
-	hitPointsModifier: Int
-	"""
-	戦闘中の AT・HP の最小（1 以上。BATTLE_RANDOM_STATS だけに要る）
-	"""
-	minimum: Int
-	"""
-	戦闘中の AT・HP の最大（最小以上。BATTLE_RANDOM_STATS だけに要る）
-	"""
-	maximum: Int
-	"""
-	攻撃無効が効く相手の属性（火・地・水・風から 1 つ以上。ATTACK_IMMUNITY だけに要る）
-	"""
-	elements: [CreatureElement!]
-}
-"""
-クリーチャーの能力の種類
-"""
-enum CreatureAbilityKind {
-	"""
-	防御型（侵略できない。移動できない。守ることはできる）
-	"""
-	DEFENSIVE
-	"""
-	通行料の倍率（いる領地の通行料を払うときに倍率を掛ける）
-	"""
-	TOLL_MULTIPLIER
-	"""
-	先制（戦闘で、先制の無い相手より先に攻撃する。後手と同時には持てない）
-	"""
-	FIRST_STRIKE
-	"""
-	後手（戦闘で、後手の無い相手より後に攻撃する。先制と同時には持てない）
-	"""
-	LAST_STRIKE
-	"""
-	戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する）
-	"""
-	BATTLE_MODIFIER
-	"""
-	戦闘中のランダム（戦闘中、AT・HP が最小〜最大のランダムな値になる。別々に引く）
-	"""
-	BATTLE_RANDOM_STATS
-	"""
-	攻撃無効（戦闘で、属性のどれかが合うクリーチャーから攻撃を受けたとき、ダメージが 0 になる）
-	"""
-	ATTACK_IMMUNITY
-}
-"""
-攻撃無効
-"""
-type CreatureAttackImmunityAbility implements CreatureAbility {
-	"""
-	能力の種類（ATTACK_IMMUNITY）
-	"""
-	kind: CreatureAbilityKind!
-	"""
-	攻撃してきたときに無効にする相手の属性（火・地・水・風から 1 つ以上。無は選べない）
-	"""
-	elements: [CreatureElement!]!
-}
-"""
-戦闘中の増減
-"""
-type CreatureBattleModifierAbility implements CreatureAbility {
-	"""
-	能力の種類（BATTLE_MODIFIER）
-	"""
-	kind: CreatureAbilityKind!
-	"""
-	戦闘中の AT の増減（負も 0 もある）
-	"""
-	attackModifier: Int!
-	"""
-	戦闘中の HP の増減（負も 0 もある）
-	"""
-	hitPointsModifier: Int!
-}
-"""
-戦闘中のランダム
-"""
-type CreatureBattleRandomStatsAbility implements CreatureAbility {
-	"""
-	能力の種類（BATTLE_RANDOM_STATS）
-	"""
-	kind: CreatureAbilityKind!
-	"""
-	戦闘中の AT・HP の最小（1 以上）
-	"""
-	minimum: Int!
-	"""
-	戦闘中の AT・HP の最大（最小以上）
-	"""
-	maximum: Int!
-}
-"""
-防御型
-"""
-type CreatureDefensiveAbility implements CreatureAbility {
-	"""
-	能力の種類（DEFENSIVE）
-	"""
-	kind: CreatureAbilityKind!
 }
 """
 クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない）
@@ -1390,37 +1310,6 @@ enum CreatureElement {
 	無
 	"""
 	NEUTRAL
-}
-"""
-先制
-"""
-type CreatureFirstStrikeAbility implements CreatureAbility {
-	"""
-	能力の種類（FIRST_STRIKE）
-	"""
-	kind: CreatureAbilityKind!
-}
-"""
-後手
-"""
-type CreatureLastStrikeAbility implements CreatureAbility {
-	"""
-	能力の種類（LAST_STRIKE）
-	"""
-	kind: CreatureAbilityKind!
-}
-"""
-通行料の倍率
-"""
-type CreatureTollMultiplierAbility implements CreatureAbility {
-	"""
-	能力の種類（TOLL_MULTIPLIER）
-	"""
-	kind: CreatureAbilityKind!
-	"""
-	倍率（百分率。150 で 1.5 倍。1 以上）
-	"""
-	percent: Int!
 }
 """
 対象のクリーチャーにダメージ（今の HP から amount を引き、0 になれば破壊する）
@@ -1645,6 +1534,128 @@ input DrawCardsSpellEffectInput {
 	count: Int!
 }
 """
+効果（種類ごとの型）
+"""
+interface Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
+効果の制約（種類ごとの型）
+"""
+interface EffectConstraint {
+	"""
+	制約の種類
+	"""
+	kind: EffectConstraintKind!
+}
+"""
+効果の制約の入力
+"""
+input EffectConstraintInput {
+	"""
+	制約の種類
+	"""
+	kind: EffectConstraintKind!
+	"""
+	相手のクリーチャーの属性（1 つ以上・重複なし）
+	"""
+	elements: [CreatureElement!]
+}
+"""
+効果の制約の種類
+"""
+enum EffectConstraintKind {
+	"""
+	相手のクリーチャーの属性（戦う相手のクリーチャーの属性のどれかが合うとき）
+	"""
+	OPPONENT_CREATURE_ELEMENT
+}
+"""
+効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints）
+"""
+input EffectInput {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	AT・HP の増減の値
+	"""
+	value: Int
+	"""
+	上書きした後の値の最小
+	"""
+	minimum: Int
+	"""
+	上書きした後の値の最大
+	"""
+	maximum: Int
+	"""
+	倍率（百分率）
+	"""
+	percent: Int
+	"""
+	制約（すべてを満たすときに発動する）
+	"""
+	constraints: [EffectConstraintInput!]
+}
+"""
+効果の種類
+"""
+enum EffectKind {
+	"""
+	AT の増減（戦闘中、AT が決まった値だけ増減する）
+	"""
+	ATTACK_MODIFIER
+	"""
+	HP の増減（戦闘中、HP が決まった値だけ増減する）
+	"""
+	HIT_POINTS_MODIFIER
+	"""
+	AT の上書き（戦闘中、AT が最小〜最大のランダムな値になる。固定は最小と最大が同じ）
+	"""
+	ATTACK_OVERRIDE
+	"""
+	HP の上書き（戦闘中、HP が最小〜最大のランダムな値になる。固定は最小と最大が同じ）
+	"""
+	HIT_POINTS_OVERRIDE
+	"""
+	AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ）
+	"""
+	ATTACK_MULTIPLIER
+	"""
+	地形効果を無視する（相手の地形効果を無視してダメージを与える）
+	"""
+	IGNORE_TERRAIN_EFFECT
+	"""
+	先に攻撃する（戦闘で、先に攻撃する効果の無い相手より先に攻撃する。後に攻撃すると一緒には持てない）
+	"""
+	STRIKE_FIRST
+	"""
+	後に攻撃する（戦闘で、後に攻撃する効果の無い相手より後に攻撃する。先に攻撃すると一緒には持てない）
+	"""
+	STRIKE_LAST
+	"""
+	受けるダメージを 0 にする（制約を満たす相手から攻撃を受けたとき、ダメージが 0 になる）
+	"""
+	NULLIFY_RECEIVED_DAMAGE
+	"""
+	通行料の倍率（いる領地の通行料を払うときに倍率を掛ける）
+	"""
+	TOLL_MULTIPLIER
+	"""
+	侵略できない（手札から侵略できず、移動で他人の領地にも入れない。守ることはできる）
+	"""
+	FORBID_INVASION
+	"""
+	移動できない（領地コマンドで動けない）
+	"""
+	FORBID_MOVEMENT
+}
+"""
 一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
 """
 type FieldDuplicated implements FieldError {
@@ -1843,6 +1854,24 @@ input FixedDiceSpellEffectInput {
 	turns: Int!
 }
 """
+侵略できない
+"""
+type ForbidInvasionEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
+移動できない
+"""
+type ForbidMovementEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
 操作する権限が無い（JWT は正しいが、core のオペレーターとして登録されていない等）
 """
 type ForbiddenError {
@@ -2012,6 +2041,45 @@ enum GrantDeckStatus {
 """
 union GrantDecksResult = GrantDeckConnection | ValidationErrors | ForbiddenError
 """
+HP の増減
+"""
+type HitPointsModifierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	増減の値（負は下げる）
+	"""
+	value: Int!
+}
+"""
+HP の上書き
+"""
+type HitPointsOverrideEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	上書きした後の HP の最小（1 以上）
+	"""
+	minimum: Int!
+	"""
+	上書きした後の HP の最大（最小以上）
+	"""
+	maximum: Int!
+}
+"""
+地形効果を無視する
+"""
+type IgnoreTerrainEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
 準備中のボードを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidBoardStatusTransitionError {
@@ -2096,11 +2164,11 @@ type Item implements Card {
 	"""
 	効果の並び（入れた順。無ければ空）
 	"""
-	effects: [ItemEffect!]!
+	effects: [Effect!]!
 	"""
 	今の分類で持てる効果の種類（画面が選べるものだけを出すため。分類ごとの決まりは core が持つ）
 	"""
-	allowedEffectKinds: [ItemEffectKind!]!
+	allowedEffectKinds: [EffectKind!]!
 	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
@@ -2113,49 +2181,6 @@ type Item implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
-}
-"""
-AT の増減
-"""
-type ItemAttackModifierEffect implements ItemEffect {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-	"""
-	増減の値（負は下げる）
-	"""
-	value: Int!
-}
-"""
-AT の倍率
-"""
-type ItemAttackMultiplierEffect implements ItemEffect {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-	"""
-	倍率（百分率。150 で 1.5 倍。1 以上）
-	"""
-	percent: Int!
-	"""
-	発動する制約（すべてを満たすときに発動する。無ければ空でいつも発動する）
-	"""
-	constraints: [ItemConstraint!]!
-}
-"""
-AT の上書き
-"""
-type ItemAttackOverrideEffect implements ItemEffect {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-	"""
-	上書きした後の AT（0 以上）
-	"""
-	value: Int!
 }
 """
 アイテムの分類
@@ -2175,92 +2200,6 @@ enum ItemCategory {
 	SCROLL
 }
 """
-効果の制約（種類ごとの型）
-"""
-interface ItemConstraint {
-	"""
-	制約の種類
-	"""
-	kind: ItemConstraintKind!
-}
-"""
-効果の制約の入力
-"""
-input ItemConstraintInput {
-	"""
-	制約の種類
-	"""
-	kind: ItemConstraintKind!
-	"""
-	相手の属性（1 つ以上・重複なし）
-	"""
-	elements: [CreatureElement!]
-}
-"""
-効果の制約の種類
-"""
-enum ItemConstraintKind {
-	"""
-	相手の属性（戦う相手のクリーチャーの属性のどれかが合うとき）
-	"""
-	OPPONENT_ELEMENT
-}
-"""
-アイテムの効果（種類ごとの型）
-"""
-interface ItemEffect {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-}
-"""
-アイテムの効果の入力（種類に要る値だけを入れる。AT・HP の増減・AT の上書きは value、AT の倍率は percent と constraints）
-"""
-input ItemEffectInput {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-	"""
-	AT・HP の増減の値・上書きした後の AT
-	"""
-	value: Int
-	"""
-	AT の倍率（百分率）
-	"""
-	percent: Int
-	"""
-	AT の倍率の制約（すべてを満たすときに発動する）
-	"""
-	constraints: [ItemConstraintInput!]
-}
-"""
-アイテムの効果の種類
-"""
-enum ItemEffectKind {
-	"""
-	AT の増減（戦闘中、AT が決まった値だけ増減する）
-	"""
-	ATTACK_MODIFIER
-	"""
-	HP の増減（戦闘中、HP が決まった値だけ増減する）
-	"""
-	HIT_POINTS_MODIFIER
-	"""
-	AT の上書き（戦闘中、AT が決まった値になる）
-	"""
-	ATTACK_OVERRIDE
-	"""
-	AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ）
-	"""
-	ATTACK_MULTIPLIER
-	"""
-	地形効果を無視する（相手の地形効果を無視してダメージを与える）
-	"""
-	IGNORE_TERRAIN_EFFECT
-}
-"""
 アイテムの分類で持てない効果がある（効果を変えるとき・分類を変えるとき。持てる効果は分類ごとに決まっている）
 """
 type ItemEffectNotAllowedError {
@@ -2268,41 +2207,6 @@ type ItemEffectNotAllowedError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
-}
-"""
-HP の増減
-"""
-type ItemHitPointsModifierEffect implements ItemEffect {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-	"""
-	増減の値（負は下げる）
-	"""
-	value: Int!
-}
-"""
-地形効果を無視する
-"""
-type ItemIgnoreTerrainEffect implements ItemEffect {
-	"""
-	効果の種類
-	"""
-	kind: ItemEffectKind!
-}
-"""
-相手の属性の制約
-"""
-type ItemOpponentElementConstraint implements ItemConstraint {
-	"""
-	制約の種類
-	"""
-	kind: ItemConstraintKind!
-	"""
-	合えば満たす相手の属性（火・地・水・風・無の順。1 つ以上）
-	"""
-	elements: [CreatureElement!]!
 }
 """
 土地（ふつうのマス。公開するボードの、拠点・チェックポイント以外のマス）
@@ -2504,14 +2408,14 @@ type Mutation {
 		input: ChangeCreatureStatsInput!
 	): ChangeCreatureStatsResult!
 	"""
-	クリーチャーの能力を変える（紐づいたオペレーターだけ。準備中だけ。並びを全体で入れ替える）
+	クリーチャーの効果の並びを変える（紐づいたオペレーターだけ。準備中だけ。並びを全体で入れ替える）
 	"""
-	changeCreatureAbilities(
+	changeCreatureEffects(
 		"""
-		変えるクリーチャーと能力
+		変えるクリーチャーと効果の並び
 		"""
-		input: ChangeCreatureAbilitiesInput!
-	): ChangeCreatureAbilitiesResult!
+		input: ChangeCreatureEffectsInput!
+	): ChangeCreatureEffectsResult!
 	"""
 	クリーチャーのアイテム制限を変える（紐づいたオペレーターだけ。準備中だけ）
 	"""
@@ -3136,6 +3040,32 @@ enum NpcDeckStatus {
 NPC のデッキの一覧の結果
 """
 union NpcDecksResult = NpcDeckConnection | ValidationErrors | ForbiddenError
+"""
+受けるダメージを 0 にする
+"""
+type NullifyReceivedDamageEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	発動する制約（すべてを満たすときに発動する。無ければ空でいつも発動する）
+	"""
+	constraints: [EffectConstraint!]!
+}
+"""
+相手のクリーチャーの属性の制約
+"""
+type OpponentCreatureElementConstraint implements EffectConstraint {
+	"""
+	制約の種類
+	"""
+	kind: EffectConstraintKind!
+	"""
+	合えば満たす相手のクリーチャーの属性（火・地・水・風・無の順。1 つ以上）
+	"""
+	elements: [CreatureElement!]!
+}
 """
 ページの情報
 """
@@ -4837,6 +4767,24 @@ enum StarterSetStatus {
 """
 union StarterSetsResult = StarterSetConnection | ValidationErrors | ForbiddenError
 """
+先に攻撃する
+"""
+type StrikeFirstEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
+後に攻撃する
+"""
+type StrikeLastEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
 studio でマスタを作るときの決まり
 """
 type StudioRules {
@@ -4861,6 +4809,19 @@ input TilePositionInput {
 	行（0 以上、高さ − 1 以下）
 	"""
 	y: Int!
+}
+"""
+通行料の倍率
+"""
+type TollMultiplierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	倍率（百分率。150 で 1.5 倍。1 以上）
+	"""
+	percent: Int!
 }
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない

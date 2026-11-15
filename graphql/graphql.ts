@@ -188,10 +188,10 @@ export type ChangeCardRarityInput = {
   revision: number;
 };
 
-/** クリーチャーの能力を変える入力 */
-export type ChangeCreatureAbilitiesInput = {
-  /** 変えた後の能力の並び（同じ種類は 1 つまで。先制と後手は同時に持てない。どちらも違えば FieldInvalidFormat（abilities）。無しは空） */
-  abilities: Array<CreatureAbilityInput>;
+/** クリーチャーの効果の並びを変える入力 */
+export type ChangeCreatureEffectsInput = {
+  /** 変えた後の効果の並び（全体。並びの順に当てる。同じ種類を重ねてよい。クリーチャーが持てない種類は FieldInvalidFormat（effects.N）、先に攻撃すると後に攻撃するを一緒に持つのは FieldInvalidFormat（effects）。無しは空） */
+  effects: Array<EffectInput>;
   /** クリーチャーの公開用の ID */
   id: string;
   /** 画面が見ていたクリーチャーの revision */
@@ -223,7 +223,7 @@ export type ChangeCreaturePlacementRestrictionsInput = {
   /** クリーチャーの公開用の ID */
   id: string;
   /** 変えた後の配置制限（置けない土地の属性。火・地・水・風で重複なし。無しは空） */
-  placementRestrictions: Array<CreatureElement>;
+  placementRestrictions: Array<BoardTileElement>;
   /** 画面が見ていたクリーチャーの revision */
   revision: number;
 };
@@ -253,7 +253,7 @@ export type ChangeItemCategoryInput = {
 /** アイテムの効果の並びを変える入力 */
 export type ChangeItemEffectsInput = {
   /** 変えた後の効果の並び（全体。並びの順に当てる） */
-  effects: Array<ItemEffectInput>;
+  effects: Array<EffectInput>;
   /** 変えるアイテムの公開用の ID */
   id: string;
   /** 画面が見ていたカードの更新の番号 */
@@ -283,41 +283,6 @@ export type CheckBoardLayoutInput = {
   /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
   width: number;
 };
-
-/** 能力 1 つの入力 */
-export type CreatureAbilityInput = {
-  /** 戦闘中の AT の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る） */
-  attackModifier?: number | null | undefined;
-  /** 攻撃無効が効く相手の属性（火・地・水・風から 1 つ以上。ATTACK_IMMUNITY だけに要る） */
-  elements?: Array<CreatureElement> | null | undefined;
-  /** 戦闘中の HP の増減（負も 0 もよい。BATTLE_MODIFIER だけに要る） */
-  hitPointsModifier?: number | null | undefined;
-  /** 能力の種類 */
-  kind: CreatureAbilityKind;
-  /** 戦闘中の AT・HP の最大（最小以上。BATTLE_RANDOM_STATS だけに要る） */
-  maximum?: number | null | undefined;
-  /** 戦闘中の AT・HP の最小（1 以上。BATTLE_RANDOM_STATS だけに要る） */
-  minimum?: number | null | undefined;
-  /** 通行料の倍率（百分率。TOLL_MULTIPLIER だけに要る） */
-  percent?: number | null | undefined;
-};
-
-/** クリーチャーの能力の種類 */
-export type CreatureAbilityKind =
-  /** 攻撃無効（戦闘で、属性のどれかが合うクリーチャーから攻撃を受けたとき、ダメージが 0 になる） */
-  | 'ATTACK_IMMUNITY'
-  /** 戦闘中の増減（戦闘中、AT・HP が決まった値だけ増減する） */
-  | 'BATTLE_MODIFIER'
-  /** 戦闘中のランダム（戦闘中、AT・HP が最小〜最大のランダムな値になる。別々に引く） */
-  | 'BATTLE_RANDOM_STATS'
-  /** 防御型（侵略できない。移動できない。守ることはできる） */
-  | 'DEFENSIVE'
-  /** 先制（戦闘で、先制の無い相手より先に攻撃する。後手と同時には持てない） */
-  | 'FIRST_STRIKE'
-  /** 後手（戦闘で、後手の無い相手より後に攻撃する。先制と同時には持てない） */
-  | 'LAST_STRIKE'
-  /** 通行料の倍率（いる領地の通行料を払うときに倍率を掛ける） */
-  | 'TOLL_MULTIPLIER';
 
 /** クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない） */
 export type CreatureElement =
@@ -400,6 +365,62 @@ export type DrawCardsSpellEffectInput = {
   count: number;
 };
 
+/** 効果の制約の入力 */
+export type EffectConstraintInput = {
+  /** 相手のクリーチャーの属性（1 つ以上・重複なし） */
+  elements?: Array<CreatureElement> | null | undefined;
+  /** 制約の種類 */
+  kind: EffectConstraintKind;
+};
+
+/** 効果の制約の種類 */
+export type EffectConstraintKind =
+  /** 相手のクリーチャーの属性（戦う相手のクリーチャーの属性のどれかが合うとき） */
+  | 'OPPONENT_CREATURE_ELEMENT';
+
+/** 効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints） */
+export type EffectInput = {
+  /** 制約（すべてを満たすときに発動する） */
+  constraints?: Array<EffectConstraintInput> | null | undefined;
+  /** 効果の種類 */
+  kind: EffectKind;
+  /** 上書きした後の値の最大 */
+  maximum?: number | null | undefined;
+  /** 上書きした後の値の最小 */
+  minimum?: number | null | undefined;
+  /** 倍率（百分率） */
+  percent?: number | null | undefined;
+  /** AT・HP の増減の値 */
+  value?: number | null | undefined;
+};
+
+/** 効果の種類 */
+export type EffectKind =
+  /** AT の増減（戦闘中、AT が決まった値だけ増減する） */
+  | 'ATTACK_MODIFIER'
+  /** AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ） */
+  | 'ATTACK_MULTIPLIER'
+  /** AT の上書き（戦闘中、AT が最小〜最大のランダムな値になる。固定は最小と最大が同じ） */
+  | 'ATTACK_OVERRIDE'
+  /** 侵略できない（手札から侵略できず、移動で他人の領地にも入れない。守ることはできる） */
+  | 'FORBID_INVASION'
+  /** 移動できない（領地コマンドで動けない） */
+  | 'FORBID_MOVEMENT'
+  /** HP の増減（戦闘中、HP が決まった値だけ増減する） */
+  | 'HIT_POINTS_MODIFIER'
+  /** HP の上書き（戦闘中、HP が最小〜最大のランダムな値になる。固定は最小と最大が同じ） */
+  | 'HIT_POINTS_OVERRIDE'
+  /** 地形効果を無視する（相手の地形効果を無視してダメージを与える） */
+  | 'IGNORE_TERRAIN_EFFECT'
+  /** 受けるダメージを 0 にする（制約を満たす相手から攻撃を受けたとき、ダメージが 0 になる） */
+  | 'NULLIFY_RECEIVED_DAMAGE'
+  /** 先に攻撃する（戦闘で、先に攻撃する効果の無い相手より先に攻撃する。後に攻撃すると一緒には持てない） */
+  | 'STRIKE_FIRST'
+  /** 後に攻撃する（戦闘で、後に攻撃する効果の無い相手より後に攻撃する。先に攻撃すると一緒には持てない） */
+  | 'STRIKE_LAST'
+  /** 通行料の倍率（いる領地の通行料を払うときに倍率を掛ける） */
+  | 'TOLL_MULTIPLIER';
+
 /** サイコロの目を固定する効果の入力 */
 export type FixedDiceSpellEffectInput = {
   /** 効き続けるターン数（1 以上） */
@@ -442,44 +463,6 @@ export type ItemCategory =
   | 'SCROLL'
   /** 武器 */
   | 'WEAPON';
-
-/** 効果の制約の入力 */
-export type ItemConstraintInput = {
-  /** 相手の属性（1 つ以上・重複なし） */
-  elements?: Array<CreatureElement> | null | undefined;
-  /** 制約の種類 */
-  kind: ItemConstraintKind;
-};
-
-/** 効果の制約の種類 */
-export type ItemConstraintKind =
-  /** 相手の属性（戦う相手のクリーチャーの属性のどれかが合うとき） */
-  | 'OPPONENT_ELEMENT';
-
-/** アイテムの効果の入力（種類に要る値だけを入れる。AT・HP の増減・AT の上書きは value、AT の倍率は percent と constraints） */
-export type ItemEffectInput = {
-  /** AT の倍率の制約（すべてを満たすときに発動する） */
-  constraints?: Array<ItemConstraintInput> | null | undefined;
-  /** 効果の種類 */
-  kind: ItemEffectKind;
-  /** AT の倍率（百分率） */
-  percent?: number | null | undefined;
-  /** AT・HP の増減の値・上書きした後の AT */
-  value?: number | null | undefined;
-};
-
-/** アイテムの効果の種類 */
-export type ItemEffectKind =
-  /** AT の増減（戦闘中、AT が決まった値だけ増減する） */
-  | 'ATTACK_MODIFIER'
-  /** AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ） */
-  | 'ATTACK_MULTIPLIER'
-  /** AT の上書き（戦闘中、AT が決まった値になる） */
-  | 'ATTACK_OVERRIDE'
-  /** HP の増減（戦闘中、HP が決まった値だけ増減する） */
-  | 'HIT_POINTS_MODIFIER'
-  /** 地形効果を無視する（相手の地形効果を無視してダメージを与える） */
-  | 'IGNORE_TERRAIN_EFFECT';
 
 /** 置く土地の入力 */
 export type LandTileInput = {
@@ -1235,15 +1218,15 @@ export type ChangeCreatureElementsMutation = { changeCreatureElements:
       > }
    };
 
-export type ChangeCreatureAbilitiesMutationVariables = Exact<{
-  input: ChangeCreatureAbilitiesInput;
+export type ChangeCreatureEffectsMutationVariables = Exact<{
+  input: ChangeCreatureEffectsInput;
 }>;
 
 
-export type ChangeCreatureAbilitiesMutation = { changeCreatureAbilities:
+export type ChangeCreatureEffectsMutation = { changeCreatureEffects:
     | { __typename: 'CardNotDraftError' }
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'ChangeCreatureAbilitiesSuccess', id: string, revision: number }
+    | { __typename: 'ChangeCreatureEffectsSuccess', id: string, revision: number }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'RevisionConflictError' }
     | { __typename: 'ValidationErrors', errors: Array<
@@ -1378,22 +1361,34 @@ export type CardQueryVariables = Exact<{
 
 export type CardQuery = { card:
     | { __typename: 'CardNotFoundError' }
-    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<CreatureElement>, abilities: Array<
-        | { elements: Array<CreatureElement>, kind: CreatureAbilityKind }
-        | { attackModifier: number, hitPointsModifier: number, kind: CreatureAbilityKind }
-        | { minimum: number, maximum: number, kind: CreatureAbilityKind }
-        | { kind: CreatureAbilityKind }
-        | { kind: CreatureAbilityKind }
-        | { kind: CreatureAbilityKind }
-        | { percent: number, kind: CreatureAbilityKind }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<BoardTileElement>, allowedEffectKinds: Array<EffectKind>, effects: Array<
+        | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'AttackMultiplierEffect', percent: number, kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
+        | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+        | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
+        | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'StrikeFirstEffect', kind: EffectKind }
+        | { __typename: 'StrikeLastEffect', kind: EffectKind }
+        | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
       > }
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, allowedEffectKinds: Array<ItemEffectKind>, effects: Array<
-        | { __typename: 'ItemAttackModifierEffect', value: number, kind: ItemEffectKind }
-        | { __typename: 'ItemAttackMultiplierEffect', percent: number, kind: ItemEffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: ItemConstraintKind }> }
-        | { __typename: 'ItemAttackOverrideEffect', value: number, kind: ItemEffectKind }
-        | { __typename: 'ItemHitPointsModifierEffect', value: number, kind: ItemEffectKind }
-        | { __typename: 'ItemIgnoreTerrainEffect', kind: ItemEffectKind }
+    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, allowedEffectKinds: Array<EffectKind>, effects: Array<
+        | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'AttackMultiplierEffect', percent: number, kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
+        | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+        | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
+        | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'StrikeFirstEffect', kind: EffectKind }
+        | { __typename: 'StrikeLastEffect', kind: EffectKind }
+        | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
       > }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
         | { __typename: 'DamageSpellEffect', amount: number }
@@ -3067,11 +3062,11 @@ export const ChangeCreatureElementsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<ChangeCreatureElementsMutation, ChangeCreatureElementsMutationVariables>;
-export const ChangeCreatureAbilitiesDocument = new TypedDocumentString(`
-    mutation ChangeCreatureAbilities($input: ChangeCreatureAbilitiesInput!) {
-  changeCreatureAbilities(input: $input) {
+export const ChangeCreatureEffectsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureEffects($input: ChangeCreatureEffectsInput!) {
+  changeCreatureEffects(input: $input) {
     __typename
-    ... on ChangeCreatureAbilitiesSuccess {
+    ... on ChangeCreatureEffectsSuccess {
       id
       revision
     }
@@ -3086,7 +3081,7 @@ export const ChangeCreatureAbilitiesDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<ChangeCreatureAbilitiesMutation, ChangeCreatureAbilitiesMutationVariables>;
+    `) as unknown as TypedDocumentString<ChangeCreatureEffectsMutation, ChangeCreatureEffectsMutationVariables>;
 export const ChangeCreatureStatsDocument = new TypedDocumentString(`
     mutation ChangeCreatureStats($input: ChangeCreatureStatsInput!) {
   changeCreatureStats(input: $input) {
@@ -3178,21 +3173,43 @@ export const CardDocument = new TypedDocumentString(`
       hitPoints
       itemRestrictions
       placementRestrictions
-      abilities {
+      allowedEffectKinds
+      effects {
+        __typename
         kind
-        ... on CreatureTollMultiplierAbility {
-          percent
+        ... on AttackModifierEffect {
+          value
         }
-        ... on CreatureBattleModifierAbility {
-          attackModifier
-          hitPointsModifier
+        ... on HitPointsModifierEffect {
+          value
         }
-        ... on CreatureBattleRandomStatsAbility {
+        ... on AttackOverrideEffect {
           minimum
           maximum
         }
-        ... on CreatureAttackImmunityAbility {
-          elements
+        ... on HitPointsOverrideEffect {
+          minimum
+          maximum
+        }
+        ... on AttackMultiplierEffect {
+          percent
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on NullifyReceivedDamageEffect {
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on TollMultiplierEffect {
+          percent
         }
       }
     }
@@ -3202,23 +3219,39 @@ export const CardDocument = new TypedDocumentString(`
       effects {
         __typename
         kind
-        ... on ItemAttackModifierEffect {
+        ... on AttackModifierEffect {
           value
         }
-        ... on ItemHitPointsModifierEffect {
+        ... on HitPointsModifierEffect {
           value
         }
-        ... on ItemAttackOverrideEffect {
-          value
+        ... on AttackOverrideEffect {
+          minimum
+          maximum
         }
-        ... on ItemAttackMultiplierEffect {
+        ... on HitPointsOverrideEffect {
+          minimum
+          maximum
+        }
+        ... on AttackMultiplierEffect {
           percent
           constraints {
             kind
-            ... on ItemOpponentElementConstraint {
+            ... on OpponentCreatureElementConstraint {
               elements
             }
           }
+        }
+        ... on NullifyReceivedDamageEffect {
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on TollMultiplierEffect {
+          percent
         }
       }
     }

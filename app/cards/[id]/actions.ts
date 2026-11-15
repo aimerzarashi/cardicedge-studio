@@ -2,20 +2,31 @@
 
 import { refresh } from "next/cache";
 import { graphql } from "@/graphql";
-import type { ItemEffectKind, SpellEffectInput } from "@/graphql/graphql";
+import type {
+  EffectInput,
+  EffectKind,
+  SpellEffectInput,
+} from "@/graphql/graphql";
 import { callCore } from "@/lib/core";
-import { isCreatureAbilityKind } from "@/lib/creature-ability";
-import { isCreatureElement } from "@/lib/creature-element";
+import {
+  isCreatureElement,
+  isPlacementRestrictionElement,
+} from "@/lib/creature-element";
+import {
+  EFFECT_CONSTRAINT_LABELS,
+  EFFECT_FIELDS,
+  EFFECT_KINDS,
+  isEffectKind,
+} from "@/lib/effect";
 import { isItemCategory } from "@/lib/item-category";
-import { ITEM_EFFECT_VALUE_LABELS, isItemEffectKind } from "@/lib/item-effect";
 import { isRarity } from "@/lib/rarity";
 import { type Notice, target } from "../../deck-form";
 import {
-  ABILITIES_CONFLICTED,
-  ATTACK_IMMUNITY_ELEMENTS_REQUIRED,
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
   costErrorMessage,
+  EFFECTS_CONFLICTED,
+  effectFieldErrorMessage,
   elementsErrorMessage,
   FORBIDDEN,
   INVALID_TARGET,
@@ -28,10 +39,9 @@ import {
 } from "../../messages";
 import { waitCard } from "../wait-card";
 import type {
-  AbilitiesState,
   EffectState,
+  EffectsState,
   ElementsState,
-  ItemEffectsState,
   SpecState,
   StatsState,
 } from "./spec-form";
@@ -115,11 +125,11 @@ const changeCreatureElementsMutation = graphql(`
   }
 `);
 
-const changeCreatureAbilitiesMutation = graphql(`
-  mutation ChangeCreatureAbilities($input: ChangeCreatureAbilitiesInput!) {
-    changeCreatureAbilities(input: $input) {
+const changeCreatureEffectsMutation = graphql(`
+  mutation ChangeCreatureEffects($input: ChangeCreatureEffectsInput!) {
+    changeCreatureEffects(input: $input) {
       __typename
-      ... on ChangeCreatureAbilitiesSuccess {
+      ... on ChangeCreatureEffectsSuccess {
         id
         revision
       }
@@ -350,7 +360,7 @@ export async function changeCreaturePlacementRestrictions(
   const card = target(form);
   const values = form.getAll("placementRestrictions").map(String);
   // 知らない値は改ざんされた送信なので送らない
-  const placementRestrictions = values.filter(isCreatureElement);
+  const placementRestrictions = values.filter(isPlacementRestrictionElement);
   if (card === undefined || placementRestrictions.length !== values.length) {
     return { error: INVALID_TARGET };
   }
@@ -429,156 +439,32 @@ export async function changeCreatureStats(
   }
 }
 
-export async function changeCreatureAbilities(
-  _previous: AbilitiesState,
+export async function changeCreatureEffects(
+  _previous: EffectsState,
   form: FormData,
-): Promise<AbilitiesState> {
+): Promise<EffectsState> {
   const card = target(form);
-  const values = form.getAll("abilities").map(String);
-  // 知らない値は改ざんされた送信なので送らない
-  const kinds = values.filter(isCreatureAbilityKind);
-  if (card === undefined || kinds.length !== values.length) {
+  const read = readEffects(form);
+  if (card === undefined || read === undefined) {
     return { error: INVALID_TARGET };
   }
-  const percentValue = String(form.get("tollMultiplierPercent") ?? "");
-  const attackValue = String(form.get("battleModifierAttack") ?? "");
-  const hitPointsValue = String(form.get("battleModifierHitPoints") ?? "");
-  const minimumValue = String(form.get("battleRandomMinimum") ?? "");
-  const maximumValue = String(form.get("battleRandomMaximum") ?? "");
-  const elementValues = form.getAll("attackImmunityElements").map(String);
-  // 知らない値は改ざんされた送信なので送らない
-  const elements = elementValues.filter(isCreatureElement);
-  if (elements.length !== elementValues.length) {
-    return { error: INVALID_TARGET };
-  }
-  const kept = {
-    revision: card.revision,
-    kinds: values,
-    percent: percentValue,
-    attackModifier: attackValue,
-    hitPointsModifier: hitPointsValue,
-    minimum: minimumValue,
-    maximum: maximumValue,
-    attackImmunityElements: elementValues,
-  };
-  // 倍率は通行料の倍率を選んだときだけ送る（値の範囲は core が決める）
-  const tolled = kinds.includes("TOLL_MULTIPLIER");
-  const percent = integerOf(percentValue);
-  if (tolled && percent === undefined) {
-    return { ...kept, percentError: "通行料の倍率は整数で入力してください" };
-  }
-  // 増減は戦闘中の増減を選んだときだけ送る（負も 0 もよい。core が両方の有無を判定する）
-  const modified = kinds.includes("BATTLE_MODIFIER");
-  const attackModifier = integerOf(attackValue);
-  const hitPointsModifier = integerOf(hitPointsValue);
-  if (
-    modified &&
-    (attackModifier === undefined || hitPointsModifier === undefined)
-  ) {
-    return {
-      ...kept,
-      attackModifierError:
-        attackModifier === undefined
-          ? "AT の増減は整数で入力してください"
-          : undefined,
-      hitPointsModifierError:
-        hitPointsModifier === undefined
-          ? "HP の増減は整数で入力してください"
-          : undefined,
-    };
-  }
-  // 最小・最大は戦闘中のランダムを選んだときだけ送る（範囲の誤りは core が決める）
-  const randomized = kinds.includes("BATTLE_RANDOM_STATS");
-  const minimum = integerOf(minimumValue);
-  const maximum = integerOf(maximumValue);
-  if (randomized && (minimum === undefined || maximum === undefined)) {
-    return {
-      ...kept,
-      minimumError:
-        minimum === undefined ? "最小は整数で入力してください" : undefined,
-      maximumError:
-        maximum === undefined ? "最大は整数で入力してください" : undefined,
-    };
+  const kept = { revision: card.revision, ...read.kept };
+  if (read.fieldErrors !== undefined) {
+    return { ...kept, fieldErrors: read.fieldErrors };
   }
 
-  // 属性は攻撃無効を選んだときだけ送る（無を選べないのと空の誤りは core も確かめる）
-  if (kinds.includes("ATTACK_IMMUNITY") && elements.length === 0) {
-    return {
-      ...kept,
-      attackImmunityElementsError: ATTACK_IMMUNITY_ELEMENTS_REQUIRED,
-    };
-  }
-
-  const result = await callCore(changeCreatureAbilitiesMutation, {
-    input: {
-      id: card.id,
-      revision: card.revision,
-      abilities: kinds.map((kind) => {
-        switch (kind) {
-          case "TOLL_MULTIPLIER":
-            return { kind, percent };
-          case "BATTLE_MODIFIER":
-            return { kind, attackModifier, hitPointsModifier };
-          case "BATTLE_RANDOM_STATS":
-            return { kind, minimum, maximum };
-          case "ATTACK_IMMUNITY":
-            return { kind, elements };
-          default:
-            return { kind };
-        }
-      }),
-    },
+  const result = await callCore(changeCreatureEffectsMutation, {
+    input: { id: card.id, revision: card.revision, effects: read.effects },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
   }
-  const changed = result.data.changeCreatureAbilities;
+  const changed = result.data.changeCreatureEffects;
   switch (changed.__typename) {
-    case "ChangeCreatureAbilitiesSuccess":
+    case "ChangeCreatureEffectsSuccess":
       return showChanged(card.id, changed.revision);
-    case "ValidationErrors": {
-      // 画面の操作で起きるのは、倍率・最小・最大の範囲の誤り（abilities.N.percent・minimum・maximum）と、並び全体の誤り（abilities）だけ。
-      // 並び全体の誤りは重複か先制と後手の同時の指定で、チェックでは同じ種類を重ねられないので後者として出す（core#158）
-      const percentError = changed.errors.find((e) =>
-        e.field.endsWith(".percent"),
-      );
-      const minimumError = changed.errors.find((e) =>
-        e.field.endsWith(".minimum"),
-      );
-      const maximumError = changed.errors.find((e) =>
-        e.field.endsWith(".maximum"),
-      );
-      if (changed.errors.some((e) => e.field.endsWith(".elements"))) {
-        return {
-          ...kept,
-          attackImmunityElementsError: ATTACK_IMMUNITY_ELEMENTS_REQUIRED,
-        };
-      }
-      if (minimumError || maximumError) {
-        return {
-          ...kept,
-          minimumError:
-            minimumError &&
-            statsErrorMessage({ ...minimumError, field: "abilities.minimum" }),
-          maximumError:
-            maximumError &&
-            statsErrorMessage({ ...maximumError, field: "abilities.maximum" }),
-        };
-      }
-      if (percentError) {
-        return {
-          ...kept,
-          percentError: statsErrorMessage({
-            ...percentError,
-            field: "abilities.percent",
-          }),
-        };
-      }
-      if (changed.errors.some((e) => e.field === "abilities")) {
-        return { ...kept, abilitiesError: ABILITIES_CONFLICTED };
-      }
-      return { ...kept, error: INVALID_TARGET };
-    }
+    case "ValidationErrors":
+      return { ...kept, ...effectsErrors(changed.errors, read.kinds) };
     default:
       return failed(changed.__typename);
   }
@@ -705,82 +591,22 @@ export async function changeItemCategory(
   }
 }
 
-// 選んだ種類を core の並びの順（画面の選択肢の順）で送る。値は値の要る効果だけに入れ、範囲の誤りは core が決める
 export async function changeItemEffects(
-  _previous: ItemEffectsState,
+  _previous: EffectsState,
   form: FormData,
-): Promise<ItemEffectsState> {
+): Promise<EffectsState> {
   const card = target(form);
-  const values = form.getAll("effects").map(String);
-  // 知らない値は改ざんされた送信なので送らない
-  const kinds = values.filter(isItemEffectKind);
-  const elementValues = form.getAll("opponentElements").map(String);
-  const opponentElements = elementValues.filter(isCreatureElement);
-  if (
-    card === undefined ||
-    kinds.length !== values.length ||
-    opponentElements.length !== elementValues.length
-  ) {
+  const read = readEffects(form);
+  if (card === undefined || read === undefined) {
     return { error: INVALID_TARGET };
   }
-  const entered: Partial<Record<ItemEffectKind, string>> = {};
-  for (const kind of VALUED_ITEM_EFFECTS) {
-    entered[kind] = String(form.get(`value.${kind}`) ?? "");
-  }
-  const percentValue = String(form.get("attackMultiplierPercent") ?? "");
-  const kept = {
-    revision: card.revision,
-    kinds: values,
-    values: entered,
-    percent: percentValue,
-    opponentElements: elementValues,
-  };
-  const valueErrors: Partial<Record<ItemEffectKind, string>> = {};
-  for (const kind of VALUED_ITEM_EFFECTS) {
-    if (kinds.includes(kind) && integerOf(entered[kind] ?? "") === undefined) {
-      valueErrors[kind] =
-        `${ITEM_EFFECT_VALUE_LABELS[kind]}は整数で入力してください`;
-    }
-  }
-  const percent = integerOf(percentValue);
-  const percentError =
-    kinds.includes("ATTACK_MULTIPLIER") && percent === undefined
-      ? "強打の倍率は整数で入力してください"
-      : undefined;
-  if (Object.keys(valueErrors).length > 0 || percentError) {
-    return { ...kept, valueErrors, percentError };
+  const kept = { revision: card.revision, ...read.kept };
+  if (read.fieldErrors !== undefined) {
+    return { ...kept, fieldErrors: read.fieldErrors };
   }
 
   const result = await callCore(changeItemEffectsMutation, {
-    input: {
-      id: card.id,
-      revision: card.revision,
-      effects: kinds.map((kind) => {
-        switch (kind) {
-          case "ATTACK_MODIFIER":
-          case "HIT_POINTS_MODIFIER":
-          case "ATTACK_OVERRIDE":
-            return { kind, value: integerOf(entered[kind] ?? "") };
-          case "ATTACK_MULTIPLIER":
-            // 属性を選ばなければ制約なし（いつも発動する）
-            return {
-              kind,
-              percent,
-              constraints:
-                opponentElements.length === 0
-                  ? []
-                  : [
-                      {
-                        kind: "OPPONENT_ELEMENT" as const,
-                        elements: opponentElements,
-                      },
-                    ],
-            };
-          default:
-            return { kind };
-        }
-      }),
-    },
+    input: { id: card.id, revision: card.revision, effects: read.effects },
   });
   if (!result.ok) {
     return { error: CORE_UNAVAILABLE };
@@ -791,48 +617,108 @@ export async function changeItemEffects(
       return showChanged(card.id, changed.revision);
     case "ItemEffectNotAllowedError":
       return { ...kept, error: ITEM_EFFECT_NOT_ALLOWED };
-    case "ValidationErrors": {
-      // 画面の操作で起きるのは、上書き・倍率の範囲の誤り（effects.N.value・effects.N.percent）と、相手の属性の誤りだけ
-      const indexOf = (kind: ItemEffectKind) => kinds.indexOf(kind);
-      const fieldOf = (field: string) =>
-        changed.errors.find((e) => e.field === field);
-      const overrideError = fieldOf(
-        `effects.${indexOf("ATTACK_OVERRIDE")}.value`,
-      );
-      const multiplierError = fieldOf(
-        `effects.${indexOf("ATTACK_MULTIPLIER")}.percent`,
-      );
-      if (changed.errors.some((e) => e.field.endsWith(".elements"))) {
-        return { ...kept, opponentElementsError: OPPONENT_ELEMENTS_INVALID };
-      }
-      if (overrideError || multiplierError) {
-        return {
-          ...kept,
-          valueErrors: overrideError
-            ? {
-                ATTACK_OVERRIDE: statsErrorMessage({
-                  ...overrideError,
-                  field: "effects.attackOverride",
-                }),
-              }
-            : {},
-          percentError:
-            multiplierError &&
-            statsErrorMessage({
-              ...multiplierError,
-              field: "effects.attackMultiplier",
-            }),
-        };
-      }
-      return { ...kept, error: INVALID_TARGET };
-    }
+    case "ValidationErrors":
+      return { ...kept, ...effectsErrors(changed.errors, read.kinds) };
     default:
       return failed(changed.__typename);
   }
 }
 
-const VALUED_ITEM_EFFECTS: ItemEffectKind[] = [
-  "ATTACK_MODIFIER",
-  "HIT_POINTS_MODIFIER",
-  "ATTACK_OVERRIDE",
-];
+// 効果のフォームを読む（アイテムとクリーチャーで共有する。core#178）。選んだ種類を画面の選択肢の順（core の持てる種類の順）で送り、
+// 値は種類に要る欄だけを入れる。整数でない値はここで止め、範囲の誤りは core が決める。知らない値は改ざんされた送信なので undefined
+function readEffects(form: FormData):
+  | {
+      kinds: EffectKind[];
+      effects: EffectInput[];
+      kept: Pick<EffectsState, "kinds" | "fields" | "opponentElements">;
+      fieldErrors?: Record<string, string>;
+    }
+  | undefined {
+  const values = form.getAll("effects").map(String);
+  const kinds = values.filter(isEffectKind);
+  if (kinds.length !== values.length) {
+    return undefined;
+  }
+  const fields: Record<string, string> = {};
+  const opponentElements: Partial<Record<EffectKind, string[]>> = {};
+  const fieldErrors: Record<string, string> = {};
+  const effects: EffectInput[] = [];
+  for (const kind of EFFECT_KINDS) {
+    for (const { field } of EFFECT_FIELDS[kind] ?? []) {
+      const name = `${field}.${kind}`;
+      fields[name] = String(form.get(name) ?? "");
+    }
+    if (EFFECT_CONSTRAINT_LABELS[kind] !== undefined) {
+      opponentElements[kind] = form
+        .getAll(`opponentElements.${kind}`)
+        .map(String);
+    }
+  }
+  for (const kind of kinds) {
+    const effect: EffectInput = { kind };
+    for (const { field, label } of EFFECT_FIELDS[kind] ?? []) {
+      const name = `${field}.${kind}`;
+      const value = integerOf(fields[name] ?? "");
+      if (value === undefined) {
+        fieldErrors[name] = `${label}は整数で入力してください`;
+      }
+      effect[field] = value;
+    }
+    if (EFFECT_CONSTRAINT_LABELS[kind] !== undefined) {
+      const entered = opponentElements[kind] ?? [];
+      const elements = entered.filter(isCreatureElement);
+      if (elements.length !== entered.length) {
+        return undefined;
+      }
+      // 属性を選ばなければ制約なし（いつも発動する）
+      effect.constraints =
+        elements.length === 0
+          ? []
+          : [{ kind: "OPPONENT_CREATURE_ELEMENT", elements }];
+    }
+    effects.push(effect);
+  }
+  return {
+    kinds,
+    effects,
+    kept: { kinds: values, fields, opponentElements },
+    fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
+  };
+}
+
+// core が返した効果の誤り（effects.N.value・minimum・maximum・percent、effects.N.constraints.M.elements、並び全体の effects）を、
+// 送った N 番目の種類の欄に読み替えて文言にする。並び全体の誤りは、画面では同じ種類を重ねられないので、先制と後手を一緒に選んだ誤り（core#158）
+function effectsErrors(
+  errors: readonly { __typename: string; field: string; min?: number }[],
+  kinds: readonly EffectKind[],
+): Pick<EffectsState, "fieldErrors" | "effectsError" | "error"> {
+  const fieldErrors: Record<string, string> = {};
+  let effectsError: string | undefined;
+  for (const error of errors) {
+    if (error.field === "effects") {
+      effectsError = EFFECTS_CONFLICTED;
+      continue;
+    }
+    const [, index, part, , subpart] = error.field.split(".");
+    const kind = kinds[Number(index)];
+    if (kind === undefined) {
+      return { error: INVALID_TARGET };
+    }
+    if (part === "constraints" && subpart === "elements") {
+      fieldErrors[`opponentElements.${kind}`] = OPPONENT_ELEMENTS_INVALID;
+      continue;
+    }
+    const field = EFFECT_FIELDS[kind]?.find((entry) => entry.field === part);
+    if (field === undefined) {
+      return { error: INVALID_TARGET };
+    }
+    fieldErrors[`${part}.${kind}`] = effectFieldErrorMessage(
+      field.label,
+      error,
+    );
+  }
+  return {
+    fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
+    effectsError,
+  };
+}
