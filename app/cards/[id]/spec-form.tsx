@@ -5,6 +5,7 @@ import type {
   CardRarity,
   CreatureElement,
   ItemCategory,
+  ItemEffectKind,
 } from "@/graphql/graphql";
 import {
   CREATURE_ABILITY_KINDS,
@@ -18,6 +19,11 @@ import {
   PLACEMENT_RESTRICTION_ELEMENTS,
 } from "@/lib/creature-element";
 import { ITEM_CATEGORIES, ITEM_CATEGORY_LABELS } from "@/lib/item-category";
+import {
+  ITEM_EFFECT_LABELS,
+  ITEM_EFFECT_VALUE_LABELS,
+  type ItemEffectView,
+} from "@/lib/item-effect";
 import { RARITIES, RARITY_LABELS } from "@/lib/rarity";
 import type { Kept, Notice } from "../../deck-form";
 import { SPELL_EFFECT_KINDS } from "../../messages";
@@ -55,13 +61,16 @@ export type EffectState = Notice &
     turnsError?: string;
   };
 
-// アイテムの増減のフォームの結果。形は攻撃力と体力のフォームと同じ
-export type StatModifiersState = Notice &
+// アイテムの効果のフォームの結果。誤りのときは選んだ種類と入力した値を残す
+export type ItemEffectsState = Notice &
   Kept & {
-    attackModifier?: string;
-    hitPointsModifier?: string;
-    attackModifierError?: string;
-    hitPointsModifierError?: string;
+    kinds?: string[];
+    values?: Partial<Record<ItemEffectKind, string>>;
+    percent?: string;
+    opponentElements?: string[];
+    valueErrors?: Partial<Record<ItemEffectKind, string>>;
+    percentError?: string;
+    opponentElementsError?: string;
   };
 
 const initialState: SpecState = {};
@@ -677,24 +686,43 @@ export function CategoryForm({
   );
 }
 
-export function StatModifiersForm({
+// 効果は持てる種類（core の allowedEffectKinds）のチェックボックスと、値の要る効果の値の欄。1 つの種類は 1 つまで入れる
+// （core は同じ種類を重ねて持てるが、見本に重ねるカードが無いため画面では選ばない。重ねるカードを作るときに見直す）
+export function ItemEffectsForm({
   action,
   id,
   revision,
-  attackModifier,
-  hitPointsModifier,
+  allowedKinds,
+  effects,
 }: {
   action: (
-    previous: StatModifiersState,
+    previous: ItemEffectsState,
     form: FormData,
-  ) => Promise<StatModifiersState>;
+  ) => Promise<ItemEffectsState>;
   id: string;
   revision: number;
-  attackModifier: number;
-  hitPointsModifier: number;
+  allowedKinds: ItemEffectKind[];
+  effects: ItemEffectView[];
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const kept = state.revision === revision ? state : {};
+  const kinds: string[] = kept.kinds ?? effects.map(({ kind }) => kind);
+  const current = (kind: ItemEffectKind) =>
+    effects.find((effect) => effect.kind === kind);
+  const enteredValue = (kind: ItemEffectKind, fallback: number) =>
+    kept.values?.[kind] ?? String(current(kind)?.value ?? fallback);
+  const percent =
+    kept.percent ?? String(current("ATTACK_MULTIPLIER")?.percent ?? 150);
+  const opponentElements: string[] =
+    kept.opponentElements ??
+    current("ATTACK_MULTIPLIER")?.opponentElements ??
+    [];
+  const valued = allowedKinds.filter(
+    (kind) =>
+      kind === "ATTACK_MODIFIER" ||
+      kind === "HIT_POINTS_MODIFIER" ||
+      kind === "ATTACK_OVERRIDE",
+  );
 
   return (
     <>
@@ -703,46 +731,94 @@ export function StatModifiersForm({
       <form key={revision} action={formAction}>
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="revision" value={revision} />
-        <label>
-          AT の増減
-          <input
-            type="number"
-            name="attackModifier"
-            required
-            defaultValue={kept.attackModifier ?? attackModifier}
-            aria-invalid={kept.attackModifierError ? true : undefined}
-            aria-describedby={
-              kept.attackModifierError ? "attack-modifier-error" : undefined
-            }
-          />
-        </label>
-        {kept.attackModifierError && (
-          <p id="attack-modifier-error" role="alert">
-            {kept.attackModifierError}
+        <fieldset>
+          <legend>効果</legend>
+          {allowedKinds.map((value) => (
+            <label key={value}>
+              <input
+                type="checkbox"
+                name="effects"
+                value={value}
+                defaultChecked={kinds.includes(value)}
+              />
+              {ITEM_EFFECT_LABELS[value]}
+            </label>
+          ))}
+          {valued.map((kind) => (
+            <label key={kind}>
+              {ITEM_EFFECT_VALUE_LABELS[kind]}
+              <input
+                type="number"
+                name={`value.${kind}`}
+                defaultValue={enteredValue(
+                  kind,
+                  kind === "ATTACK_OVERRIDE" ? 30 : 0,
+                )}
+                aria-invalid={kept.valueErrors?.[kind] ? true : undefined}
+                aria-describedby={
+                  kept.valueErrors?.[kind] ? `value-${kind}-error` : undefined
+                }
+              />
+            </label>
+          ))}
+          {allowedKinds.includes("ATTACK_MULTIPLIER") && (
+            <>
+              <label>
+                強打の倍率（%）
+                <input
+                  type="number"
+                  name="attackMultiplierPercent"
+                  defaultValue={percent}
+                  aria-invalid={kept.percentError ? true : undefined}
+                  aria-describedby={
+                    kept.percentError ? "attack-multiplier-error" : undefined
+                  }
+                />
+              </label>
+              <fieldset
+                aria-invalid={kept.opponentElementsError ? true : undefined}
+                aria-describedby={
+                  kept.opponentElementsError
+                    ? "opponent-elements-error"
+                    : undefined
+                }
+              >
+                <legend>強打する相手の属性（選ばなければいつも）</legend>
+                {CREATURE_ELEMENTS.map((value) => (
+                  <label key={value}>
+                    <input
+                      type="checkbox"
+                      name="opponentElements"
+                      value={value}
+                      defaultChecked={opponentElements.includes(value)}
+                    />
+                    {CREATURE_ELEMENT_LABELS[value]}
+                  </label>
+                ))}
+              </fieldset>
+            </>
+          )}
+        </fieldset>
+        {valued.map(
+          (kind) =>
+            kept.valueErrors?.[kind] && (
+              <p key={kind} id={`value-${kind}-error`} role="alert">
+                {kept.valueErrors[kind]}
+              </p>
+            ),
+        )}
+        {kept.percentError && (
+          <p id="attack-multiplier-error" role="alert">
+            {kept.percentError}
           </p>
         )}
-        <label>
-          HP の増減
-          <input
-            type="number"
-            name="hitPointsModifier"
-            required
-            defaultValue={kept.hitPointsModifier ?? hitPointsModifier}
-            aria-invalid={kept.hitPointsModifierError ? true : undefined}
-            aria-describedby={
-              kept.hitPointsModifierError
-                ? "hit-points-modifier-error"
-                : undefined
-            }
-          />
-        </label>
-        {kept.hitPointsModifierError && (
-          <p id="hit-points-modifier-error" role="alert">
-            {kept.hitPointsModifierError}
+        {kept.opponentElementsError && (
+          <p id="opponent-elements-error" role="alert">
+            {kept.opponentElementsError}
           </p>
         )}
         <button type="submit" disabled={isPending}>
-          増減を変える
+          効果を変える
         </button>
       </form>
     </>

@@ -491,37 +491,55 @@ test("ログインした後の画面からトップへ戻れる", async ({ page 
   ).toBeVisible();
 });
 
-test("準備中のアイテムの詳細で分類と AT・HP の増減を変えると詳細に出て、負の増減も入れられる", async ({
+test("準備中のアイテムの詳細で分類と効果を変えると詳細に出て、今の効果を持てない分類には変えられない", async ({
   page,
 }) => {
   await loginAsOperator(page);
-  const name = uniqueName("かぶと");
+  const name = uniqueName("まきもの");
   await registerItem(page, name);
   await expect(page.getByText(`「${name}」を登録しました`)).toBeVisible();
   await (await openCardRow(page, name)).getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
-  // 登録の直後は武器で、増減は 0
+  // 登録の直後は武器で、選べる効果は武器で持てるもの（core の allowedEffectKinds）だけ
   await expect(page.getByLabel("分類")).toHaveValue("WEAPON");
-  await expect(page.getByLabel("AT の増減")).toHaveValue("0");
-  await expect(page.getByLabel("HP の増減")).toHaveValue("0");
+  await expect(page.getByLabel("AT の増減", { exact: true })).not.toBeChecked();
+  await expect(page.getByLabel("AT の上書き", { exact: true })).toHaveCount(0);
 
-  await page.getByLabel("分類").selectOption("ARMOR");
+  await page.getByLabel("分類").selectOption("SCROLL");
   await page.getByRole("button", { name: "分類を変える" }).click();
   await expect(page.getByText("保存しました")).toBeVisible();
-  await expect(page.getByLabel("分類")).toHaveValue("ARMOR");
+  await expect(page.getByLabel("分類")).toHaveValue("SCROLL");
+  await expect(page.getByLabel("AT の増減", { exact: true })).toHaveCount(0);
 
-  await page.getByLabel("AT の増減").fill("-5");
-  await page.getByLabel("HP の増減").fill("30");
-  await page.getByRole("button", { name: "増減を変える" }).click();
+  // 巻物の効果（AT の上書き・強打・地形効果を無視する）。強打は相手の属性を制約にする
+  await page.getByLabel("AT の上書き", { exact: true }).check();
+  await page.getByLabel("上書きした後の AT").fill("30");
+  await page.getByLabel("強打（AT の倍率）", { exact: true }).check();
+  await page.getByLabel("強打の倍率（%）").fill("150");
+  await page
+    .getByRole("group", { name: /強打する相手の属性/ })
+    .getByLabel("水", { exact: true })
+    .check();
+  await page.getByLabel("地形効果を無視する", { exact: true }).check();
+  await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(page.getByText("保存しました").nth(1)).toBeVisible();
-  await expect(page.getByLabel("AT の増減")).toHaveValue("-5");
-  await expect(page.getByLabel("HP の増減")).toHaveValue("30");
+  await expect(page.getByLabel("AT の上書き", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("上書きした後の AT")).toHaveValue("30");
 
-  // 公開した後は表示だけで、増やす値にも + が付く
+  // 巻物の効果を持ったままでは防具に変えられない
+  await page.getByLabel("分類").selectOption("ARMOR");
+  await page.getByRole("button", { name: "分類を変える" }).click();
+  await expect(
+    page.getByText(
+      "今の分類では持てない効果があります。先に効果を外してから分類を変えてください",
+    ),
+  ).toBeVisible();
+
+  // 公開した後は表示だけ
   await publishCard(page, name);
   await (await openCardRow(page, name)).getByRole("link", { name }).click();
   await expect(page.locator("dl").last()).toHaveText(
-    /分類\s*防具\s*AT の増減\s*-5\s*HP の増減\s*\+30/,
+    /分類\s*巻物\s*効果\s*AT を 30 に上書き・強打 150%（相手が水）・地形効果を無視する/,
   );
 });
 
