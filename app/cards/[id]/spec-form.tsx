@@ -2,28 +2,26 @@
 
 import { useActionState } from "react";
 import type {
+  BoardTileElement,
   CardRarity,
   CreatureElement,
+  EffectKind,
   ItemCategory,
-  ItemEffectKind,
 } from "@/graphql/graphql";
 import {
-  CREATURE_ABILITY_KINDS,
-  CREATURE_ABILITY_LABELS,
-  type CreatureAbilityView,
-} from "@/lib/creature-ability";
-import {
-  ATTACK_IMMUNITY_ELEMENTS,
   CREATURE_ELEMENT_LABELS,
   CREATURE_ELEMENTS,
+  LAND_ELEMENT_LABELS,
   PLACEMENT_RESTRICTION_ELEMENTS,
 } from "@/lib/creature-element";
-import { ITEM_CATEGORIES, ITEM_CATEGORY_LABELS } from "@/lib/item-category";
 import {
-  ITEM_EFFECT_LABELS,
-  ITEM_EFFECT_VALUE_LABELS,
-  type ItemEffectView,
-} from "@/lib/item-effect";
+  EFFECT_CONSTRAINT_LABELS,
+  EFFECT_FIELDS,
+  EFFECT_LABELS,
+  type EffectField,
+  type EffectView,
+} from "@/lib/effect";
+import { ITEM_CATEGORIES, ITEM_CATEGORY_LABELS } from "@/lib/item-category";
 import { RARITIES, RARITY_LABELS } from "@/lib/rarity";
 import type { Kept, Notice } from "../../deck-form";
 import { SPELL_EFFECT_KINDS } from "../../messages";
@@ -61,16 +59,15 @@ export type EffectState = Notice &
     turnsError?: string;
   };
 
-// アイテムの効果のフォームの結果。誤りのときは選んだ種類と入力した値を残す
-export type ItemEffectsState = Notice &
+// 効果のフォームの結果。誤りのときは選んだ種類と入力した値を残す。値と誤りは欄の名前（`value.ATTACK_MODIFIER`・
+// `opponentElements.ATTACK_MULTIPLIER` 等）で持つ
+export type EffectsState = Notice &
   Kept & {
     kinds?: string[];
-    values?: Partial<Record<ItemEffectKind, string>>;
-    percent?: string;
-    opponentElements?: string[];
-    valueErrors?: Partial<Record<ItemEffectKind, string>>;
-    percentError?: string;
-    opponentElementsError?: string;
+    fields?: Record<string, string>;
+    opponentElements?: Partial<Record<EffectKind, string[]>>;
+    fieldErrors?: Record<string, string>;
+    effectsError?: string;
   };
 
 const initialState: SpecState = {};
@@ -223,7 +220,7 @@ export function PlacementRestrictionsForm({
   action: (previous: Notice, form: FormData) => Promise<Notice>;
   id: string;
   revision: number;
-  placementRestrictions: CreatureElement[];
+  placementRestrictions: BoardTileElement[];
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
 
@@ -244,7 +241,7 @@ export function PlacementRestrictionsForm({
                 value={value}
                 defaultChecked={placementRestrictions.includes(value)}
               />
-              {CREATURE_ELEMENT_LABELS[value]}
+              {LAND_ELEMENT_LABELS[value]}
             </label>
           ))}
         </fieldset>
@@ -358,214 +355,6 @@ export function StatsForm({
         )}
         <button type="submit" disabled={isPending}>
           AT と HP を変える
-        </button>
-      </form>
-    </>
-  );
-}
-
-// 能力の結果。誤りのときは選んだ種類と入力した倍率を残す
-export type AbilitiesState = Notice &
-  Kept & {
-    kinds?: string[];
-    percent?: string;
-    percentError?: string;
-    attackModifier?: string;
-    hitPointsModifier?: string;
-    attackModifierError?: string;
-    hitPointsModifierError?: string;
-    abilitiesError?: string;
-    minimum?: string;
-    maximum?: string;
-    minimumError?: string;
-    maximumError?: string;
-    attackImmunityElements?: string[];
-    attackImmunityElementsError?: string;
-  };
-
-// 能力はチェックで選び、値の要る能力（通行料の倍率・戦闘中の増減・戦闘中のランダム・攻撃無効）は隣の欄に値を入れる（2026-11-11 オーナー。core#156・core#157）
-export function AbilitiesForm({
-  action,
-  id,
-  revision,
-  abilities,
-}: {
-  action: (previous: AbilitiesState, form: FormData) => Promise<AbilitiesState>;
-  id: string;
-  revision: number;
-  abilities: CreatureAbilityView[];
-}) {
-  const [state, formAction, isPending] = useActionState(action, {});
-  const kept = state.revision === revision ? state : {};
-  const kinds: string[] = kept.kinds ?? abilities.map(({ kind }) => kind);
-  const percent =
-    kept.percent ??
-    String(
-      abilities.find(({ kind }) => kind === "TOLL_MULTIPLIER")?.percent ?? 150,
-    );
-  const battleModifier = abilities.find(
-    ({ kind }) => kind === "BATTLE_MODIFIER",
-  );
-  const attackModifier =
-    kept.attackModifier ?? String(battleModifier?.attackModifier ?? 0);
-  const hitPointsModifier =
-    kept.hitPointsModifier ?? String(battleModifier?.hitPointsModifier ?? 0);
-  const battleRandom = abilities.find(
-    ({ kind }) => kind === "BATTLE_RANDOM_STATS",
-  );
-  const minimum = kept.minimum ?? String(battleRandom?.minimum ?? 10);
-  const maximum = kept.maximum ?? String(battleRandom?.maximum ?? 70);
-  const attackImmunityElements: string[] =
-    kept.attackImmunityElements ??
-    abilities.find(({ kind }) => kind === "ATTACK_IMMUNITY")?.elements ??
-    [];
-
-  return (
-    <>
-      {state.status && <p role="status">{state.status}</p>}
-      {state.error && <p role="alert">{state.error}</p>}
-      <form key={revision} action={formAction}>
-        <input type="hidden" name="id" value={id} />
-        <input type="hidden" name="revision" value={revision} />
-        <fieldset
-          aria-invalid={kept.abilitiesError ? true : undefined}
-          aria-describedby={kept.abilitiesError ? "abilities-error" : undefined}
-        >
-          <legend>能力</legend>
-          {CREATURE_ABILITY_KINDS.map((value) => (
-            <label key={value}>
-              <input
-                type="checkbox"
-                name="abilities"
-                value={value}
-                defaultChecked={kinds.includes(value)}
-              />
-              {CREATURE_ABILITY_LABELS[value]}
-            </label>
-          ))}
-          <label>
-            通行料の倍率（%）
-            <input
-              type="number"
-              name="tollMultiplierPercent"
-              defaultValue={percent}
-              aria-invalid={kept.percentError ? true : undefined}
-              aria-describedby={
-                kept.percentError ? "toll-multiplier-error" : undefined
-              }
-            />
-          </label>
-          <label>
-            AT の増減
-            <input
-              type="number"
-              name="battleModifierAttack"
-              defaultValue={attackModifier}
-              aria-invalid={kept.attackModifierError ? true : undefined}
-              aria-describedby={
-                kept.attackModifierError
-                  ? "battle-modifier-attack-error"
-                  : undefined
-              }
-            />
-          </label>
-          <label>
-            HP の増減
-            <input
-              type="number"
-              name="battleModifierHitPoints"
-              defaultValue={hitPointsModifier}
-              aria-invalid={kept.hitPointsModifierError ? true : undefined}
-              aria-describedby={
-                kept.hitPointsModifierError
-                  ? "battle-modifier-hit-points-error"
-                  : undefined
-              }
-            />
-          </label>
-          <label>
-            最小
-            <input
-              type="number"
-              name="battleRandomMinimum"
-              defaultValue={minimum}
-              aria-invalid={kept.minimumError ? true : undefined}
-              aria-describedby={
-                kept.minimumError ? "battle-random-minimum-error" : undefined
-              }
-            />
-          </label>
-          <label>
-            最大
-            <input
-              type="number"
-              name="battleRandomMaximum"
-              defaultValue={maximum}
-              aria-invalid={kept.maximumError ? true : undefined}
-              aria-describedby={
-                kept.maximumError ? "battle-random-maximum-error" : undefined
-              }
-            />
-          </label>
-          <fieldset
-            aria-invalid={kept.attackImmunityElementsError ? true : undefined}
-            aria-describedby={
-              kept.attackImmunityElementsError
-                ? "attack-immunity-elements-error"
-                : undefined
-            }
-          >
-            <legend>攻撃無効の属性</legend>
-            {ATTACK_IMMUNITY_ELEMENTS.map((value) => (
-              <label key={value}>
-                <input
-                  type="checkbox"
-                  name="attackImmunityElements"
-                  value={value}
-                  defaultChecked={attackImmunityElements.includes(value)}
-                />
-                {CREATURE_ELEMENT_LABELS[value]}
-              </label>
-            ))}
-          </fieldset>
-        </fieldset>
-        {kept.abilitiesError && (
-          <p id="abilities-error" role="alert">
-            {kept.abilitiesError}
-          </p>
-        )}
-        {kept.percentError && (
-          <p id="toll-multiplier-error" role="alert">
-            {kept.percentError}
-          </p>
-        )}
-        {kept.attackModifierError && (
-          <p id="battle-modifier-attack-error" role="alert">
-            {kept.attackModifierError}
-          </p>
-        )}
-        {kept.hitPointsModifierError && (
-          <p id="battle-modifier-hit-points-error" role="alert">
-            {kept.hitPointsModifierError}
-          </p>
-        )}
-        {kept.minimumError && (
-          <p id="battle-random-minimum-error" role="alert">
-            {kept.minimumError}
-          </p>
-        )}
-        {kept.maximumError && (
-          <p id="battle-random-maximum-error" role="alert">
-            {kept.maximumError}
-          </p>
-        )}
-        {kept.attackImmunityElementsError && (
-          <p id="attack-immunity-elements-error" role="alert">
-            {kept.attackImmunityElementsError}
-          </p>
-        )}
-        <button type="submit" disabled={isPending}>
-          能力を変える
         </button>
       </form>
     </>
@@ -686,43 +475,37 @@ export function CategoryForm({
   );
 }
 
-// 効果は持てる種類（core の allowedEffectKinds）のチェックボックスと、値の要る効果の値の欄。1 つの種類は 1 つまで入れる
+// 効果は持てる種類（core の allowedEffectKinds。アイテムは今の分類で、クリーチャーはクリーチャーで持てるもの）のチェックボックスと、
+// 種類ごとの値の欄。アイテムとクリーチャーで同じ部品を使う（効果の型を共有しているため。core#178）。1 つの種類は 1 つまで入れる
 // （core は同じ種類を重ねて持てるが、見本に重ねるカードが無いため画面では選ばない。重ねるカードを作るときに見直す）
-export function ItemEffectsForm({
+export function EffectsForm({
   action,
   id,
   revision,
   allowedKinds,
   effects,
 }: {
-  action: (
-    previous: ItemEffectsState,
-    form: FormData,
-  ) => Promise<ItemEffectsState>;
+  action: (previous: EffectsState, form: FormData) => Promise<EffectsState>;
   id: string;
   revision: number;
-  allowedKinds: ItemEffectKind[];
-  effects: ItemEffectView[];
+  allowedKinds: EffectKind[];
+  effects: EffectView[];
 }) {
   const [state, formAction, isPending] = useActionState(action, {});
   const kept = state.revision === revision ? state : {};
   const kinds: string[] = kept.kinds ?? effects.map(({ kind }) => kind);
-  const current = (kind: ItemEffectKind) =>
+  const current = (kind: EffectKind) =>
     effects.find((effect) => effect.kind === kind);
-  const enteredValue = (kind: ItemEffectKind, fallback: number) =>
-    kept.values?.[kind] ?? String(current(kind)?.value ?? fallback);
-  const percent =
-    kept.percent ?? String(current("ATTACK_MULTIPLIER")?.percent ?? 150);
-  const opponentElements: string[] =
-    kept.opponentElements ??
-    current("ATTACK_MULTIPLIER")?.opponentElements ??
-    [];
-  const valued = allowedKinds.filter(
-    (kind) =>
-      kind === "ATTACK_MODIFIER" ||
-      kind === "HIT_POINTS_MODIFIER" ||
-      kind === "ATTACK_OVERRIDE",
-  );
+  const enteredValue = (
+    kind: EffectKind,
+    field: EffectField,
+    initial: number,
+  ) =>
+    kept.fields?.[`${field}.${kind}`] ??
+    String(current(kind)?.[field] ?? initial);
+  const opponentElements = (kind: EffectKind): string[] =>
+    kept.opponentElements?.[kind] ?? current(kind)?.opponentElements ?? [];
+  const errors = Object.entries(kept.fieldErrors ?? {});
 
   return (
     <>
@@ -731,7 +514,10 @@ export function ItemEffectsForm({
       <form key={revision} action={formAction}>
         <input type="hidden" name="id" value={id} />
         <input type="hidden" name="revision" value={revision} />
-        <fieldset>
+        <fieldset
+          aria-invalid={kept.effectsError ? true : undefined}
+          aria-describedby={kept.effectsError ? "effects-error" : undefined}
+        >
           <legend>効果</legend>
           {allowedKinds.map((value) => (
             <label key={value}>
@@ -741,80 +527,65 @@ export function ItemEffectsForm({
                 value={value}
                 defaultChecked={kinds.includes(value)}
               />
-              {ITEM_EFFECT_LABELS[value]}
+              {EFFECT_LABELS[value]}
             </label>
           ))}
-          {valued.map((kind) => (
-            <label key={kind}>
-              {ITEM_EFFECT_VALUE_LABELS[kind]}
-              <input
-                type="number"
-                name={`value.${kind}`}
-                defaultValue={enteredValue(
-                  kind,
-                  kind === "ATTACK_OVERRIDE" ? 30 : 0,
-                )}
-                aria-invalid={kept.valueErrors?.[kind] ? true : undefined}
-                aria-describedby={
-                  kept.valueErrors?.[kind] ? `value-${kind}-error` : undefined
-                }
-              />
-            </label>
-          ))}
-          {allowedKinds.includes("ATTACK_MULTIPLIER") && (
-            <>
-              <label>
-                強打の倍率（%）
-                <input
-                  type="number"
-                  name="attackMultiplierPercent"
-                  defaultValue={percent}
-                  aria-invalid={kept.percentError ? true : undefined}
-                  aria-describedby={
-                    kept.percentError ? "attack-multiplier-error" : undefined
-                  }
-                />
-              </label>
+          {allowedKinds.flatMap((kind) =>
+            (EFFECT_FIELDS[kind] ?? []).map(({ field, label, initial }) => {
+              const name = `${field}.${kind}`;
+              return (
+                <label key={name}>
+                  {label}
+                  <input
+                    type="number"
+                    name={name}
+                    defaultValue={enteredValue(kind, field, initial)}
+                    aria-invalid={kept.fieldErrors?.[name] ? true : undefined}
+                    aria-describedby={
+                      kept.fieldErrors?.[name] ? `${name}-error` : undefined
+                    }
+                  />
+                </label>
+              );
+            }),
+          )}
+          {allowedKinds.map((kind) => {
+            const legend = EFFECT_CONSTRAINT_LABELS[kind];
+            if (legend === undefined) {
+              return null;
+            }
+            const name = `opponentElements.${kind}`;
+            const error = kept.fieldErrors?.[name];
+            return (
               <fieldset
-                aria-invalid={kept.opponentElementsError ? true : undefined}
-                aria-describedby={
-                  kept.opponentElementsError
-                    ? "opponent-elements-error"
-                    : undefined
-                }
+                key={name}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? `${name}-error` : undefined}
               >
-                <legend>強打する相手の属性（選ばなければいつも）</legend>
+                <legend>{legend}</legend>
                 {CREATURE_ELEMENTS.map((value) => (
                   <label key={value}>
                     <input
                       type="checkbox"
-                      name="opponentElements"
+                      name={name}
                       value={value}
-                      defaultChecked={opponentElements.includes(value)}
+                      defaultChecked={opponentElements(kind).includes(value)}
                     />
                     {CREATURE_ELEMENT_LABELS[value]}
                   </label>
                 ))}
               </fieldset>
-            </>
-          )}
+            );
+          })}
         </fieldset>
-        {valued.map(
-          (kind) =>
-            kept.valueErrors?.[kind] && (
-              <p key={kind} id={`value-${kind}-error`} role="alert">
-                {kept.valueErrors[kind]}
-              </p>
-            ),
-        )}
-        {kept.percentError && (
-          <p id="attack-multiplier-error" role="alert">
-            {kept.percentError}
+        {errors.map(([name, message]) => (
+          <p key={name} id={`${name}-error`} role="alert">
+            {message}
           </p>
-        )}
-        {kept.opponentElementsError && (
-          <p id="opponent-elements-error" role="alert">
-            {kept.opponentElementsError}
+        ))}
+        {kept.effectsError && (
+          <p id="effects-error" role="alert">
+            {kept.effectsError}
           </p>
         )}
         <button type="submit" disabled={isPending}>

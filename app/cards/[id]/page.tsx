@@ -2,17 +2,16 @@ import Link from "next/link";
 import { graphql } from "@/graphql";
 import { CARD_TYPE_LABELS } from "@/lib/card-type";
 import { callCore } from "@/lib/core";
-import { abilitiesLabel } from "@/lib/creature-ability";
 import {
   elementsLabel,
   placementRestrictionsLabel,
 } from "@/lib/creature-element";
+import { effectsLabel, effectView } from "@/lib/effect";
 import { dateTimeFormat } from "@/lib/format";
 import {
   ITEM_CATEGORY_LABELS,
   itemRestrictionsLabel,
 } from "@/lib/item-category";
-import { itemEffectsLabel, itemEffectView } from "@/lib/item-effect";
 import { RARITY_LABELS } from "@/lib/rarity";
 import { STATUS_LABELS } from "@/lib/status";
 import { spellEffectLabel, spellEffectValue } from "../../messages";
@@ -21,7 +20,7 @@ import { CardStatusButton } from "../card-status-button";
 import {
   changeCardCost,
   changeCardRarity,
-  changeCreatureAbilities,
+  changeCreatureEffects,
   changeCreatureElements,
   changeCreatureItemRestrictions,
   changeCreaturePlacementRestrictions,
@@ -31,12 +30,11 @@ import {
   changeSpellEffect,
 } from "./actions";
 import {
-  AbilitiesForm,
   CategoryForm,
   CostForm,
   EffectForm,
+  EffectsForm,
   ElementsForm,
-  ItemEffectsForm,
   ItemRestrictionsForm,
   PlacementRestrictionsForm,
   RarityForm,
@@ -63,21 +61,43 @@ const cardQuery = graphql(`
         hitPoints
         itemRestrictions
         placementRestrictions
-        abilities {
+        allowedEffectKinds
+        effects {
+          __typename
           kind
-          ... on CreatureTollMultiplierAbility {
-            percent
+          ... on AttackModifierEffect {
+            value
           }
-          ... on CreatureBattleModifierAbility {
-            attackModifier
-            hitPointsModifier
+          ... on HitPointsModifierEffect {
+            value
           }
-          ... on CreatureBattleRandomStatsAbility {
+          ... on AttackOverrideEffect {
             minimum
             maximum
           }
-          ... on CreatureAttackImmunityAbility {
-            elements
+          ... on HitPointsOverrideEffect {
+            minimum
+            maximum
+          }
+          ... on AttackMultiplierEffect {
+            percent
+            constraints {
+              kind
+              ... on OpponentCreatureElementConstraint {
+                elements
+              }
+            }
+          }
+          ... on NullifyReceivedDamageEffect {
+            constraints {
+              kind
+              ... on OpponentCreatureElementConstraint {
+                elements
+              }
+            }
+          }
+          ... on TollMultiplierEffect {
+            percent
           }
         }
       }
@@ -87,23 +107,39 @@ const cardQuery = graphql(`
         effects {
           __typename
           kind
-          ... on ItemAttackModifierEffect {
+          ... on AttackModifierEffect {
             value
           }
-          ... on ItemHitPointsModifierEffect {
+          ... on HitPointsModifierEffect {
             value
           }
-          ... on ItemAttackOverrideEffect {
-            value
+          ... on AttackOverrideEffect {
+            minimum
+            maximum
           }
-          ... on ItemAttackMultiplierEffect {
+          ... on HitPointsOverrideEffect {
+            minimum
+            maximum
+          }
+          ... on AttackMultiplierEffect {
             percent
             constraints {
               kind
-              ... on ItemOpponentElementConstraint {
+              ... on OpponentCreatureElementConstraint {
                 elements
               }
             }
+          }
+          ... on NullifyReceivedDamageEffect {
+            constraints {
+              kind
+              ... on OpponentCreatureElementConstraint {
+                elements
+              }
+            }
+          }
+          ... on TollMultiplierEffect {
+            percent
           }
         }
       }
@@ -266,11 +302,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   revision={card.revision}
                   placementRestrictions={card.placementRestrictions}
                 />
-                <AbilitiesForm
-                  action={changeCreatureAbilities}
+                <EffectsForm
+                  action={changeCreatureEffects}
                   id={card.id}
                   revision={card.revision}
-                  abilities={card.abilities}
+                  allowedKinds={card.allowedEffectKinds}
+                  effects={card.effects.map(effectView)}
                 />
               </>
             )}
@@ -282,12 +319,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                   revision={card.revision}
                   category={card.category}
                 />
-                <ItemEffectsForm
+                <EffectsForm
                   action={changeItemEffects}
                   id={card.id}
                   revision={card.revision}
                   allowedKinds={card.allowedEffectKinds}
-                  effects={card.effects.map(itemEffectView)}
+                  effects={card.effects.map(effectView)}
                 />
               </>
             )}
@@ -320,8 +357,8 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dd>
                   {placementRestrictionsLabel(card.placementRestrictions)}
                 </dd>
-                <dt>能力</dt>
-                <dd>{abilitiesLabel(card.abilities)}</dd>
+                <dt>効果</dt>
+                <dd>{effectsLabel(card.effects.map(effectView))}</dd>
               </>
             )}
             {card.__typename === "Item" && (
@@ -329,7 +366,7 @@ export default async function CardPage({ params }: PageProps<"/cards/[id]">) {
                 <dt>分類</dt>
                 <dd>{ITEM_CATEGORY_LABELS[card.category]}</dd>
                 <dt>効果</dt>
-                <dd>{itemEffectsLabel(card.effects.map(itemEffectView))}</dd>
+                <dd>{effectsLabel(card.effects.map(effectView))}</dd>
               </>
             )}
             {card.__typename === "Spell" && (
