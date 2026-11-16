@@ -15,7 +15,10 @@ import {
   PLACEMENT_RESTRICTION_ELEMENTS,
 } from "@/lib/creature-element";
 import {
+  DESTRUCTION_LABELS,
+  DESTRUCTIONS,
   EFFECT_CONSTRAINT_LABELS,
+  EFFECT_DESTRUCTION_LABELS,
   EFFECT_FIELDS,
   EFFECT_LABELS,
   type EffectField,
@@ -66,6 +69,7 @@ export type EffectsState = Notice &
     kinds?: string[];
     fields?: Record<string, string>;
     opponentElements?: Partial<Record<EffectKind, string[]>>;
+    destructions?: Partial<Record<EffectKind, string[]>>;
     fieldErrors?: Record<string, string>;
     effectsError?: string;
   };
@@ -505,6 +509,8 @@ export function EffectsForm({
     String(current(kind)?.[field] ?? initial);
   const opponentElements = (kind: EffectKind): string[] =>
     kept.opponentElements?.[kind] ?? current(kind)?.opponentElements ?? [];
+  const destructions = (kind: EffectKind): string[] =>
+    kept.destructions?.[kind] ?? current(kind)?.destructions ?? [];
   const errors = Object.entries(kept.fieldErrors ?? {});
 
   return (
@@ -572,6 +578,34 @@ export function EffectsForm({
                       defaultChecked={opponentElements(kind).includes(value)}
                     />
                     {CREATURE_ELEMENT_LABELS[value]}
+                  </label>
+                ))}
+              </fieldset>
+            );
+          })}
+          {allowedKinds.map((kind) => {
+            const legend = EFFECT_DESTRUCTION_LABELS[kind];
+            if (legend === undefined) {
+              return null;
+            }
+            const name = `destructions.${kind}`;
+            const error = kept.fieldErrors?.[name];
+            return (
+              <fieldset
+                key={name}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? `${name}-error` : undefined}
+              >
+                <legend>{legend}</legend>
+                {DESTRUCTIONS.map((value) => (
+                  <label key={value}>
+                    <input
+                      type="checkbox"
+                      name={name}
+                      value={value}
+                      defaultChecked={destructions(kind).includes(value)}
+                    />
+                    {DESTRUCTION_LABELS[value]}
                   </label>
                 ))}
               </fieldset>

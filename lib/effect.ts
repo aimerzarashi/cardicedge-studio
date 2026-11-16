@@ -1,4 +1,8 @@
-import type { CreatureElement, EffectKind } from "@/graphql/graphql";
+import type {
+  CreatureElement,
+  EffectDestruction,
+  EffectKind,
+} from "@/graphql/graphql";
 import { elementsLabel } from "@/lib/creature-element";
 import { signedModifier } from "@/lib/item-category";
 
@@ -18,6 +22,8 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   TOLL_MULTIPLIER: "通行料の倍率",
   FORBID_INVASION: "侵略できない",
   FORBID_MOVEMENT: "移動できない",
+  RETURN_TO_HAND_ON_DESTRUCTION: "破壊されたら手札に戻る",
+  GAIN_MAGIC_ON_DESTRUCTION: "破壊されたら魔力を得る",
 };
 
 export const EFFECT_KINDS = Object.keys(EFFECT_LABELS) as EffectKind[];
@@ -27,7 +33,12 @@ export function isEffectKind(value: string): value is EffectKind {
 }
 
 // 種類ごとの値の欄。core の入力（EffectInput）の項目と同じ名前で、種類に要る項目だけを持つ
-export type EffectField = "value" | "minimum" | "maximum" | "percent";
+export type EffectField =
+  | "value"
+  | "minimum"
+  | "maximum"
+  | "percent"
+  | "amount";
 
 // 値の欄の名前と、入れていないときの既定の値（入力のしやすさのための値で、core の決まりではない）
 export const EFFECT_FIELDS: Partial<
@@ -49,6 +60,30 @@ export const EFFECT_FIELDS: Partial<
   TOLL_MULTIPLIER: [
     { field: "percent", label: "通行料の倍率（%）", initial: 150 },
   ],
+  GAIN_MAGIC_ON_DESTRUCTION: [
+    { field: "amount", label: "受け取る魔力の額", initial: 200 },
+  ],
+};
+
+// 破壊されたときの効果が発動する破壊（core の 3 つの破壊のイベントと対応する。core#182）。並びは core と同じ侵略・守る・ボード
+export const DESTRUCTION_LABELS: Record<EffectDestruction, string> = {
+  INVADING: "侵略したとき",
+  DEFENDING: "守るとき",
+  BOARD: "ボード",
+};
+
+export const DESTRUCTIONS = Object.keys(
+  DESTRUCTION_LABELS,
+) as EffectDestruction[];
+
+export function isEffectDestruction(value: string): value is EffectDestruction {
+  return (DESTRUCTIONS as string[]).includes(value);
+}
+
+// 発動する破壊を選ぶ種類と、欄の名前（1 つ以上を選ぶ。選ばないと発動しない効果になるので core が断る）
+export const EFFECT_DESTRUCTION_LABELS: Partial<Record<EffectKind, string>> = {
+  RETURN_TO_HAND_ON_DESTRUCTION: "手札に戻る破壊（1 つ以上）",
+  GAIN_MAGIC_ON_DESTRUCTION: "魔力を得る破壊（1 つ以上）",
 };
 
 // 相手のクリーチャーの属性の制約を持てる種類と、欄の名前（選ばなければ制約なしで、いつも発動する）
@@ -65,6 +100,8 @@ export type EffectView = {
   maximum?: number;
   percent?: number;
   opponentElements?: CreatureElement[];
+  destructions?: EffectDestruction[];
+  amount?: number;
 };
 
 // 上書きの範囲（固定は「30」、範囲は「10〜70」）
@@ -79,6 +116,12 @@ function opponentLabel(label: string, effect: EffectView): string {
   return elements.length === 0
     ? label
     : `${label}（相手が${elementsLabel(elements)}）`;
+}
+
+function destructionsLabel(effect: EffectView): string {
+  return (effect.destructions ?? [])
+    .map((destruction) => DESTRUCTION_LABELS[destruction])
+    .join("・");
 }
 
 // 効果 1 つの表示（例: AT +25、AT を 30 に上書き、HP を 10〜70 に上書き、強打 150%（相手が水）、先制、攻撃無効（相手が火地））
@@ -108,6 +151,10 @@ export function effectLabel(effect: EffectView): string {
       return "侵略できない";
     case "FORBID_MOVEMENT":
       return "移動できない";
+    case "RETURN_TO_HAND_ON_DESTRUCTION":
+      return `破壊されたら手札に戻る（${destructionsLabel(effect)}）`;
+    case "GAIN_MAGIC_ON_DESTRUCTION":
+      return `破壊されたら魔力 +${effect.amount ?? 0}（${destructionsLabel(effect)}）`;
   }
 }
 
@@ -125,6 +172,8 @@ export function effectView(effect: {
   maximum?: number;
   percent?: number;
   constraints?: readonly { elements?: CreatureElement[] }[];
+  destructions?: readonly EffectDestruction[];
+  amount?: number;
 }): EffectView {
   return {
     kind: effect.kind,
@@ -135,5 +184,7 @@ export function effectView(effect: {
     opponentElements: effect.constraints?.flatMap(
       ({ elements }) => elements ?? [],
     ),
+    destructions: effect.destructions ? [...effect.destructions] : undefined,
+    amount: effect.amount,
   };
 }

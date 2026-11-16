@@ -1574,7 +1574,24 @@ enum EffectConstraintKind {
 	OPPONENT_CREATURE_ELEMENT
 }
 """
-効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints）
+破壊されたときの効果が発動する破壊（対戦の 3 つの破壊のイベントと対応する）
+"""
+enum EffectDestruction {
+	"""
+	戦闘で、侵略したクリーチャーとして破壊された
+	"""
+	INVADING
+	"""
+	戦闘で、領地を守るクリーチャーとして破壊された
+	"""
+	DEFENDING
+	"""
+	戦闘の外（スペルのダメージ等）で破壊された
+	"""
+	BOARD
+}
+"""
+効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount）
 """
 input EffectInput {
 	"""
@@ -1601,6 +1618,14 @@ input EffectInput {
 	制約（すべてを満たすときに発動する）
 	"""
 	constraints: [EffectConstraintInput!]
+	"""
+	発動する破壊（1 つ以上・重複なし）
+	"""
+	destructions: [EffectDestruction!]
+	"""
+	受け取る魔力の額
+	"""
+	amount: Int
 }
 """
 効果の種類
@@ -1654,6 +1679,14 @@ enum EffectKind {
 	移動できない（領地コマンドで動けない）
 	"""
 	FORBID_MOVEMENT
+	"""
+	破壊されたら手札に戻る（選んだ破壊のとき、捨て札に入ったカードが持ち主の手札に戻る。手札が上限なら戻れない）
+	"""
+	RETURN_TO_HAND_ON_DESTRUCTION
+	"""
+	破壊されたら魔力を得る（選んだ破壊のとき、持ち主が額の魔力を受け取る）
+	"""
+	GAIN_MAGIC_ON_DESTRUCTION
 }
 """
 一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
@@ -1879,6 +1912,23 @@ type ForbiddenError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
+}
+"""
+破壊されたら魔力を得る
+"""
+type GainMagicOnDestructionEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	発動する破壊（侵略・守る・ボードの順。1 つ以上）
+	"""
+	destructions: [EffectDestruction!]!
+	"""
+	受け取る魔力の額（1 以上）
+	"""
+	amount: Int!
 }
 """
 魔力を得る効果（使った人が（周回数 + 1）× perLap の魔力を得る。周回数はその対戦で周回を終えた回数）
@@ -4259,6 +4309,19 @@ type RetireStarterSetSuccess {
 	使用不可にしたスターターセットの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
+}
+"""
+破壊されたら手札に戻る
+"""
+type ReturnToHandOnDestructionEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	発動する破壊（侵略・守る・ボードの順。1 つ以上）
+	"""
+	destructions: [EffectDestruction!]!
 }
 """
 先に変えられた（画面を開いた後に、ほかの操作でこの対象が変わった。操作は行われていない）。読み直してから操作し直す
