@@ -442,6 +442,15 @@ test("準備中のクリーチャーの詳細で属性・AT と HP・制限・�
 
   // 公開すると、効果は core の並び（選択肢の順）で表示に出る
   await publishCard(page, name);
+  // 一覧にも、属性・AT・HP と、持っている制限・効果が出る（studio#73）
+  await expect((await openCardRow(page, name)).getByRole("cell")).toContainText(
+    [
+      "水",
+      "40",
+      "50",
+      "アイテム制限 防具・巻物／配置制限 地風／HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない・破壊されたら魔力 +200（守るとき・ボード）",
+    ],
+  );
   await page.getByRole("link", { name }).click();
   await expect(
     page.getByText(
@@ -542,6 +551,15 @@ test("準備中のアイテムの詳細で分類と効果を変えると詳細�
 
   // 公開した後は表示だけ
   await publishCard(page, name);
+  // 一覧では、クリーチャーだけの列は「—」で、性能の列に分類と効果が出る（studio#73）
+  await expect((await openCardRow(page, name)).getByRole("cell")).toContainText(
+    [
+      "—",
+      "—",
+      "—",
+      "巻物／AT を 30 に上書き・強打 150%（相手が水）・地形効果を無視する",
+    ],
+  );
   await (await openCardRow(page, name)).getByRole("link", { name }).click();
   await expect(page.locator("dl").last()).toHaveText(
     /分類\s*巻物\s*効果\s*AT を 30 に上書き・強打 150%（相手が水）・地形効果を無視する/,
@@ -586,6 +604,9 @@ test("準備中のスペルの詳細で効果を変えると詳細に出て、�
 
   // 公開した後は表示だけ
   await publishCard(page, name);
+  await expect(await openCardRow(page, name)).toContainText(
+    "カードを 2 枚引く",
+  );
   await (await openCardRow(page, name)).getByRole("link", { name }).click();
   await expect(page.locator("dl").last()).toHaveText(
     /効果\s*カードを 2 枚引く/,
