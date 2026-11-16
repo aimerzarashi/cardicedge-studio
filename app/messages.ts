@@ -282,6 +282,7 @@ export const RULE_LABELS = {
   diceMin: "サイコロの目（最小）",
   diceMax: "サイコロの目（最大）",
   baseLandValue: "土地の基本の値",
+  lapBonusPerTerritory: "周回のボーナス（領地 1 つあたり）",
 } as const;
 export type RuleField = keyof typeof RULE_LABELS;
 
@@ -289,9 +290,12 @@ export function isRuleField(value: string): value is RuleField {
   return Object.hasOwn(RULE_LABELS, value);
 }
 
-// 魔力の 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い）。魔力でない項目は 1 刻み
+// 魔力の 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い）。魔力でない項目は 1 刻み。
+// 領地 1 つあたりの額は、領地の数を掛ける小さい額なので 10 刻み
 export function ruleStep(field: RuleField): number {
   switch (field) {
+    case "lapBonusPerTerritory":
+      return 10;
     case "roundLimit":
     case "diceMin":
     case "diceMax":

@@ -348,6 +348,9 @@ test("公開中は、格子も既定のルールも表示だけで出て、編�
   await expect(detail(page, "サイコロの目（最小）")).toHaveText("1");
   await expect(detail(page, "サイコロの目（最大）")).toHaveText("6");
   await expect(detail(page, "土地の基本の値")).toHaveText("100");
+  await expect(detail(page, "周回のボーナス（領地 1 つあたり）")).toHaveText(
+    "20",
+  );
   await expect(rules.getByLabel("目標の魔力")).toHaveCount(0);
   await expect(rules.getByRole("button", { name: "ルールを保存" })).toHaveCount(
     0,
@@ -573,19 +576,22 @@ test("準備中のボードの既定のルールを変えて保存すると、�
 
   await rules.getByLabel("目標の魔力").fill("12000");
   await rules.getByLabel("開始時の魔力").fill("0");
-  await rules.getByLabel("周回のボーナス").fill("500");
+  await rules.getByLabel("周回のボーナス", { exact: true }).fill("500");
   await rules.getByLabel("チェックポイントのボーナス").fill("100");
   await rules.getByLabel("ラウンドの上限").fill("20");
   await rules.getByLabel("サイコロの目（最小）").fill("2");
   await rules.getByLabel("サイコロの目（最大）").fill("12");
   await rules.getByLabel("土地の基本の値").fill("150");
+  await rules.getByLabel("周回のボーナス（領地 1 つあたり）").fill("40");
   await rules.getByRole("button", { name: "ルールを保存" }).click();
 
   await expect(rules.getByText("ルールを保存しました")).toBeVisible();
   await page.reload();
   await expect(rules.getByLabel("目標の魔力")).toHaveValue("12000");
   await expect(rules.getByLabel("開始時の魔力")).toHaveValue("0");
-  await expect(rules.getByLabel("周回のボーナス")).toHaveValue("500");
+  await expect(rules.getByLabel("周回のボーナス", { exact: true })).toHaveValue(
+    "500",
+  );
   await expect(rules.getByLabel("チェックポイントのボーナス")).toHaveValue(
     "100",
   );
@@ -593,6 +599,9 @@ test("準備中のボードの既定のルールを変えて保存すると、�
   await expect(rules.getByLabel("サイコロの目（最小）")).toHaveValue("2");
   await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("12");
   await expect(rules.getByLabel("土地の基本の値")).toHaveValue("150");
+  await expect(
+    rules.getByLabel("周回のボーナス（領地 1 つあたり）"),
+  ).toHaveValue("40");
 });
 
 test("決まりに反する既定のルールを保存すると誤りが出て、入力した値が残り、保存した値は変わらない", async ({
@@ -617,7 +626,7 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
   ).toBeVisible();
 
   await rules.getByLabel("目標の魔力").fill("8000");
-  await rules.getByLabel("周回のボーナス").fill("-100");
+  await rules.getByLabel("周回のボーナス", { exact: true }).fill("-100");
   await rules.getByLabel("ラウンドの上限").fill("0");
   await rules.getByLabel("サイコロの目（最小）").fill("4");
   // 最大と最小が同じだとサイコロを振る意味が無いので、同じでも誤り
@@ -637,7 +646,9 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
 
   await page.reload();
   await expect(rules.getByLabel("目標の魔力")).toHaveValue("8000");
-  await expect(rules.getByLabel("周回のボーナス")).toHaveValue("300");
+  await expect(rules.getByLabel("周回のボーナス", { exact: true })).toHaveValue(
+    "300",
+  );
   await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("6");
 });
 

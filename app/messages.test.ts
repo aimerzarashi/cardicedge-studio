@@ -160,6 +160,7 @@ describe("ruleStep", () => {
         diceMin: 1,
         diceMax: 1,
         baseLandValue: 1,
+        lapBonusPerTerritory: 10,
       },
     );
   });
