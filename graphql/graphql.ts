@@ -378,10 +378,23 @@ export type EffectConstraintKind =
   /** 相手のクリーチャーの属性（戦う相手のクリーチャーの属性のどれかが合うとき） */
   | 'OPPONENT_CREATURE_ELEMENT';
 
-/** 効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints） */
+/** 破壊されたときの効果が発動する破壊（対戦の 3 つの破壊のイベントと対応する） */
+export type EffectDestruction =
+  /** 戦闘の外（スペルのダメージ等）で破壊された */
+  | 'BOARD'
+  /** 戦闘で、領地を守るクリーチャーとして破壊された */
+  | 'DEFENDING'
+  /** 戦闘で、侵略したクリーチャーとして破壊された */
+  | 'INVADING';
+
+/** 効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount） */
 export type EffectInput = {
+  /** 受け取る魔力の額 */
+  amount?: number | null | undefined;
   /** 制約（すべてを満たすときに発動する） */
   constraints?: Array<EffectConstraintInput> | null | undefined;
+  /** 発動する破壊（1 つ以上・重複なし） */
+  destructions?: Array<EffectDestruction> | null | undefined;
   /** 効果の種類 */
   kind: EffectKind;
   /** 上書きした後の値の最大 */
@@ -406,6 +419,8 @@ export type EffectKind =
   | 'FORBID_INVASION'
   /** 移動できない（領地コマンドで動けない） */
   | 'FORBID_MOVEMENT'
+  /** 破壊されたら魔力を得る（選んだ破壊のとき、持ち主が額の魔力を受け取る） */
+  | 'GAIN_MAGIC_ON_DESTRUCTION'
   /** HP の増減（戦闘中、HP が決まった値だけ増減する） */
   | 'HIT_POINTS_MODIFIER'
   /** HP の上書き（戦闘中、HP が最小〜最大のランダムな値になる。固定は最小と最大が同じ） */
@@ -414,6 +429,8 @@ export type EffectKind =
   | 'IGNORE_TERRAIN_EFFECT'
   /** 受けるダメージを 0 にする（制約を満たす相手から攻撃を受けたとき、ダメージが 0 になる） */
   | 'NULLIFY_RECEIVED_DAMAGE'
+  /** 破壊されたら手札に戻る（選んだ破壊のとき、捨て札に入ったカードが持ち主の手札に戻る。手札が上限なら戻れない） */
+  | 'RETURN_TO_HAND_ON_DESTRUCTION'
   /** 先に攻撃する（戦闘で、先に攻撃する効果の無い相手より先に攻撃する。後に攻撃すると一緒には持てない） */
   | 'STRIKE_FIRST'
   /** 後に攻撃する（戦闘で、後に攻撃する効果の無い相手より後に攻撃する。先に攻撃すると一緒には持てない） */
@@ -1367,10 +1384,12 @@ export type CardQuery = { card:
         | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
         | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
         | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+        | { __typename: 'GainMagicOnDestructionEffect', destructions: Array<EffectDestruction>, amount: number, kind: EffectKind }
         | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
         | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
         | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
         | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'ReturnToHandOnDestructionEffect', destructions: Array<EffectDestruction>, kind: EffectKind }
         | { __typename: 'StrikeFirstEffect', kind: EffectKind }
         | { __typename: 'StrikeLastEffect', kind: EffectKind }
         | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
@@ -1382,10 +1401,12 @@ export type CardQuery = { card:
         | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
         | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
         | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+        | { __typename: 'GainMagicOnDestructionEffect', destructions: Array<EffectDestruction>, amount: number, kind: EffectKind }
         | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
         | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
         | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
         | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'ReturnToHandOnDestructionEffect', destructions: Array<EffectDestruction>, kind: EffectKind }
         | { __typename: 'StrikeFirstEffect', kind: EffectKind }
         | { __typename: 'StrikeLastEffect', kind: EffectKind }
         | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
@@ -3211,6 +3232,13 @@ export const CardDocument = new TypedDocumentString(`
         ... on TollMultiplierEffect {
           percent
         }
+        ... on ReturnToHandOnDestructionEffect {
+          destructions
+        }
+        ... on GainMagicOnDestructionEffect {
+          destructions
+          amount
+        }
       }
     }
     ... on Item {
@@ -3252,6 +3280,13 @@ export const CardDocument = new TypedDocumentString(`
         }
         ... on TollMultiplierEffect {
           percent
+        }
+        ... on ReturnToHandOnDestructionEffect {
+          destructions
+        }
+        ... on GainMagicOnDestructionEffect {
+          destructions
+          amount
         }
       }
     }

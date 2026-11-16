@@ -14,8 +14,10 @@ import {
 } from "@/lib/creature-element";
 import {
   EFFECT_CONSTRAINT_LABELS,
+  EFFECT_DESTRUCTION_LABELS,
   EFFECT_FIELDS,
   EFFECT_KINDS,
+  isEffectDestruction,
   isEffectKind,
 } from "@/lib/effect";
 import { isItemCategory } from "@/lib/item-category";
@@ -25,6 +27,7 @@ import {
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
   costErrorMessage,
+  DESTRUCTIONS_INVALID,
   EFFECTS_CONFLICTED,
   effectFieldErrorMessage,
   elementsErrorMessage,
@@ -630,7 +633,10 @@ function readEffects(form: FormData):
   | {
       kinds: EffectKind[];
       effects: EffectInput[];
-      kept: Pick<EffectsState, "kinds" | "fields" | "opponentElements">;
+      kept: Pick<
+        EffectsState,
+        "kinds" | "fields" | "opponentElements" | "destructions"
+      >;
       fieldErrors?: Record<string, string>;
     }
   | undefined {
@@ -641,6 +647,7 @@ function readEffects(form: FormData):
   }
   const fields: Record<string, string> = {};
   const opponentElements: Partial<Record<EffectKind, string[]>> = {};
+  const destructions: Partial<Record<EffectKind, string[]>> = {};
   const fieldErrors: Record<string, string> = {};
   const effects: EffectInput[] = [];
   for (const kind of EFFECT_KINDS) {
@@ -652,6 +659,9 @@ function readEffects(form: FormData):
       opponentElements[kind] = form
         .getAll(`opponentElements.${kind}`)
         .map(String);
+    }
+    if (EFFECT_DESTRUCTION_LABELS[kind] !== undefined) {
+      destructions[kind] = form.getAll(`destructions.${kind}`).map(String);
     }
   }
   for (const kind of kinds) {
@@ -676,12 +686,21 @@ function readEffects(form: FormData):
           ? []
           : [{ kind: "OPPONENT_CREATURE_ELEMENT", elements }];
     }
+    if (EFFECT_DESTRUCTION_LABELS[kind] !== undefined) {
+      const entered = destructions[kind] ?? [];
+      const selected = entered.filter(isEffectDestruction);
+      if (selected.length !== entered.length) {
+        return undefined;
+      }
+      // 1 つ以上かは core が確かめる（選ばなければ core の誤りを欄に出す）
+      effect.destructions = selected;
+    }
     effects.push(effect);
   }
   return {
     kinds,
     effects,
-    kept: { kinds: values, fields, opponentElements },
+    kept: { kinds: values, fields, opponentElements, destructions },
     fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
   };
 }
@@ -706,6 +725,10 @@ function effectsErrors(
     }
     if (part === "constraints" && subpart === "elements") {
       fieldErrors[`opponentElements.${kind}`] = OPPONENT_ELEMENTS_INVALID;
+      continue;
+    }
+    if (part === "destructions") {
+      fieldErrors[`destructions.${kind}`] = DESTRUCTIONS_INVALID;
       continue;
     }
     const field = EFFECT_FIELDS[kind]?.find((entry) => entry.field === part);

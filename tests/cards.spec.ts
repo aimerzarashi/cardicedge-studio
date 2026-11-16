@@ -418,6 +418,20 @@ test("準備中のクリーチャーの詳細で属性・AT と HP・制限・�
   await expect(immunity.getByLabel("無", { exact: true })).toHaveCount(1);
   await immunity.getByLabel("地", { exact: true }).check();
   await immunity.getByLabel("火", { exact: true }).check();
+
+  // 破壊されたときの効果は、発動する破壊を 1 つ以上選ぶ（選ばなければ文言が出て、入力が残る。core#182）
+  await page.getByLabel("破壊されたら魔力を得る", { exact: true }).check();
+  await page.getByLabel("受け取る魔力の額").fill("200");
+  await page.getByRole("button", { name: "効果を変える" }).click();
+  await expect(
+    page.getByText("発動する破壊を 1 つ以上選んでください"),
+  ).toBeVisible();
+  await expect(page.getByLabel("受け取る魔力の額")).toHaveValue("200");
+  const destructions = page.getByRole("group", {
+    name: /魔力を得る破壊/,
+  });
+  await destructions.getByLabel("守るとき", { exact: true }).check();
+  await destructions.getByLabel("ボード", { exact: true }).check();
   await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(page.getByText("保存しました").nth(4)).toBeVisible();
   await expect(
@@ -431,7 +445,7 @@ test("準備中のクリーチャーの詳細で属性・AT と HP・制限・�
   await page.getByRole("link", { name }).click();
   await expect(
     page.getByText(
-      "HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない",
+      "HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない・破壊されたら魔力 +200（守るとき・ボード）",
     ),
   ).toBeVisible();
 });

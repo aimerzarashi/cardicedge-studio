@@ -343,6 +343,8 @@ export const EFFECTS_CONFLICTED = "先制と後手は一緒に選べません";
 export const ITEM_EFFECT_NOT_ALLOWED =
   "今の分類では持てない効果があります。先に効果を外してから分類を変えてください";
 export const OPPONENT_ELEMENTS_INVALID = "相手の属性が正しくありません";
+// 発動する破壊の誤り（空・重複。core が effects.N.destructions で返す）
+export const DESTRUCTIONS_INVALID = "発動する破壊を 1 つ以上選んでください";
 
 // 効果の値の欄の入力の誤り（欄の名前は lib/effect.ts の EFFECT_FIELDS、下限は core が返した値を使う。最大の下限は最小）
 export function effectFieldErrorMessage(
