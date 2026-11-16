@@ -14,6 +14,7 @@ import {
 } from "@/lib/creature-element";
 import {
   EFFECT_CONSTRAINT_LABELS,
+  EFFECT_CREATURE_ELEMENTS_LABELS,
   EFFECT_DESTRUCTION_LABELS,
   EFFECT_FIELDS,
   EFFECT_KINDS,
@@ -26,6 +27,7 @@ import { type Notice, target } from "../../deck-form";
 import {
   CARD_NOT_DRAFT,
   CORE_UNAVAILABLE,
+  CREATURE_ELEMENTS_INVALID,
   costErrorMessage,
   DESTRUCTIONS_INVALID,
   EFFECTS_CONFLICTED,
@@ -635,7 +637,11 @@ function readEffects(form: FormData):
       effects: EffectInput[];
       kept: Pick<
         EffectsState,
-        "kinds" | "fields" | "opponentElements" | "destructions"
+        | "kinds"
+        | "fields"
+        | "opponentElements"
+        | "destructions"
+        | "creatureElements"
       >;
       fieldErrors?: Record<string, string>;
     }
@@ -648,6 +654,7 @@ function readEffects(form: FormData):
   const fields: Record<string, string> = {};
   const opponentElements: Partial<Record<EffectKind, string[]>> = {};
   const destructions: Partial<Record<EffectKind, string[]>> = {};
+  const creatureElements: Partial<Record<EffectKind, string[]>> = {};
   const fieldErrors: Record<string, string> = {};
   const effects: EffectInput[] = [];
   for (const kind of EFFECT_KINDS) {
@@ -662,6 +669,11 @@ function readEffects(form: FormData):
     }
     if (EFFECT_DESTRUCTION_LABELS[kind] !== undefined) {
       destructions[kind] = form.getAll(`destructions.${kind}`).map(String);
+    }
+    if (EFFECT_CREATURE_ELEMENTS_LABELS[kind] !== undefined) {
+      creatureElements[kind] = form
+        .getAll(`creatureElements.${kind}`)
+        .map(String);
     }
   }
   for (const kind of kinds) {
@@ -695,17 +707,32 @@ function readEffects(form: FormData):
       // 1 つ以上かは core が確かめる（選ばなければ core の誤りを欄に出す）
       effect.destructions = selected;
     }
+    if (EFFECT_CREATURE_ELEMENTS_LABELS[kind] !== undefined) {
+      const entered = creatureElements[kind] ?? [];
+      const elements = entered.filter(isCreatureElement);
+      if (elements.length !== entered.length) {
+        return undefined;
+      }
+      // 1 つ以上かは core が確かめる（選ばなければ core の誤りを欄に出す）
+      effect.elements = elements;
+    }
     effects.push(effect);
   }
   return {
     kinds,
     effects,
-    kept: { kinds: values, fields, opponentElements, destructions },
+    kept: {
+      kinds: values,
+      fields,
+      opponentElements,
+      destructions,
+      creatureElements,
+    },
     fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
   };
 }
 
-// core が返した効果の誤り（effects.N.value・minimum・maximum・percent、effects.N.constraints.M.elements、並び全体の effects）を、
+// core が返した効果の誤り（effects.N.value・minimum・maximum・percent、effects.N.constraints.M.elements、援護の effects.N.elements、並び全体の effects）を、
 // 送った N 番目の種類の欄に読み替えて文言にする。並び全体の誤りは、画面では同じ種類を重ねられないので、先制と後手を一緒に選んだ誤り（core#158）
 function effectsErrors(
   errors: readonly { __typename: string; field: string; min?: number }[],
@@ -729,6 +756,10 @@ function effectsErrors(
     }
     if (part === "destructions") {
       fieldErrors[`destructions.${kind}`] = DESTRUCTIONS_INVALID;
+      continue;
+    }
+    if (part === "elements") {
+      fieldErrors[`creatureElements.${kind}`] = CREATURE_ELEMENTS_INVALID;
       continue;
     }
     const field = EFFECT_FIELDS[kind]?.find((entry) => entry.field === part);

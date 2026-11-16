@@ -3,7 +3,7 @@ import type {
   EffectDestruction,
   EffectKind,
 } from "@/graphql/graphql";
-import { elementsLabel } from "@/lib/creature-element";
+import { CREATURE_ELEMENTS, elementsLabel } from "@/lib/creature-element";
 import { signedModifier } from "@/lib/item-category";
 
 // 効果はアイテムとクリーチャーで共有する（core の型も共有している。core#178）。
@@ -24,6 +24,7 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   FORBID_MOVEMENT: "移動できない",
   RETURN_TO_HAND_ON_DESTRUCTION: "破壊されたら手札に戻る",
   GAIN_MAGIC_ON_DESTRUCTION: "破壊されたら魔力を得る",
+  USE_CREATURE_AS_ITEM: "援護（手札のクリーチャーをアイテムとして使える）",
 };
 
 export const EFFECT_KINDS = Object.keys(EFFECT_LABELS) as EffectKind[];
@@ -86,6 +87,14 @@ export const EFFECT_DESTRUCTION_LABELS: Partial<Record<EffectKind, string>> = {
   GAIN_MAGIC_ON_DESTRUCTION: "魔力を得る破壊（1 つ以上）",
 };
 
+// アイテムとして使えるクリーチャーの属性を選ぶ種類と、欄の名前（1 つ以上。参考サイトの「援護無地」は無と地を使えるという意味で、
+// 指定の無い援護はすべての属性を選ぶ。2026-11-16 オーナー。core#114）。新しく選んだときは、指定の無い援護として全部を選んだ状態にする
+export const EFFECT_CREATURE_ELEMENTS_LABELS: Partial<
+  Record<EffectKind, string>
+> = {
+  USE_CREATURE_AS_ITEM: "援護に使えるクリーチャーの属性（1 つ以上）",
+};
+
 // 相手のクリーチャーの属性の制約を持てる種類と、欄の名前（選ばなければ制約なしで、いつも発動する）
 export const EFFECT_CONSTRAINT_LABELS: Partial<Record<EffectKind, string>> = {
   ATTACK_MULTIPLIER: "強打する相手の属性（選ばなければいつも）",
@@ -102,6 +111,8 @@ export type EffectView = {
   opponentElements?: CreatureElement[];
   destructions?: EffectDestruction[];
   amount?: number;
+  // 援護に使えるクリーチャーの属性
+  creatureElements?: CreatureElement[];
 };
 
 // 上書きの範囲（固定は「30」、範囲は「10〜70」）
@@ -116,6 +127,14 @@ function opponentLabel(label: string, effect: EffectView): string {
   return elements.length === 0
     ? label
     : `${label}（相手が${elementsLabel(elements)}）`;
+}
+
+// 援護は、すべての属性なら「援護」、絞ったものは「援護（地無）」（参考サイトの「援護無地」と同じ属性を、core の並びで出す）
+function creatureAsItemLabel(effect: EffectView): string {
+  const elements = effect.creatureElements ?? [];
+  return elements.length === CREATURE_ELEMENTS.length
+    ? "援護"
+    : `援護（${elementsLabel(elements)}）`;
 }
 
 function destructionsLabel(effect: EffectView): string {
@@ -155,6 +174,8 @@ export function effectLabel(effect: EffectView): string {
       return `破壊されたら手札に戻る（${destructionsLabel(effect)}）`;
     case "GAIN_MAGIC_ON_DESTRUCTION":
       return `破壊されたら魔力 +${effect.amount ?? 0}（${destructionsLabel(effect)}）`;
+    case "USE_CREATURE_AS_ITEM":
+      return creatureAsItemLabel(effect);
   }
 }
 
@@ -174,6 +195,7 @@ export function effectView(effect: {
   constraints?: readonly { elements?: CreatureElement[] }[];
   destructions?: readonly EffectDestruction[];
   amount?: number;
+  elements?: readonly CreatureElement[];
 }): EffectView {
   return {
     kind: effect.kind,
@@ -186,5 +208,6 @@ export function effectView(effect: {
     ),
     destructions: effect.destructions ? [...effect.destructions] : undefined,
     amount: effect.amount,
+    creatureElements: effect.elements ? [...effect.elements] : undefined,
   };
 }

@@ -86,6 +86,9 @@ const cardsQuery = graphql(`
                 destructions
                 amount
               }
+              ... on UseCreatureAsItemEffect {
+                elements
+              }
             }
             }
             ... on Item {
@@ -133,6 +136,9 @@ const cardsQuery = graphql(`
               ... on GainMagicOnDestructionEffect {
                 destructions
                 amount
+              }
+              ... on UseCreatureAsItemEffect {
+                elements
               }
             }
             }

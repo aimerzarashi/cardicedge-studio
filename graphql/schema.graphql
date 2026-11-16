@@ -1599,7 +1599,7 @@ enum EffectDestruction {
 	BOARD
 }
 """
-効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount）
+効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount、手札のクリーチャーをアイテムとして使えるは elements）
 """
 input EffectInput {
 	"""
@@ -1634,6 +1634,10 @@ input EffectInput {
 	受け取る魔力の額
 	"""
 	amount: Int
+	"""
+	アイテムとして使えるクリーチャーの属性（1 つ以上・重複なし）
+	"""
+	elements: [CreatureElement!]
 }
 """
 効果の種類
@@ -1695,6 +1699,10 @@ enum EffectKind {
 	破壊されたら魔力を得る（選んだ破壊のとき、持ち主が額の魔力を受け取る）
 	"""
 	GAIN_MAGIC_ON_DESTRUCTION
+	"""
+	手札のクリーチャーをアイテムとして使える（戦闘でアイテムの代わりに、属性が合う手札のクリーチャーを 1 枚出し、そのカードの AT・HP を足す。画面のラベルは援護）
+	"""
+	USE_CREATURE_AS_ITEM
 }
 """
 一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
@@ -4923,6 +4931,19 @@ type UnreachableTilesProblem implements BoardPublishProblem {
 	行けないマスの座標（行 → 列の順）
 	"""
 	positions: [BoardPosition!]!
+}
+"""
+手札のクリーチャーをアイテムとして使える
+"""
+type UseCreatureAsItemEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	アイテムとして使えるクリーチャーの属性（属性のどれかが合えば使える。火・地・水・風・無の順。1 つ以上。指定の無い援護はすべての属性）
+	"""
+	elements: [CreatureElement!]!
 }
 """
 入力の誤り（操作は行われていない）
