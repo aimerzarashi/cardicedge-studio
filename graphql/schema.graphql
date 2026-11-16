@@ -195,6 +195,10 @@ type BoardDefaultRules {
 	土地の基本の値（1 以上。レベルと連鎖の倍率を掛ける元。登録した直後は 100）
 	"""
 	baseLandValue: Int!
+	"""
+	周回のボーナスに足す、自分の領地 1 つあたりの魔力（0 以上。拠点に戻ったときの自分の領地の数だけ足す。登録した直後は 20）
+	"""
+	lapBonusPerTerritory: Int!
 }
 """
 ボードの一覧の絞り込み
@@ -758,6 +762,10 @@ input ChangeBoardDefaultRulesInput {
 	土地の基本の値（1 以上）
 	"""
 	baseLandValue: Int!
+	"""
+	周回のボーナスに足す、自分の領地 1 つあたりの魔力（0 以上。拠点に戻ったときの自分の領地の数だけ足す）
+	"""
+	lapBonusPerTerritory: Int!
 }
 """
 ボードの既定のルールの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）

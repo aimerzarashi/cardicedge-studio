@@ -71,6 +71,7 @@ const boardsQuery = graphql(`
               diceMin
               diceMax
               baseLandValue
+              lapBonusPerTerritory
             }
             publishProblems {
               __typename

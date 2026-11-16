@@ -140,6 +140,8 @@ export type ChangeBoardDefaultRulesInput = {
   id: string;
   /** 周回のボーナス（0 以上） */
   lapBonus: number;
+  /** 周回のボーナスに足す、自分の領地 1 つあたりの魔力（0 以上。拠点に戻ったときの自分の領地の数だけ足す） */
+  lapBonusPerTerritory: number;
   /** 画面が見ていたボードの revision */
   revision: number;
   /** ラウンドの上限（1 以上） */
@@ -1017,7 +1019,7 @@ export type BoardQuery = { board:
         | { __typename: 'SanctuaryTile', x: number, y: number }
         | { __typename: 'ShrineTile', x: number, y: number }
         | { __typename: 'WarpTile', x: number, y: number }
-      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number, baseLandValue: number }, publishProblems: Array<
+      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number, baseLandValue: number, lapBonusPerTerritory: number }, publishProblems: Array<
         | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'NoCheckpointProblem' }
         | { __typename: 'UnpairedTilesProblem', positions: Array<{ x: number, y: number }> }
@@ -1124,7 +1126,7 @@ export type BoardsQueryVariables = Exact<{
 
 
 export type BoardsQuery = { boards:
-    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number, baseLandValue: number }, publishProblems: Array<
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number, baseLandValue: number, lapBonusPerTerritory: number }, publishProblems: Array<
             | { __typename: 'BaseCountProblem' }
             | { __typename: 'NoCheckpointProblem' }
             | { __typename: 'UnpairedTilesProblem' }
@@ -2817,6 +2819,7 @@ export const BoardDocument = new TypedDocumentString(`
         diceMin
         diceMax
         baseLandValue
+        lapBonusPerTerritory
       }
       publishProblems {
         __typename
@@ -2997,6 +3000,7 @@ export const BoardsDocument = new TypedDocumentString(`
             diceMin
             diceMax
             baseLandValue
+            lapBonusPerTerritory
           }
           publishProblems {
             __typename
