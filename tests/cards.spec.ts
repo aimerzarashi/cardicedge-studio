@@ -422,10 +422,27 @@ test("準備中のクリーチャーの詳細で属性・AT と HP・制限・�
   // 破壊されたときの効果は、発動する破壊を 1 つ以上選ぶ（選ばなければ文言が出て、入力が残る。core#182）
   await page.getByLabel("破壊されたら魔力を得る", { exact: true }).check();
   await page.getByLabel("受け取る魔力の額").fill("200");
+  // 援護は、新しく選ぶと指定の無い援護としてすべての属性が選ばれている。すべて外すと文言が出る（core#114）
+  await page
+    .getByLabel("援護（手札のクリーチャーをアイテムとして使える）", {
+      exact: true,
+    })
+    .check();
+  const support = page.getByRole("group", { name: /援護に使えるクリーチャー/ });
+  for (const element of ["火", "地", "水", "風", "無"]) {
+    await expect(support.getByLabel(element, { exact: true })).toBeChecked();
+    await support.getByLabel(element, { exact: true }).uncheck();
+  }
   await page.getByRole("button", { name: "効果を変える" }).click();
   await expect(
     page.getByText("発動する破壊を 1 つ以上選んでください"),
   ).toBeVisible();
+  await expect(
+    page.getByText("援護に使えるクリーチャーの属性を 1 つ以上選んでください"),
+  ).toBeVisible();
+  // 参考サイトの「援護無地」は、無と地のクリーチャーを使える
+  await support.getByLabel("地", { exact: true }).check();
+  await support.getByLabel("無", { exact: true }).check();
   await expect(page.getByLabel("受け取る魔力の額")).toHaveValue("200");
   const destructions = page.getByRole("group", {
     name: /魔力を得る破壊/,
@@ -448,13 +465,13 @@ test("準備中のクリーチャーの詳細で属性・AT と HP・制限・�
       "水",
       "40",
       "50",
-      "アイテム制限 防具・巻物／配置制限 地風／HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない・破壊されたら魔力 +200（守るとき・ボード）",
+      "アイテム制限 防具・巻物／配置制限 地風／HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない・破壊されたら魔力 +200（守るとき・ボード）・援護（地無）",
     ],
   );
   await page.getByRole("link", { name }).click();
   await expect(
     page.getByText(
-      "HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない・破壊されたら魔力 +200（守るとき・ボード）",
+      "HP -20・HP を 10〜70 に上書き・先制・攻撃無効（相手が火地）・通行料の倍率 150%・侵略できない・移動できない・破壊されたら魔力 +200（守るとき・ボード）・援護（地無）",
     ),
   ).toBeVisible();
 });

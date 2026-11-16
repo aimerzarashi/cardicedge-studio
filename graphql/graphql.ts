@@ -389,7 +389,7 @@ export type EffectDestruction =
   /** 戦闘で、侵略したクリーチャーとして破壊された */
   | 'INVADING';
 
-/** 効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount） */
+/** 効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount、手札のクリーチャーをアイテムとして使えるは elements） */
 export type EffectInput = {
   /** 受け取る魔力の額 */
   amount?: number | null | undefined;
@@ -397,6 +397,8 @@ export type EffectInput = {
   constraints?: Array<EffectConstraintInput> | null | undefined;
   /** 発動する破壊（1 つ以上・重複なし） */
   destructions?: Array<EffectDestruction> | null | undefined;
+  /** アイテムとして使えるクリーチャーの属性（1 つ以上・重複なし） */
+  elements?: Array<CreatureElement> | null | undefined;
   /** 効果の種類 */
   kind: EffectKind;
   /** 上書きした後の値の最大 */
@@ -438,7 +440,9 @@ export type EffectKind =
   /** 後に攻撃する（戦闘で、後に攻撃する効果の無い相手より後に攻撃する。先に攻撃すると一緒には持てない） */
   | 'STRIKE_LAST'
   /** 通行料の倍率（いる領地の通行料を払うときに倍率を掛ける） */
-  | 'TOLL_MULTIPLIER';
+  | 'TOLL_MULTIPLIER'
+  /** 手札のクリーチャーをアイテムとして使える（戦闘でアイテムの代わりに、属性が合う手札のクリーチャーを 1 枚出し、そのカードの AT・HP を足す。画面のラベルは援護） */
+  | 'USE_CREATURE_AS_ITEM';
 
 /** サイコロの目を固定する効果の入力 */
 export type FixedDiceSpellEffectInput = {
@@ -1395,6 +1399,7 @@ export type CardQuery = { card:
         | { __typename: 'StrikeFirstEffect', kind: EffectKind }
         | { __typename: 'StrikeLastEffect', kind: EffectKind }
         | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+        | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
       > }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, allowedEffectKinds: Array<EffectKind>, effects: Array<
@@ -1412,6 +1417,7 @@ export type CardQuery = { card:
         | { __typename: 'StrikeFirstEffect', kind: EffectKind }
         | { __typename: 'StrikeLastEffect', kind: EffectKind }
         | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+        | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
       > }
     | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
         | { __typename: 'DamageSpellEffect', amount: number }
@@ -1528,6 +1534,7 @@ export type CardsQuery = { cards:
               | { __typename: 'StrikeFirstEffect', kind: EffectKind }
               | { __typename: 'StrikeLastEffect', kind: EffectKind }
               | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+              | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
             > }
           | { __typename: 'Item', category: ItemCategory, id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effects: Array<
               | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
@@ -1544,6 +1551,7 @@ export type CardsQuery = { cards:
               | { __typename: 'StrikeFirstEffect', kind: EffectKind }
               | { __typename: 'StrikeLastEffect', kind: EffectKind }
               | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+              | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
             > }
           | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
               | { __typename: 'DamageSpellEffect', amount: number }
@@ -3279,6 +3287,9 @@ export const CardDocument = new TypedDocumentString(`
           destructions
           amount
         }
+        ... on UseCreatureAsItemEffect {
+          elements
+        }
       }
     }
     ... on Item {
@@ -3327,6 +3338,9 @@ export const CardDocument = new TypedDocumentString(`
         ... on GainMagicOnDestructionEffect {
           destructions
           amount
+        }
+        ... on UseCreatureAsItemEffect {
+          elements
         }
       }
     }
@@ -3490,6 +3504,9 @@ export const CardsDocument = new TypedDocumentString(`
                 destructions
                 amount
               }
+              ... on UseCreatureAsItemEffect {
+                elements
+              }
             }
           }
           ... on Item {
@@ -3537,6 +3554,9 @@ export const CardsDocument = new TypedDocumentString(`
               ... on GainMagicOnDestructionEffect {
                 destructions
                 amount
+              }
+              ... on UseCreatureAsItemEffect {
+                elements
               }
             }
           }

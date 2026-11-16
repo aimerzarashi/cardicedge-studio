@@ -18,6 +18,7 @@ import {
   DESTRUCTION_LABELS,
   DESTRUCTIONS,
   EFFECT_CONSTRAINT_LABELS,
+  EFFECT_CREATURE_ELEMENTS_LABELS,
   EFFECT_DESTRUCTION_LABELS,
   EFFECT_FIELDS,
   EFFECT_LABELS,
@@ -70,6 +71,7 @@ export type EffectsState = Notice &
     fields?: Record<string, string>;
     opponentElements?: Partial<Record<EffectKind, string[]>>;
     destructions?: Partial<Record<EffectKind, string[]>>;
+    creatureElements?: Partial<Record<EffectKind, string[]>>;
     fieldErrors?: Record<string, string>;
     effectsError?: string;
   };
@@ -511,6 +513,11 @@ export function EffectsForm({
     kept.opponentElements?.[kind] ?? current(kind)?.opponentElements ?? [];
   const destructions = (kind: EffectKind): string[] =>
     kept.destructions?.[kind] ?? current(kind)?.destructions ?? [];
+  // 持っていない援護は、指定の無い援護（すべての属性）を選んだ状態で出す
+  const creatureElements = (kind: EffectKind): string[] =>
+    kept.creatureElements?.[kind] ??
+    current(kind)?.creatureElements ??
+    CREATURE_ELEMENTS;
   const errors = Object.entries(kept.fieldErrors ?? {});
 
   return (
@@ -606,6 +613,34 @@ export function EffectsForm({
                       defaultChecked={destructions(kind).includes(value)}
                     />
                     {DESTRUCTION_LABELS[value]}
+                  </label>
+                ))}
+              </fieldset>
+            );
+          })}
+          {allowedKinds.map((kind) => {
+            const legend = EFFECT_CREATURE_ELEMENTS_LABELS[kind];
+            if (legend === undefined) {
+              return null;
+            }
+            const name = `creatureElements.${kind}`;
+            const error = kept.fieldErrors?.[name];
+            return (
+              <fieldset
+                key={name}
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? `${name}-error` : undefined}
+              >
+                <legend>{legend}</legend>
+                {CREATURE_ELEMENTS.map((value) => (
+                  <label key={value}>
+                    <input
+                      type="checkbox"
+                      name={name}
+                      value={value}
+                      defaultChecked={creatureElements(kind).includes(value)}
+                    />
+                    {CREATURE_ELEMENT_LABELS[value]}
                   </label>
                 ))}
               </fieldset>

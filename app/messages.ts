@@ -349,6 +349,9 @@ export const ITEM_EFFECT_NOT_ALLOWED =
 export const OPPONENT_ELEMENTS_INVALID = "相手の属性が正しくありません";
 // 発動する破壊の誤り（空・重複。core が effects.N.destructions で返す）
 export const DESTRUCTIONS_INVALID = "発動する破壊を 1 つ以上選んでください";
+// 援護に使えるクリーチャーの属性の誤り（空・重複。core が effects.N.elements で返す）
+export const CREATURE_ELEMENTS_INVALID =
+  "援護に使えるクリーチャーの属性を 1 つ以上選んでください";
 
 // 効果の値の欄の入力の誤り（欄の名前は lib/effect.ts の EFFECT_FIELDS、下限は core が返した値を使う。最大の下限は最小）
 export function effectFieldErrorMessage(
