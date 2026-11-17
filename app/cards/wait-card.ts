@@ -6,21 +6,18 @@ import { callCore } from "@/lib/core";
 const TIMEOUT_MS = 3_000;
 const INTERVAL_MS = 50;
 
-// app/preset-decks/wait-preset-deck.ts と同じ考え方。操作の結果の revision が一覧に届くまで読み直す
+// app/preset-decks/wait-preset-deck.ts と同じ考え方。操作の結果の revision が詳細（一覧と同じ read model）に届くまで読み直す
 export async function waitCard(
   id: string,
-  name: string,
   revision: number,
 ): Promise<"reached" | "timeout"> {
   const deadline = Date.now() + TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const result = await callCore(cardRevisionQuery, { name });
+    const result = await callCore(cardRevisionQuery, { id });
     if (
       result.ok &&
-      result.data.cards.__typename === "CardConnection" &&
-      result.data.cards.edges.some(
-        ({ node }) => node.id === id && node.revision >= revision,
-      )
+      "revision" in result.data.card &&
+      result.data.card.revision >= revision
     ) {
       return "reached";
     }

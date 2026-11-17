@@ -7,11 +7,16 @@ import type {
   CardsQueryVariables,
   CardType,
 } from "@/graphql/graphql";
+import { creatureSpecSummary, itemSpecSummary } from "@/lib/card-spec";
 import { CARD_TYPE_LABELS, CARD_TYPES, isCardType } from "@/lib/card-type";
 import { type CoreResult, callCore } from "@/lib/core";
+import { elementsLabel } from "@/lib/creature-element";
+import { effectView } from "@/lib/effect";
 import { dateTimeFormat } from "@/lib/format";
+import { RARITY_LABELS } from "@/lib/rarity";
 import { all, first } from "@/lib/search-params";
 import { isStatus, STATUS_LABELS, STATUSES } from "@/lib/status";
+import { spellEffectLabel } from "../messages";
 import { publishCard, retireCard } from "./actions";
 import { CardStatusButton } from "./card-status-button";
 
@@ -26,9 +31,139 @@ const cardsQuery = graphql(`
             id
             name
             status
+            cost
+            rarity
             revision
             registeredAt
             updatedAt
+            ... on Creature {
+              elements
+              attack
+              hitPoints
+              itemRestrictions
+              placementRestrictions
+              effects {
+              __typename
+              kind
+              ... on AttackModifierEffect {
+                value
+              }
+              ... on HitPointsModifierEffect {
+                value
+              }
+              ... on AttackOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on HitPointsOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on AttackMultiplierEffect {
+                percent
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on NullifyReceivedDamageEffect {
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on TollMultiplierEffect {
+                percent
+              }
+              ... on ReturnToHandOnDestructionEffect {
+                destructions
+              }
+              ... on GainMagicOnDestructionEffect {
+                destructions
+                amount
+              }
+              ... on UseCreatureAsItemEffect {
+                elements
+              }
+            }
+            }
+            ... on Item {
+              category
+              effects {
+              __typename
+              kind
+              ... on AttackModifierEffect {
+                value
+              }
+              ... on HitPointsModifierEffect {
+                value
+              }
+              ... on AttackOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on HitPointsOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on AttackMultiplierEffect {
+                percent
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on NullifyReceivedDamageEffect {
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on TollMultiplierEffect {
+                percent
+              }
+              ... on ReturnToHandOnDestructionEffect {
+                destructions
+              }
+              ... on GainMagicOnDestructionEffect {
+                destructions
+                amount
+              }
+              ... on UseCreatureAsItemEffect {
+                elements
+              }
+            }
+            }
+            ... on Spell {
+              effect {
+                __typename
+                ... on DrawCardsSpellEffect {
+                  count
+                }
+                ... on GainMagicSpellEffect {
+                  perLap
+                }
+                ... on MultipleDiceSpellEffect {
+                  count
+                  turns
+                }
+                ... on FixedDiceSpellEffect {
+                  value
+                  turns
+                }
+                ... on DamageSpellEffect {
+                  amount
+                }
+              }
+            }
           }
         }
         pageInfo {
@@ -182,6 +317,12 @@ function CardsResult({
                   <th>カード名</th>
                   <th>種類</th>
                   <th>状態</th>
+                  <th>コスト</th>
+                  <th>希少度</th>
+                  <th>属性</th>
+                  <th>AT</th>
+                  <th>HP</th>
+                  <th>性能</th>
                   <th>登録日時</th>
                   <th>更新日時</th>
                   <th>操作</th>
@@ -190,9 +331,40 @@ function CardsResult({
               <tbody>
                 {cards.edges.map(({ node }) => (
                   <tr key={node.id}>
-                    <td>{node.name}</td>
+                    <td>
+                      <Link href={`/cards/${node.id}`}>{node.name}</Link>
+                    </td>
                     <td>{CARD_TYPE_LABELS[node.__typename]}</td>
                     <td>{STATUS_LABELS[node.status]}</td>
+                    <td>{node.cost}</td>
+                    <td>{RARITY_LABELS[node.rarity]}</td>
+                    {node.__typename === "Creature" ? (
+                      <>
+                        <td>{elementsLabel(node.elements)}</td>
+                        <td>{node.attack}</td>
+                        <td>{node.hitPoints}</td>
+                        <td>
+                          {creatureSpecSummary({
+                            ...node,
+                            effects: node.effects.map(effectView),
+                          })}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>
+                          {node.__typename === "Item"
+                            ? itemSpecSummary({
+                                ...node,
+                                effects: node.effects.map(effectView),
+                              })
+                            : spellEffectLabel(node.effect)}
+                        </td>
+                      </>
+                    )}
                     <td>
                       {dateTimeFormat.format(new Date(node.registeredAt))}
                     </td>

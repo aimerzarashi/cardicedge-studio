@@ -44,7 +44,7 @@ export type BoardStatus =
  * 土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
  * 効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
  */
-export type BoardTileAttribute =
+export type BoardTileElement =
   /** 地（地属性） */
   | 'EARTH'
   /** 火（火属性） */
@@ -97,6 +97,17 @@ export type CardFilter = {
   types?: Array<CardType> | null | undefined;
 };
 
+/** カードの希少度 */
+export type CardRarity =
+  /** 画面では E */
+  | 'EXTRA'
+  /** 画面では N */
+  | 'NORMAL'
+  /** 画面では R */
+  | 'RARE'
+  /** 画面では S */
+  | 'STRANGE';
+
 /**
  * カードの状態。準備中は自由に変えられ、デッキに入れられず、game に写さない。公開中はデッキに入れられ、game に写す。
  * 使用不可は新しくデッキに入れられないが、プレイヤーが持っているので game には写す
@@ -115,8 +126,10 @@ export type CardType =
   | 'ITEM'
   | 'SPELL';
 
-/** ボードの既定のルールを変える入力（変えた後の 7 つの値の全体） */
+/** ボードの既定のルールを変える入力（変えた後の 8 つの値の全体） */
 export type ChangeBoardDefaultRulesInput = {
+  /** 土地の基本の値（1 以上） */
+  baseLandValue: number;
   /** チェックポイントのボーナス（0 以上） */
   checkpointBonus: number;
   /** サイコロの目の最大（最小以上でなければ入力の誤り） */
@@ -127,6 +140,8 @@ export type ChangeBoardDefaultRulesInput = {
   id: string;
   /** 周回のボーナス（0 以上） */
   lapBonus: number;
+  /** 周回のボーナスに足す、自分の領地 1 つあたりの魔力（0 以上。拠点に戻ったときの自分の領地の数だけ足す） */
+  lapBonusPerTerritory: number;
   /** 画面が見ていたボードの revision */
   revision: number;
   /** ラウンドの上限（1 以上） */
@@ -155,6 +170,108 @@ export type ChangeBoardLayoutInput = {
   width: number;
 };
 
+/** カードのコストを変える入力 */
+export type ChangeCardCostInput = {
+  /** 変えた後のコスト（0 以上。上限は無い） */
+  cost: number;
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの revision */
+  revision: number;
+};
+
+/** カードの希少度を変える入力 */
+export type ChangeCardRarityInput = {
+  /** カード（Creature・Item・Spell）の公開用の ID */
+  id: string;
+  /** 変えた後の希少度 */
+  rarity: CardRarity;
+  /** 画面が見ていたカードの revision */
+  revision: number;
+};
+
+/** クリーチャーの効果の並びを変える入力 */
+export type ChangeCreatureEffectsInput = {
+  /** 変えた後の効果の並び（全体。並びの順に当てる。同じ種類を重ねてよい。クリーチャーが持てない種類は FieldInvalidFormat（effects.N）、先に攻撃すると後に攻撃するを一緒に持つのは FieldInvalidFormat（effects）。無しは空） */
+  effects: Array<EffectInput>;
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
+/** クリーチャーの属性を変える入力 */
+export type ChangeCreatureElementsInput = {
+  /** 変えた後の属性（1〜4 つ。重複は入力の誤り。無は単独。並びは問わず、保存は火・地・水・風の順にそろえる） */
+  elements: Array<CreatureElement>;
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
+/** クリーチャーのアイテム制限を変える入力 */
+export type ChangeCreatureItemRestrictionsInput = {
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 変えた後のアイテム制限（持てないアイテムの分類。重複なし。無しは空） */
+  itemRestrictions: Array<ItemCategory>;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
+/** クリーチャーの配置制限を変える入力 */
+export type ChangeCreaturePlacementRestrictionsInput = {
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 変えた後の配置制限（置けない土地の属性。火・地・水・風で重複なし。無しは空） */
+  placementRestrictions: Array<BoardTileElement>;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
+/** クリーチャーの攻撃力と体力を変える入力 */
+export type ChangeCreatureStatsInput = {
+  /** 変えた後の攻撃力（AT。0 以上。上限は無い） */
+  attack: number;
+  /** 変えた後の体力（HP。1 以上。上限は無い） */
+  hitPoints: number;
+  /** クリーチャーの公開用の ID */
+  id: string;
+  /** 画面が見ていたクリーチャーの revision */
+  revision: number;
+};
+
+/** アイテムの分類を変える入力 */
+export type ChangeItemCategoryInput = {
+  /** 変えた後の分類 */
+  category: ItemCategory;
+  /** 変えるアイテムの公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの更新の番号 */
+  revision: number;
+};
+
+/** アイテムの効果の並びを変える入力 */
+export type ChangeItemEffectsInput = {
+  /** 変えた後の効果の並び（全体。並びの順に当てる） */
+  effects: Array<EffectInput>;
+  /** 変えるアイテムの公開用の ID */
+  id: string;
+  /** 画面が見ていたカードの更新の番号 */
+  revision: number;
+};
+
+/** スペルの効果を変える入力 */
+export type ChangeSpellEffectInput = {
+  /** 変えた後の効果（null なら効果なし） */
+  effect?: SpellEffectInput | null | undefined;
+  /** スペルの公開用の ID */
+  id: string;
+  /** 画面が見ていたスペルの revision */
+  revision: number;
+};
+
 /** ボードのレイアウトを保存せずに判定する入力（変えた後の全体。changeBoardLayout の入力から、ボードの id と revision を除いたもの） */
 export type CheckBoardLayoutInput = {
   /** つながりの全体（両端にマスが置いてあり、隣どうしであること。同じつながりを 2 回入れると入力の誤り） */
@@ -167,6 +284,25 @@ export type CheckBoardLayoutInput = {
   tiles: Array<BoardTileInput>;
   /** 幅（studioRules.board の範囲の中。外なら入力の誤り） */
   width: number;
+};
+
+/** クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない） */
+export type CreatureElement =
+  /** 地 */
+  | 'EARTH'
+  /** 火 */
+  | 'FIRE'
+  /** 無 */
+  | 'NEUTRAL'
+  /** 水 */
+  | 'WATER'
+  /** 風 */
+  | 'WIND';
+
+/** 対象のクリーチャーにダメージの入力 */
+export type DamageSpellEffectInput = {
+  /** ダメージ（1 以上。上限は無い） */
+  amount: number;
 };
 
 /** 変えるカードと、その枚数 */
@@ -225,6 +361,103 @@ export type DeleteStarterSetInput = {
   revision: number;
 };
 
+/** カードを引く効果の入力 */
+export type DrawCardsSpellEffectInput = {
+  /** 引く枚数（1 以上。上限は無い） */
+  count: number;
+};
+
+/** 効果の制約の入力 */
+export type EffectConstraintInput = {
+  /** 相手のクリーチャーの属性（1 つ以上・重複なし） */
+  elements?: Array<CreatureElement> | null | undefined;
+  /** 制約の種類 */
+  kind: EffectConstraintKind;
+};
+
+/** 効果の制約の種類 */
+export type EffectConstraintKind =
+  /** 相手のクリーチャーの属性（戦う相手のクリーチャーの属性のどれかが合うとき） */
+  | 'OPPONENT_CREATURE_ELEMENT';
+
+/** 破壊されたときの効果が発動する破壊（対戦の 3 つの破壊のイベントと対応する） */
+export type EffectDestruction =
+  /** 戦闘の外（スペルのダメージ等）で破壊された */
+  | 'BOARD'
+  /** 戦闘で、領地を守るクリーチャーとして破壊された */
+  | 'DEFENDING'
+  /** 戦闘で、侵略したクリーチャーとして破壊された */
+  | 'INVADING';
+
+/** 効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount、手札のクリーチャーをアイテムとして使えるは elements） */
+export type EffectInput = {
+  /** 受け取る魔力の額 */
+  amount?: number | null | undefined;
+  /** 制約（すべてを満たすときに発動する） */
+  constraints?: Array<EffectConstraintInput> | null | undefined;
+  /** 発動する破壊（1 つ以上・重複なし） */
+  destructions?: Array<EffectDestruction> | null | undefined;
+  /** アイテムとして使えるクリーチャーの属性（1 つ以上・重複なし） */
+  elements?: Array<CreatureElement> | null | undefined;
+  /** 効果の種類 */
+  kind: EffectKind;
+  /** 上書きした後の値の最大 */
+  maximum?: number | null | undefined;
+  /** 上書きした後の値の最小 */
+  minimum?: number | null | undefined;
+  /** 倍率（百分率） */
+  percent?: number | null | undefined;
+  /** AT・HP の増減の値 */
+  value?: number | null | undefined;
+};
+
+/** 効果の種類 */
+export type EffectKind =
+  /** AT の増減（戦闘中、AT が決まった値だけ増減する） */
+  | 'ATTACK_MODIFIER'
+  /** AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ） */
+  | 'ATTACK_MULTIPLIER'
+  /** AT の上書き（戦闘中、AT が最小〜最大のランダムな値になる。固定は最小と最大が同じ） */
+  | 'ATTACK_OVERRIDE'
+  /** 侵略できない（手札から侵略できず、移動で他人の領地にも入れない。守ることはできる） */
+  | 'FORBID_INVASION'
+  /** 移動できない（領地コマンドで動けない） */
+  | 'FORBID_MOVEMENT'
+  /** 破壊されたら魔力を得る（選んだ破壊のとき、持ち主が額の魔力を受け取る） */
+  | 'GAIN_MAGIC_ON_DESTRUCTION'
+  /** HP の増減（戦闘中、HP が決まった値だけ増減する） */
+  | 'HIT_POINTS_MODIFIER'
+  /** HP の上書き（戦闘中、HP が最小〜最大のランダムな値になる。固定は最小と最大が同じ） */
+  | 'HIT_POINTS_OVERRIDE'
+  /** 地形効果を無視する（相手の地形効果を無視してダメージを与える） */
+  | 'IGNORE_TERRAIN_EFFECT'
+  /** 受けるダメージを 0 にする（制約を満たす相手から攻撃を受けたとき、ダメージが 0 になる） */
+  | 'NULLIFY_RECEIVED_DAMAGE'
+  /** 破壊されたら手札に戻る（選んだ破壊のとき、捨て札に入ったカードが持ち主の手札に戻る。手札が上限なら戻れない） */
+  | 'RETURN_TO_HAND_ON_DESTRUCTION'
+  /** 先に攻撃する（戦闘で、先に攻撃する効果の無い相手より先に攻撃する。後に攻撃すると一緒には持てない） */
+  | 'STRIKE_FIRST'
+  /** 後に攻撃する（戦闘で、後に攻撃する効果の無い相手より後に攻撃する。先に攻撃すると一緒には持てない） */
+  | 'STRIKE_LAST'
+  /** 通行料の倍率（いる領地の通行料を払うときに倍率を掛ける） */
+  | 'TOLL_MULTIPLIER'
+  /** 手札のクリーチャーをアイテムとして使える（戦闘でアイテムの代わりに、属性が合う手札のクリーチャーを 1 枚出し、そのカードの AT・HP を足す。画面のラベルは援護） */
+  | 'USE_CREATURE_AS_ITEM';
+
+/** サイコロの目を固定する効果の入力 */
+export type FixedDiceSpellEffectInput = {
+  /** 効き続けるターン数（1 以上） */
+  turns: number;
+  /** 固定する目（1 以上） */
+  value: number;
+};
+
+/** 魔力を得る効果の入力 */
+export type GainMagicSpellEffectInput = {
+  /** 周回数 1 つあたりの魔力（1 以上。上限は無い） */
+  perLap: number;
+};
+
 /** 配布デッキの一覧の絞り込み */
 export type GrantDeckFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
@@ -245,14 +478,31 @@ export type GrantDeckStatus =
   /** 使用不可 */
   | 'RETIRED';
 
+/** アイテムの分類 */
+export type ItemCategory =
+  /** 防具 */
+  | 'ARMOR'
+  /** 巻物 */
+  | 'SCROLL'
+  /** 武器 */
+  | 'WEAPON';
+
 /** 置く土地の入力 */
 export type LandTileInput = {
   /** 属性 */
-  attribute: BoardTileAttribute;
+  element: BoardTileElement;
   /** 列（0 以上、幅 − 1 以下） */
   x: number;
   /** 行（0 以上、高さ − 1 以下） */
   y: number;
+};
+
+/** サイコロを複数振る効果の入力 */
+export type MultipleDiceSpellEffectInput = {
+  /** 振るサイコロの個数（2 以上。上限は無い） */
+  count: number;
+  /** 効き続けるターン数（1 以上） */
+  turns: number;
 };
 
 /** NPC のアバターの一覧の絞り込み */
@@ -597,6 +847,19 @@ export type SetStarterSetUnlockNpcAvatarsInput = {
   unlockNpcAvatarIds: Array<string>;
 };
 
+/** スペルの効果の入力（種類のどれか 1 つだけ） */
+export type SpellEffectInput =
+  {   /** 対象のクリーチャーにダメージ */
+  damage: DamageSpellEffectInput; drawCards?: never; fixedDice?: never; gainMagic?: never; multipleDice?: never; }
+  |  { damage?: never;   /** カードを引く */
+  drawCards: DrawCardsSpellEffectInput; fixedDice?: never; gainMagic?: never; multipleDice?: never; }
+  |  { damage?: never; drawCards?: never;   /** サイコロの目を固定する */
+  fixedDice: FixedDiceSpellEffectInput; gainMagic?: never; multipleDice?: never; }
+  |  { damage?: never; drawCards?: never; fixedDice?: never;   /** 魔力を得る */
+  gainMagic: GainMagicSpellEffectInput; multipleDice?: never; }
+  |  { damage?: never; drawCards?: never; fixedDice?: never; gainMagic?: never;   /** サイコロを複数振る */
+  multipleDice: MultipleDiceSpellEffectInput; };
+
 /** スターターセットの一覧の絞り込み */
 export type StarterSetFilter = {
   /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
@@ -755,12 +1018,12 @@ export type BoardQuery = { board:
         | { __typename: 'BridgeTile', x: number, y: number }
         | { __typename: 'CardShopTile', x: number, y: number }
         | { __typename: 'CheckpointTile', x: number, y: number }
-        | { __typename: 'LandTile', attribute: BoardTileAttribute, x: number, y: number }
+        | { __typename: 'LandTile', element: BoardTileElement, x: number, y: number }
         | { __typename: 'ProphecyShopTile', x: number, y: number }
         | { __typename: 'SanctuaryTile', x: number, y: number }
         | { __typename: 'ShrineTile', x: number, y: number }
         | { __typename: 'WarpTile', x: number, y: number }
-      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number }, publishProblems: Array<
+      >, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number, baseLandValue: number, lapBonusPerTerritory: number }, publishProblems: Array<
         | { __typename: 'BaseCountProblem', positions: Array<{ x: number, y: number }> }
         | { __typename: 'NoCheckpointProblem' }
         | { __typename: 'UnpairedTilesProblem', positions: Array<{ x: number, y: number }> }
@@ -867,7 +1130,7 @@ export type BoardsQueryVariables = Exact<{
 
 
 export type BoardsQuery = { boards:
-    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number }, publishProblems: Array<
+    | { __typename: 'BoardsConnection', edges: Array<{ node: { id: string, name: string, status: BoardStatus, width: number, height: number, registeredAt: string, updatedAt: string, tileCounts: { land: number, base: number, checkpoint: number, fire: number, earth: number, water: number, wind: number, neutral: number, multi: number, warp: number, bridge: number, sanctuary: number, shrine: number, prophecyShop: number, cardShop: number }, defaultRules: { targetMagic: number, startingMagic: number, lapBonus: number, checkpointBonus: number, roundLimit: number, diceMin: number, diceMax: number, baseLandValue: number, lapBonusPerTerritory: number }, publishProblems: Array<
             | { __typename: 'BaseCountProblem' }
             | { __typename: 'NoCheckpointProblem' }
             | { __typename: 'UnpairedTilesProblem' }
@@ -875,6 +1138,294 @@ export type BoardsQuery = { boards:
           > } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
+   };
+
+export type ChangeCardCostMutationVariables = Exact<{
+  input: ChangeCardCostInput;
+}>;
+
+
+export type ChangeCardCostMutation = { changeCardCost:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCardCostSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeCardRarityMutationVariables = Exact<{
+  input: ChangeCardRarityInput;
+}>;
+
+
+export type ChangeCardRarityMutation = { changeCardRarity:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCardRaritySuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type ChangeCreatureItemRestrictionsMutationVariables = Exact<{
+  input: ChangeCreatureItemRestrictionsInput;
+}>;
+
+
+export type ChangeCreatureItemRestrictionsMutation = { changeCreatureItemRestrictions:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureItemRestrictionsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type ChangeCreaturePlacementRestrictionsMutationVariables = Exact<{
+  input: ChangeCreaturePlacementRestrictionsInput;
+}>;
+
+
+export type ChangeCreaturePlacementRestrictionsMutation = { changeCreaturePlacementRestrictions:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreaturePlacementRestrictionsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type ChangeCreatureElementsMutationVariables = Exact<{
+  input: ChangeCreatureElementsInput;
+}>;
+
+
+export type ChangeCreatureElementsMutation = { changeCreatureElements:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureElementsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeCreatureEffectsMutationVariables = Exact<{
+  input: ChangeCreatureEffectsInput;
+}>;
+
+
+export type ChangeCreatureEffectsMutation = { changeCreatureEffects:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureEffectsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeCreatureStatsMutationVariables = Exact<{
+  input: ChangeCreatureStatsInput;
+}>;
+
+
+export type ChangeCreatureStatsMutation = { changeCreatureStats:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeCreatureStatsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeItemCategoryMutationVariables = Exact<{
+  input: ChangeItemCategoryInput;
+}>;
+
+
+export type ChangeItemCategoryMutation = { changeItemCategory:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeItemCategorySuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ItemEffectNotAllowedError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type ChangeItemEffectsMutationVariables = Exact<{
+  input: ChangeItemEffectsInput;
+}>;
+
+
+export type ChangeItemEffectsMutation = { changeItemEffects:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeItemEffectsSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'ItemEffectNotAllowedError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type ChangeSpellEffectMutationVariables = Exact<{
+  input: ChangeSpellEffectInput;
+}>;
+
+
+export type ChangeSpellEffectMutation = { changeSpellEffect:
+    | { __typename: 'CardNotDraftError' }
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'ChangeSpellEffectSuccess', id: string, revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', min: number, field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type CardQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type CardQuery = { card:
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'Creature', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<BoardTileElement>, allowedEffectKinds: Array<EffectKind>, effects: Array<
+        | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'AttackMultiplierEffect', percent: number, kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
+        | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+        | { __typename: 'GainMagicOnDestructionEffect', destructions: Array<EffectDestruction>, amount: number, kind: EffectKind }
+        | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
+        | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'ReturnToHandOnDestructionEffect', destructions: Array<EffectDestruction>, kind: EffectKind }
+        | { __typename: 'StrikeFirstEffect', kind: EffectKind }
+        | { __typename: 'StrikeLastEffect', kind: EffectKind }
+        | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+        | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
+      > }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'Item', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, category: ItemCategory, allowedEffectKinds: Array<EffectKind>, effects: Array<
+        | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'AttackMultiplierEffect', percent: number, kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
+        | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+        | { __typename: 'GainMagicOnDestructionEffect', destructions: Array<EffectDestruction>, amount: number, kind: EffectKind }
+        | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
+        | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+        | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
+        | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+        | { __typename: 'ReturnToHandOnDestructionEffect', destructions: Array<EffectDestruction>, kind: EffectKind }
+        | { __typename: 'StrikeFirstEffect', kind: EffectKind }
+        | { __typename: 'StrikeLastEffect', kind: EffectKind }
+        | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+        | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
+      > }
+    | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
+        | { __typename: 'DamageSpellEffect', amount: number }
+        | { __typename: 'DrawCardsSpellEffect', count: number }
+        | { __typename: 'FixedDiceSpellEffect', value: number, turns: number }
+        | { __typename: 'GainMagicSpellEffect', perLap: number }
+        | { __typename: 'MultipleDiceSpellEffect', count: number, turns: number }
+       | null }
    };
 
 export type RetireCardMutationVariables = Exact<{
@@ -891,11 +1442,24 @@ export type RetireCardMutation = { retireCard:
    };
 
 export type CardRevisionQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type CardRevisionQuery = { card:
+    | { __typename: 'CardNotFoundError' }
+    | { __typename: 'Creature', revision: number }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'Item', revision: number }
+    | { __typename: 'Spell', revision: number }
+   };
+
+export type CardsRevisionQueryVariables = Exact<{
   name: string;
 }>;
 
 
-export type CardRevisionQuery = { cards:
+export type CardsRevisionQuery = { cards:
     | { __typename: 'CardConnection', edges: Array<{ node:
           | { id: string, revision: number }
           | { id: string, revision: number }
@@ -916,6 +1480,7 @@ export type PublishCardMutation = { publishCard:
     | { __typename: 'InvalidCardStatusTransitionError' }
     | { __typename: 'PublishCardSuccess', id: string, revision: number }
     | { __typename: 'RevisionConflictError' }
+    | { __typename: 'SpellEffectRequiredError' }
    };
 
 export type RegisterCreatureMutationVariables = Exact<{
@@ -954,9 +1519,47 @@ export type CardsQueryVariables = Exact<{
 
 export type CardsQuery = { cards:
     | { __typename: 'CardConnection', edges: Array<{ node:
-          | { __typename: 'Creature', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
-          | { __typename: 'Item', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
-          | { __typename: 'Spell', id: string, name: string, status: CardStatus, revision: number, registeredAt: string, updatedAt: string }
+          | { __typename: 'Creature', elements: Array<CreatureElement>, attack: number, hitPoints: number, itemRestrictions: Array<ItemCategory>, placementRestrictions: Array<BoardTileElement>, id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effects: Array<
+              | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
+              | { __typename: 'AttackMultiplierEffect', percent: number, kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+              | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+              | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
+              | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+              | { __typename: 'GainMagicOnDestructionEffect', destructions: Array<EffectDestruction>, amount: number, kind: EffectKind }
+              | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
+              | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+              | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
+              | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+              | { __typename: 'ReturnToHandOnDestructionEffect', destructions: Array<EffectDestruction>, kind: EffectKind }
+              | { __typename: 'StrikeFirstEffect', kind: EffectKind }
+              | { __typename: 'StrikeLastEffect', kind: EffectKind }
+              | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+              | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
+            > }
+          | { __typename: 'Item', category: ItemCategory, id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effects: Array<
+              | { __typename: 'AttackModifierEffect', value: number, kind: EffectKind }
+              | { __typename: 'AttackMultiplierEffect', percent: number, kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+              | { __typename: 'AttackOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+              | { __typename: 'ForbidInvasionEffect', kind: EffectKind }
+              | { __typename: 'ForbidMovementEffect', kind: EffectKind }
+              | { __typename: 'GainMagicOnDestructionEffect', destructions: Array<EffectDestruction>, amount: number, kind: EffectKind }
+              | { __typename: 'HitPointsModifierEffect', value: number, kind: EffectKind }
+              | { __typename: 'HitPointsOverrideEffect', minimum: number, maximum: number, kind: EffectKind }
+              | { __typename: 'IgnoreTerrainEffect', kind: EffectKind }
+              | { __typename: 'NullifyReceivedDamageEffect', kind: EffectKind, constraints: Array<{ elements: Array<CreatureElement>, kind: EffectConstraintKind }> }
+              | { __typename: 'ReturnToHandOnDestructionEffect', destructions: Array<EffectDestruction>, kind: EffectKind }
+              | { __typename: 'StrikeFirstEffect', kind: EffectKind }
+              | { __typename: 'StrikeLastEffect', kind: EffectKind }
+              | { __typename: 'TollMultiplierEffect', percent: number, kind: EffectKind }
+              | { __typename: 'UseCreatureAsItemEffect', elements: Array<CreatureElement>, kind: EffectKind }
+            > }
+          | { __typename: 'Spell', id: string, name: string, status: CardStatus, cost: number, rarity: CardRarity, revision: number, registeredAt: string, updatedAt: string, effect:
+              | { __typename: 'DamageSpellEffect', amount: number }
+              | { __typename: 'DrawCardsSpellEffect', count: number }
+              | { __typename: 'FixedDiceSpellEffect', value: number, turns: number }
+              | { __typename: 'GainMagicSpellEffect', perLap: number }
+              | { __typename: 'MultipleDiceSpellEffect', count: number, turns: number }
+             | null }
          }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ForbiddenError' }
     | { __typename: 'ValidationErrors' }
@@ -2248,7 +2851,7 @@ export const BoardDocument = new TypedDocumentString(`
         x
         y
         ... on LandTile {
-          attribute
+          element
         }
       }
       defaultRules {
@@ -2259,6 +2862,8 @@ export const BoardDocument = new TypedDocumentString(`
         roundLimit
         diceMin
         diceMax
+        baseLandValue
+        lapBonusPerTerritory
       }
       publishProblems {
         __typename
@@ -2438,6 +3043,8 @@ export const BoardsDocument = new TypedDocumentString(`
             roundLimit
             diceMin
             diceMax
+            baseLandValue
+            lapBonusPerTerritory
           }
           publishProblems {
             __typename
@@ -2454,6 +3061,314 @@ export const BoardsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<BoardsQuery, BoardsQueryVariables>;
+export const ChangeCardCostDocument = new TypedDocumentString(`
+    mutation ChangeCardCost($input: ChangeCardCostInput!) {
+  changeCardCost(input: $input) {
+    __typename
+    ... on ChangeCardCostSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCardCostMutation, ChangeCardCostMutationVariables>;
+export const ChangeCardRarityDocument = new TypedDocumentString(`
+    mutation ChangeCardRarity($input: ChangeCardRarityInput!) {
+  changeCardRarity(input: $input) {
+    __typename
+    ... on ChangeCardRaritySuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCardRarityMutation, ChangeCardRarityMutationVariables>;
+export const ChangeCreatureItemRestrictionsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureItemRestrictions($input: ChangeCreatureItemRestrictionsInput!) {
+  changeCreatureItemRestrictions(input: $input) {
+    __typename
+    ... on ChangeCreatureItemRestrictionsSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureItemRestrictionsMutation, ChangeCreatureItemRestrictionsMutationVariables>;
+export const ChangeCreaturePlacementRestrictionsDocument = new TypedDocumentString(`
+    mutation ChangeCreaturePlacementRestrictions($input: ChangeCreaturePlacementRestrictionsInput!) {
+  changeCreaturePlacementRestrictions(input: $input) {
+    __typename
+    ... on ChangeCreaturePlacementRestrictionsSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreaturePlacementRestrictionsMutation, ChangeCreaturePlacementRestrictionsMutationVariables>;
+export const ChangeCreatureElementsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureElements($input: ChangeCreatureElementsInput!) {
+  changeCreatureElements(input: $input) {
+    __typename
+    ... on ChangeCreatureElementsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureElementsMutation, ChangeCreatureElementsMutationVariables>;
+export const ChangeCreatureEffectsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureEffects($input: ChangeCreatureEffectsInput!) {
+  changeCreatureEffects(input: $input) {
+    __typename
+    ... on ChangeCreatureEffectsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureEffectsMutation, ChangeCreatureEffectsMutationVariables>;
+export const ChangeCreatureStatsDocument = new TypedDocumentString(`
+    mutation ChangeCreatureStats($input: ChangeCreatureStatsInput!) {
+  changeCreatureStats(input: $input) {
+    __typename
+    ... on ChangeCreatureStatsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeCreatureStatsMutation, ChangeCreatureStatsMutationVariables>;
+export const ChangeItemCategoryDocument = new TypedDocumentString(`
+    mutation ChangeItemCategory($input: ChangeItemCategoryInput!) {
+  changeItemCategory(input: $input) {
+    __typename
+    ... on ChangeItemCategorySuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeItemCategoryMutation, ChangeItemCategoryMutationVariables>;
+export const ChangeItemEffectsDocument = new TypedDocumentString(`
+    mutation ChangeItemEffects($input: ChangeItemEffectsInput!) {
+  changeItemEffects(input: $input) {
+    __typename
+    ... on ChangeItemEffectsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeItemEffectsMutation, ChangeItemEffectsMutationVariables>;
+export const ChangeSpellEffectDocument = new TypedDocumentString(`
+    mutation ChangeSpellEffect($input: ChangeSpellEffectInput!) {
+  changeSpellEffect(input: $input) {
+    __typename
+    ... on ChangeSpellEffectSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldTooSmall {
+          min
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<ChangeSpellEffectMutation, ChangeSpellEffectMutationVariables>;
+export const CardDocument = new TypedDocumentString(`
+    query Card($id: UUID!) {
+  card(id: $id) {
+    __typename
+    ... on Card {
+      id
+      name
+      status
+      cost
+      rarity
+      revision
+      registeredAt
+      updatedAt
+    }
+    ... on Creature {
+      elements
+      attack
+      hitPoints
+      itemRestrictions
+      placementRestrictions
+      allowedEffectKinds
+      effects {
+        __typename
+        kind
+        ... on AttackModifierEffect {
+          value
+        }
+        ... on HitPointsModifierEffect {
+          value
+        }
+        ... on AttackOverrideEffect {
+          minimum
+          maximum
+        }
+        ... on HitPointsOverrideEffect {
+          minimum
+          maximum
+        }
+        ... on AttackMultiplierEffect {
+          percent
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on NullifyReceivedDamageEffect {
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on TollMultiplierEffect {
+          percent
+        }
+        ... on ReturnToHandOnDestructionEffect {
+          destructions
+        }
+        ... on GainMagicOnDestructionEffect {
+          destructions
+          amount
+        }
+        ... on UseCreatureAsItemEffect {
+          elements
+        }
+      }
+    }
+    ... on Item {
+      category
+      allowedEffectKinds
+      effects {
+        __typename
+        kind
+        ... on AttackModifierEffect {
+          value
+        }
+        ... on HitPointsModifierEffect {
+          value
+        }
+        ... on AttackOverrideEffect {
+          minimum
+          maximum
+        }
+        ... on HitPointsOverrideEffect {
+          minimum
+          maximum
+        }
+        ... on AttackMultiplierEffect {
+          percent
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on NullifyReceivedDamageEffect {
+          constraints {
+            kind
+            ... on OpponentCreatureElementConstraint {
+              elements
+            }
+          }
+        }
+        ... on TollMultiplierEffect {
+          percent
+        }
+        ... on ReturnToHandOnDestructionEffect {
+          destructions
+        }
+        ... on GainMagicOnDestructionEffect {
+          destructions
+          amount
+        }
+        ... on UseCreatureAsItemEffect {
+          elements
+        }
+      }
+    }
+    ... on Spell {
+      effect {
+        __typename
+        ... on DrawCardsSpellEffect {
+          count
+        }
+        ... on GainMagicSpellEffect {
+          perLap
+        }
+        ... on MultipleDiceSpellEffect {
+          count
+          turns
+        }
+        ... on FixedDiceSpellEffect {
+          value
+          turns
+        }
+        ... on DamageSpellEffect {
+          amount
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CardQuery, CardQueryVariables>;
 export const RetireCardDocument = new TypedDocumentString(`
     mutation RetireCard($input: RetireCardInput!) {
   retireCard(input: $input) {
@@ -2466,7 +3381,17 @@ export const RetireCardDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<RetireCardMutation, RetireCardMutationVariables>;
 export const CardRevisionDocument = new TypedDocumentString(`
-    query CardRevision($name: String!) {
+    query CardRevision($id: UUID!) {
+  card(id: $id) {
+    __typename
+    ... on Card {
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<CardRevisionQuery, CardRevisionQueryVariables>;
+export const CardsRevisionDocument = new TypedDocumentString(`
+    query CardsRevision($name: String!) {
   cards(filter: { nameContains: $name }, first: 100) {
     __typename
     ... on CardConnection {
@@ -2479,7 +3404,7 @@ export const CardRevisionDocument = new TypedDocumentString(`
     }
   }
 }
-    `) as unknown as TypedDocumentString<CardRevisionQuery, CardRevisionQueryVariables>;
+    `) as unknown as TypedDocumentString<CardsRevisionQuery, CardsRevisionQueryVariables>;
 export const PublishCardDocument = new TypedDocumentString(`
     mutation PublishCard($input: PublishCardInput!) {
   publishCard(input: $input) {
@@ -2524,9 +3449,139 @@ export const CardsDocument = new TypedDocumentString(`
           id
           name
           status
+          cost
+          rarity
           revision
           registeredAt
           updatedAt
+          ... on Creature {
+            elements
+            attack
+            hitPoints
+            itemRestrictions
+            placementRestrictions
+            effects {
+              __typename
+              kind
+              ... on AttackModifierEffect {
+                value
+              }
+              ... on HitPointsModifierEffect {
+                value
+              }
+              ... on AttackOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on HitPointsOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on AttackMultiplierEffect {
+                percent
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on NullifyReceivedDamageEffect {
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on TollMultiplierEffect {
+                percent
+              }
+              ... on ReturnToHandOnDestructionEffect {
+                destructions
+              }
+              ... on GainMagicOnDestructionEffect {
+                destructions
+                amount
+              }
+              ... on UseCreatureAsItemEffect {
+                elements
+              }
+            }
+          }
+          ... on Item {
+            category
+            effects {
+              __typename
+              kind
+              ... on AttackModifierEffect {
+                value
+              }
+              ... on HitPointsModifierEffect {
+                value
+              }
+              ... on AttackOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on HitPointsOverrideEffect {
+                minimum
+                maximum
+              }
+              ... on AttackMultiplierEffect {
+                percent
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on NullifyReceivedDamageEffect {
+                constraints {
+                  kind
+                  ... on OpponentCreatureElementConstraint {
+                    elements
+                  }
+                }
+              }
+              ... on TollMultiplierEffect {
+                percent
+              }
+              ... on ReturnToHandOnDestructionEffect {
+                destructions
+              }
+              ... on GainMagicOnDestructionEffect {
+                destructions
+                amount
+              }
+              ... on UseCreatureAsItemEffect {
+                elements
+              }
+            }
+          }
+          ... on Spell {
+            effect {
+              __typename
+              ... on DrawCardsSpellEffect {
+                count
+              }
+              ... on GainMagicSpellEffect {
+                perLap
+              }
+              ... on MultipleDiceSpellEffect {
+                count
+                turns
+              }
+              ... on FixedDiceSpellEffect {
+                value
+                turns
+              }
+              ... on DamageSpellEffect {
+                amount
+              }
+            }
+          }
         }
       }
       pageInfo {

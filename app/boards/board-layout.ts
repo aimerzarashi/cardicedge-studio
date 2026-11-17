@@ -1,11 +1,11 @@
-import type { BoardTileAttribute } from "@/graphql/graphql";
+import type { BoardTileElement } from "@/graphql/graphql";
 
 // ボードの格子の形（座標は core と同じ 0 始まりの (列, 行)）。表示（board-grid.tsx）と編集（[id]/layout-editor.tsx）で共通
 
 export type Position = { x: number; y: number };
 // core の出力（LandTile・BaseTile・CheckpointTile）と同じ形で、種類は __typename で見分ける。属性は土地だけが必ず持つ
 export type Placement =
-  | { __typename: "LandTile"; attribute: BoardTileAttribute }
+  | { __typename: "LandTile"; element: BoardTileElement }
   | { __typename: "BaseTile" }
   | { __typename: "CheckpointTile" }
   | { __typename: "WarpTile" }
@@ -38,7 +38,7 @@ export const TILE_KIND_LABELS: Record<Placement["__typename"], string> = {
 };
 
 // 並びは道具・凡例の並び（火・地・水・風・無・複）
-export const ATTRIBUTE_LABELS: Record<BoardTileAttribute, string> = {
+export const ELEMENT_LABELS: Record<BoardTileElement, string> = {
   FIRE: "火",
   EARTH: "地",
   WATER: "水",
@@ -47,14 +47,14 @@ export const ATTRIBUTE_LABELS: Record<BoardTileAttribute, string> = {
   MULTI: "複",
 };
 
-export function isTileAttribute(value: string): value is BoardTileAttribute {
-  return Object.hasOwn(ATTRIBUTE_LABELS, value);
+export function isTileElement(value: string): value is BoardTileElement {
+  return Object.hasOwn(ELEMENT_LABELS, value);
 }
 
 // 土地は属性つきの名前（「火属性の土地」）で呼ぶ
 export function tileLabel(placement: Placement): string {
   return placement.__typename === "LandTile"
-    ? `${ATTRIBUTE_LABELS[placement.attribute]}属性の${TILE_KIND_LABELS.LandTile}`
+    ? `${ELEMENT_LABELS[placement.element]}属性の${TILE_KIND_LABELS.LandTile}`
     : TILE_KIND_LABELS[placement.__typename];
 }
 
@@ -62,9 +62,10 @@ export function tileLabel(placement: Placement): string {
 export const PLACEMENTS: Placement[] = [
   { __typename: "BaseTile" },
   { __typename: "CheckpointTile" },
-  ...(Object.keys(ATTRIBUTE_LABELS) as BoardTileAttribute[]).map(
-    (attribute) => ({ __typename: "LandTile" as const, attribute }),
-  ),
+  ...(Object.keys(ELEMENT_LABELS) as BoardTileElement[]).map((element) => ({
+    __typename: "LandTile" as const,
+    element,
+  })),
   { __typename: "WarpTile" },
   { __typename: "BridgeTile" },
   { __typename: "SanctuaryTile" },

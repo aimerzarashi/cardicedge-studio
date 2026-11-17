@@ -31,6 +31,10 @@ export const INVALID_TARGET =
 export const INVALID_STATUS_TRANSITION =
   "今の状態ではこの操作はできません。最新の状態を表示しています";
 
+// 効果の無いスペルは対戦で使えないため、core が公開を断る（core#152）
+export const SPELL_EFFECT_REQUIRED =
+  "効果の無いスペルは公開できません。カードの詳細で効果を入れてください";
+
 type FieldError = {
   __typename: string;
   field?: string;
@@ -277,6 +281,8 @@ export const RULE_LABELS = {
   roundLimit: "ラウンドの上限",
   diceMin: "サイコロの目（最小）",
   diceMax: "サイコロの目（最大）",
+  baseLandValue: "土地の基本の値",
+  lapBonusPerTerritory: "周回のボーナス（領地 1 つあたり）",
 } as const;
 export type RuleField = keyof typeof RULE_LABELS;
 
@@ -284,12 +290,16 @@ export function isRuleField(value: string): value is RuleField {
   return Object.hasOwn(RULE_LABELS, value);
 }
 
-// 魔力の 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い）。魔力でない項目は 1 刻み
+// 魔力の 100 刻みは入力のしやすさのための表示の都合の値で、core の決まりではない（拡大の上限・下限と同じ扱い）。魔力でない項目は 1 刻み。
+// 領地 1 つあたりの額は、領地の数を掛ける小さい額なので 10 刻み
 export function ruleStep(field: RuleField): number {
   switch (field) {
+    case "lapBonusPerTerritory":
+      return 10;
     case "roundLimit":
     case "diceMin":
     case "diceMax":
+    case "baseLandValue":
       return 1;
     default:
       return 100;
@@ -315,5 +325,178 @@ export function boardRuleErrorMessage(error: {
       return `${label}は${ruleLabel(error.than ?? "")}より大きくしてください`;
     default:
       return `${label}の入力が正しくありません`;
+  }
+}
+
+export const CARD_NOT_DRAFT =
+  "公開中・使用不可のカードの性能は変えられません（変えられるのは準備中だけです）";
+
+// コストの入力の誤り（下限は core が返した値を使う）
+export function costErrorMessage(error: FieldError): string {
+  switch (error.__typename) {
+    case "FieldTooSmall":
+      return `コストは ${error.min} 以上にしてください`;
+    default:
+      return "コストが正しくありません";
+  }
+}
+
+// 先制（先に攻撃する）と後手（後に攻撃する）は一緒に持てない（core が並び全体の effects で断る。core#158・core#178）
+export const EFFECTS_CONFLICTED = "先制と後手は一緒に選べません";
+// アイテムの分類で持てない効果がある（効果を変えるとき・分類を変えるとき。分類ごとの決まりは core が持つ）
+export const ITEM_EFFECT_NOT_ALLOWED =
+  "今の分類では持てない効果があります。先に効果を外してから分類を変えてください";
+export const OPPONENT_ELEMENTS_INVALID = "相手の属性が正しくありません";
+// 発動する破壊の誤り（空・重複。core が effects.N.destructions で返す）
+export const DESTRUCTIONS_INVALID = "発動する破壊を 1 つ以上選んでください";
+// 援護に使えるクリーチャーの属性の誤り（空・重複。core が effects.N.elements で返す）
+export const CREATURE_ELEMENTS_INVALID =
+  "援護に使えるクリーチャーの属性を 1 つ以上選んでください";
+
+// 効果の値の欄の入力の誤り（欄の名前は lib/effect.ts の EFFECT_FIELDS、下限は core が返した値を使う。最大の下限は最小）
+export function effectFieldErrorMessage(
+  label: string,
+  error: { __typename: string; min?: number },
+): string {
+  return error.__typename === "FieldTooSmall"
+    ? `${label}は ${error.min} 以上にしてください`
+    : `${label}が正しくありません`;
+}
+
+// 属性の入力の誤り（組み合わせの決まりは core が判定し、ここには書き写さない）
+export function elementsErrorMessage(error: FieldError): string {
+  switch (error.__typename) {
+    case "FieldRequired":
+      return "属性を 1 つ以上選んでください";
+    default:
+      return "この属性の組み合わせにはできません";
+  }
+}
+
+// 性能の数の項目の呼び方（core が返した field で見分ける）
+const STAT_FIELD_LABELS: Record<string, string> = {
+  hitPoints: "HP",
+  "effect.drawCards.count": "引く枚数",
+  "effect.gainMagic.perLap": "周回数 1 つあたりの魔力",
+  "effect.multipleDice.count": "サイコロの個数",
+  "effect.multipleDice.turns": "効き続けるターン数",
+  "effect.fixedDice.value": "固定する目",
+  "effect.fixedDice.turns": "効き続けるターン数",
+  "effect.damage.amount": "ダメージ",
+};
+
+// 攻撃力・体力・スペルの引く枚数の入力の誤り（項目は core が返した field で見分け、下限は core が返した値を使う）
+export function statsErrorMessage(error: FieldError): string {
+  const label = STAT_FIELD_LABELS[error.field ?? ""] ?? "AT";
+  switch (error.__typename) {
+    case "FieldTooSmall":
+      return `${label}は ${error.min} 以上にしてください`;
+    default:
+      return `${label}が正しくありません`;
+  }
+}
+
+// core が返したスペルの効果（種類は __typename。効果なしは null）
+export type SpellEffectView =
+  | {
+      __typename?: string;
+      count?: number;
+      perLap?: number;
+      value?: number;
+      turns?: number;
+      amount?: number;
+    }
+  | null
+  | undefined;
+
+// スペルの効果の種類（フォームの選択肢の値・呼び方・値の呼び方と、core の入力の項目と出力の型の名前の対応）。
+// ターンをまたいで効き続ける効果だけが、ターン数の項目（turnsField）を持つ
+export const SPELL_EFFECT_KINDS = [
+  {
+    kind: "drawCards",
+    label: "カードを引く",
+    valueLabel: "引く枚数",
+    field: "effect.drawCards.count",
+    typename: "DrawCardsSpellEffect",
+    turnsField: null,
+  },
+  {
+    kind: "gainMagic",
+    label: "魔力を得る",
+    valueLabel: "周回数 1 つあたりの魔力",
+    field: "effect.gainMagic.perLap",
+    typename: "GainMagicSpellEffect",
+    turnsField: null,
+  },
+  {
+    kind: "multipleDice",
+    label: "サイコロを複数振る",
+    valueLabel: "サイコロの個数",
+    field: "effect.multipleDice.count",
+    typename: "MultipleDiceSpellEffect",
+    turnsField: "effect.multipleDice.turns",
+  },
+  {
+    kind: "fixedDice",
+    label: "サイコロの目を固定する",
+    valueLabel: "固定する目",
+    field: "effect.fixedDice.value",
+    typename: "FixedDiceSpellEffect",
+    turnsField: "effect.fixedDice.turns",
+  },
+  {
+    kind: "damage",
+    label: "クリーチャーにダメージ",
+    valueLabel: "ダメージ",
+    field: "effect.damage.amount",
+    typename: "DamageSpellEffect",
+    turnsField: null,
+  },
+] as const;
+
+export type SpellEffectKind = (typeof SPELL_EFFECT_KINDS)[number]["kind"];
+
+// フォームに入れる今の効果の種類と値（効果なしは kind が none で値は null。ターン数はターンをまたいで効き続ける効果だけ）
+export function spellEffectValue(effect: SpellEffectView): {
+  kind: SpellEffectKind | "none";
+  value: number | null;
+  turns: number | null;
+} {
+  const found = SPELL_EFFECT_KINDS.find(
+    (entry) => entry.typename === effect?.__typename,
+  );
+  if (!found || !effect) {
+    return { kind: "none", value: null, turns: null };
+  }
+  const value =
+    found.kind === "gainMagic"
+      ? effect.perLap
+      : found.kind === "fixedDice"
+        ? effect.value
+        : found.kind === "damage"
+          ? effect.amount
+          : effect.count;
+  return {
+    kind: found.kind,
+    value: value ?? null,
+    turns: found.turnsField ? (effect.turns ?? null) : null,
+  };
+}
+
+// スペルの効果の表示。種類は core が返した __typename で見分け、効果なし（null）は「なし」
+export function spellEffectLabel(effect: SpellEffectView): string {
+  switch (effect?.__typename) {
+    case "DrawCardsSpellEffect":
+      return `カードを ${effect.count} 枚引く`;
+    case "GainMagicSpellEffect":
+      return `（周回数 + 1）× ${effect.perLap} の魔力を得る`;
+    case "MultipleDiceSpellEffect":
+      return `対象のサイコロを ${effect.count} 個同時に振る（${effect.turns} ターン）`;
+    case "FixedDiceSpellEffect":
+      return `対象のサイコロの目を ${effect.value} に固定する（${effect.turns} ターン）`;
+    case "DamageSpellEffect":
+      return `対象のクリーチャーに ${effect.amount} ダメージ`;
+    default:
+      return "なし";
   }
 }

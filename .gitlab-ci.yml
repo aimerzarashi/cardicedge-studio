@@ -46,7 +46,7 @@ variables:
 
 # pnpm と依存パッケージのインストール（check のジョブ）
 .pnpm:
-  image: node:26.13.0-bookworm
+  image: node:26.13.1-bookworm
   variables:
     PNPM_HOME: /root/.local/share/pnpm
   before_script:
@@ -78,6 +78,8 @@ check:
     BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
     BETTER_AUTH_URL: http://localhost:3000
     JWT_ISSUER: diecardomain-studio
+    # better-auth のクッキー名の頭。studio と game で別にする（同じホストに並べたとき、片方のログインがもう片方を切らないため。studio#72・game#55）
+    BETTER_AUTH_COOKIE_PREFIX: studio
     JWT_AUDIENCE: diecardomain-core
   script:
     - echo "== lint =="
@@ -118,7 +120,7 @@ build-mr:
 # リリース対象のコミット（feat / fix 等）が無ければ何もしない。CHANGELOG.md は保存しない
 release:
   stage: release
-  image: node:26.13.0-bookworm
+  image: node:26.13.1-bookworm
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   variables:

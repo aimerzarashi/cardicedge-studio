@@ -3,13 +3,17 @@ import { describe, it } from "node:test";
 import {
   boardPublishProblemMessage,
   boardRuleErrorMessage,
+  elementsErrorMessage,
   NAME_ALREADY_IN_USE,
   nameErrorMessage,
   RULE_LABELS,
   ruleStep,
+  spellEffectLabel,
+  spellEffectValue,
   starterSetItemErrorMessage,
   starterSetLimitReachedMessage,
   starterSetPublishErrorMessage,
+  statsErrorMessage,
 } from "./messages.ts";
 
 describe("nameErrorMessage", () => {
@@ -155,6 +159,8 @@ describe("ruleStep", () => {
         roundLimit: 1,
         diceMin: 1,
         diceMax: 1,
+        baseLandValue: 1,
+        lapBonusPerTerritory: 10,
       },
     );
   });
@@ -193,6 +199,127 @@ describe("スターターセットの文言", () => {
     assert.equal(
       starterSetItemErrorMessage([{ __typename: "FieldDuplicated" }], "NPC"),
       "同じ NPC が 2 回入っています",
+    );
+  });
+});
+
+describe("クリーチャーの性能の文言", () => {
+  it("属性を 1 つも選ばないと、選ぶよう促す", () => {
+    assert.equal(
+      elementsErrorMessage({ __typename: "FieldRequired", field: "elements" }),
+      "属性を 1 つ以上選んでください",
+    );
+  });
+
+  it("属性の組み合わせの誤りは、組み合わせにできないと伝える", () => {
+    assert.equal(
+      elementsErrorMessage({
+        __typename: "FieldInvalidFormat",
+        field: "elements",
+      }),
+      "この属性の組み合わせにはできません",
+    );
+  });
+
+  it("攻撃力と体力の下限の誤りは、core が返した field と下限で項目ごとに出す", () => {
+    assert.equal(
+      statsErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "attack",
+        min: 0,
+      }),
+      "ATは 0 以上にしてください",
+    );
+    assert.equal(
+      statsErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "hitPoints",
+        min: 1,
+      }),
+      "HPは 1 以上にしてください",
+    );
+  });
+});
+
+describe("スペルの効果の文言", () => {
+  it("効果の種類ごとに、core が返した値で言う", () => {
+    assert.equal(
+      spellEffectLabel({ __typename: "DrawCardsSpellEffect", count: 2 }),
+      "カードを 2 枚引く",
+    );
+  });
+
+  it("効果なし（null）は「なし」と出す", () => {
+    assert.equal(spellEffectLabel(null), "なし");
+  });
+
+  it("魔力を得る・サイコロを複数振るも、core が返した値で言う", () => {
+    assert.equal(
+      spellEffectLabel({ __typename: "GainMagicSpellEffect", perLap: 100 }),
+      "（周回数 + 1）× 100 の魔力を得る",
+    );
+    assert.equal(
+      spellEffectLabel({
+        __typename: "MultipleDiceSpellEffect",
+        count: 2,
+        turns: 1,
+      }),
+      "対象のサイコロを 2 個同時に振る（1 ターン）",
+    );
+  });
+
+  it("フォームに入れる種類と値を、core が返した型から読む", () => {
+    assert.deepEqual(spellEffectValue(null), {
+      kind: "none",
+      value: null,
+      turns: null,
+    });
+    assert.deepEqual(
+      spellEffectValue({ __typename: "GainMagicSpellEffect", perLap: 100 }),
+      { kind: "gainMagic", value: 100, turns: null },
+    );
+    assert.deepEqual(
+      spellEffectValue({
+        __typename: "MultipleDiceSpellEffect",
+        count: 2,
+        turns: 3,
+      }),
+      { kind: "multipleDice", value: 2, turns: 3 },
+    );
+    assert.deepEqual(
+      spellEffectValue({
+        __typename: "FixedDiceSpellEffect",
+        value: 6,
+        turns: 1,
+      }),
+      { kind: "fixedDice", value: 6, turns: 1 },
+    );
+    assert.equal(
+      spellEffectLabel({
+        __typename: "FixedDiceSpellEffect",
+        value: 6,
+        turns: 1,
+      }),
+      "対象のサイコロの目を 6 に固定する（1 ターン）",
+    );
+    assert.deepEqual(
+      spellEffectValue({ __typename: "DamageSpellEffect", amount: 20 }),
+      { kind: "damage", value: 20, turns: null },
+    );
+    assert.equal(
+      spellEffectLabel({ __typename: "DamageSpellEffect", amount: 20 }),
+      "対象のクリーチャーに 20 ダメージ",
+    );
+  });
+
+  it("引く枚数の下限の誤りは、core が返した field と下限で出す", () => {
+    assert.equal(
+      statsErrorMessage({
+        __typename: "FieldTooSmall",
+        field: "effect.drawCards.count",
+        min: 1,
+      }),
+      "引く枚数は 1 以上にしてください",
     );
   });
 });

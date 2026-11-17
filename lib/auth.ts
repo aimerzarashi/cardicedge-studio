@@ -10,7 +10,11 @@ import { sendMail } from "./mail.ts";
 // 未設定だと better-auth は黙って BETTER_AUTH_URL を使うため、実行時に必ず確かめる。
 // next build 中（NEXT_PHASE=phase-production-build）は環境変数を渡さないため確かめない
 if (process.env.NEXT_PHASE !== "phase-production-build") {
-  for (const name of ["JWT_ISSUER", "JWT_AUDIENCE"]) {
+  for (const name of [
+    "JWT_ISSUER",
+    "JWT_AUDIENCE",
+    "BETTER_AUTH_COOKIE_PREFIX",
+  ]) {
     if (!process.env[name]) {
       throw new Error(`環境変数 ${name} が設定されていません`);
     }
@@ -71,6 +75,12 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    // クッキー名の頭（`<頭>.session_token` 等）。既定の better-auth のままだと studio と game が同じ名前になり、ブラウザの
+    // クッキーはポートで分かれないため、同じホストに並べた開発の環境（localhost:3001・localhost:3000）で、片方のログインが
+    // もう片方のセッションを上書きして切っていた（studio#72・game#55）。ホスト名を分ける案は、同じホストに並べたときにまた
+    // 起きるため採らなかった。値は環境ごとに変えられるよう環境変数で渡し（必須。既定に黙って戻ると、また重なるため）、
+    // proxy.ts の未ログインの判定も同じ値を読む
+    cookiePrefix: process.env.BETTER_AUTH_COOKIE_PREFIX,
     ipAddress: {
       // 既定の X-Forwarded-For は利用者が付けられ、そのまま信じると偽装でレート制限をすり抜けられる（studio#10）。
       // envoy が接続元から判定して上書きで入れる x-client-ip だけを見る（better-auth 公式の推奨: プロキシが設定する信頼できるヘッダー 1 つ）

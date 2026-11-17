@@ -34,7 +34,7 @@ http://localhost:3001 で開く（envoy 経由。Next.js の開発サーバー�
 送ったメール（パスワードの設定等）は http://localhost:8025 の Mailpit で読む（外には送らない。ポートは STUDIO_MAILPIT_PORT で変更可）。
 ポートが他と衝突する場合は `STUDIO_PORT=13001 make up` のように変更できる。
 
-開発の画面がページ全体の読み直しを繰り返すとき（ブラウザの console に `[Fast Refresh] rebuilding` が出続ける）は、まず `docker compose restart studio`、直らなければ `make dev-cache-reset` で開発用のキャッシュを作り直す。依存（`pnpm-lock.yaml` から入れたもの）か `next.config.ts` が前回の起動から変わっていれば、起動のとき（`make up`・再起動）に自動で作り直す（local/studio/dev.sh。studio#66・game#39）。
+開発の画面がページ全体の読み直しを繰り返すとき（ブラウザの console に `[Fast Refresh] rebuilding` が出続ける）は、ふつうは自動で直る。起動の手順（local/studio/dev.sh）が開発サーバーの「Compiled in」の行を 1 分ごとに数え、20 を超えたら開発用のキャッシュ（.next/dev）を消して起動し直す（`docker compose logs studio` に「開発の画面の読み直しの繰り返し…を見つけたので」と出る。同じ起動の間に 3 回作り直しても続くときは数えるのをやめるので、キャッシュ以外の原因を調べる。しきい値と回数は環境変数 `DEV_RELOAD_LOOP_LIMIT`・`DEV_RELOAD_LOOP_MAX_RESETS`。game#68・studio#77）。直らなければ `make dev-cache-reset` で作り直す。Grafana の「入口 · 異常」の「画面の再コンパイル」でも見える（core#133）。依存（`pnpm-lock.yaml` から入れたもの）か `next.config.ts` が前回の起動から変わっていれば、起動のとき（`make up`・再起動）に自動で作り直す（local/studio/dev.sh。studio#66・game#39）。
 
 ### 構成
 
@@ -125,6 +125,7 @@ URL は起動のたびに変わり、知っていれば誰でもアクセスで�
 | 開発・テスト用のオペレーター | `pnpm db:seed` で作る（operator@example.com / operator-password。メールアドレスは確認済み）。core の初期オペレーター（`STUDIO_INITIAL_OPERATOR_EMAIL`）と同じアドレスで、ログインして core を呼ぶと紐づく。本番では使わない                                                                                                                                                                                                                                                   |
 | 名前                         | better-auth の `name` は必須の列だが使わず、空文字にする（オペレーターのプロフィールは core に持つ）                                                                                                                                                                                                                                                                                                                                                                          |
 | JWT                          | `/api/auth/token` で取得。`iss` / `aud` は環境変数 `JWT_ISSUER` / `JWT_AUDIENCE`（必須。開発・テストは `diecardomain-studio` / `diecardomain-core`）。`sub` は better-auth のユーザー ID。中身は `sub`・`iss`・`aud`・`iat`・`exp` と、`email`・`email_verified`（core が初めてのログインでオペレーターに紐づけるときにだけ使う。OIDC の標準のクレーム名）（有効期限 15 分）。**`JWT_ISSUER` は core がオペレーターを識別するキーの一部のため、運用を始めた環境では変えない** |
+| セッションのクッキー | 名前の頭は環境変数 `BETTER_AUTH_COOKIE_PREFIX`（必須。開発・テスト・リリース確認は `studio`。クッキーは `studio.session_token` 等）。game と別の値にする（ブラウザのクッキーはポートで分かれないため、同じホストに並べると、同じ名前では片方のログインがもう片方のセッションを切る。studio#72・game#55） |
 | JWKS                         | `/api/auth/jwks`（EdDSA / Ed25519）。core が JWT の検証に使う                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 `make up` では、studio-migrate がマイグレーションを適用してから、開発サーバーの起動前に `db:seed`（冪等）を実行する。
@@ -196,16 +197,22 @@ secret は Cookie の署名と、JWT の署名鍵（studio-db の `jwks`）の�
 
 secret だけが漏れた場合、Cookie の署名は作れるが、セッションの token（DB にあるランダムな値）を知らないとログイン状態は偽造できない。secret と studio-db の両方が漏れると、`jwks` の秘密鍵を復号して JWT を偽造できる（core に対して任意のオペレーターになりすませる）。
 
-## トレース（OpenTelemetry）
+## トレースとログ（OpenTelemetry）
 
 開発中に、studio から core までのリクエストを 1 本のトレースで見られる（studio#50）。`instrumentation.ts` で `@vercel/otel` の `registerOTel` を呼び、Next.js の処理・better-auth の DB の呼び出し・core への fetch をスパンにして送る。
+
+サーバーのログ（studio の console と、Next.js 自身が console に出すエラー・リクエストのログ）も、core のログと同じ受け手の Loki に送る（studio#69）。`lib/console-logs.ts` が console を包み、標準出力にはそのまま出したうえで、OTLP でも送る。
 
 | 項目              | 内容                                                                                                                                                                                                                                                                                                                                    |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 送り先            | OpenTelemetry の標準の環境変数 `OTEL_EXPORTER_OTLP_ENDPOINT`（開発・テスト用の環境は `http://host.docker.internal:4318`）・`OTEL_EXPORTER_OTLP_PROTOCOL`・`OTEL_SERVICE_NAME`。任意で、渡さなければ送らない（リリース確認の環境・本番のように受け手が無くても、同じイメージのまま普通に動く）。受け手に届かなくても studio は普通に動く |
+| 環境の印 | 開発の環境（compose.yaml）は `OTEL_RESOURCE_ATTRIBUTES` で `deployment.environment.name=development`、テスト用の環境（compose.test.yaml。studio と core）は `test` を付ける。同じ受け手に同じサービス名で送るので、Grafana ではこの印（Loki・Prometheus の `deployment_environment_name`）で開発とテストを見分ける（core#120） |
 | 受け手            | core の compose の otel-lgtm（`make up` で core と一緒に起動）。Grafana は http://127.0.0.1:3002（ログインなし）の Explore で Tempo を選ぶ。studio のコンテナは共有ネットワークに入れず、`extra_hosts` の `host.docker.internal` でホストの 4318 番に届ける                                                                             |
 | core とのつながり | core を呼ぶ fetch に `traceparent` を付ける。@vercel/otel は既定では自分と同じ宛先への fetch にしか付けないため、instrumentation.ts の `propagateContextUrls` に `CORE_GRAPHQL_URL` を渡している（無いと studio と core が別々のトレースになる）。core は受けた `traceparent` を引き継ぐ                                                |
 | 確かめ方          | `traceparent: 00-<32 桁の 16 進数>-<16 桁の 16 進数>-01` を付けて、ログイン後の Cookie でページ（例: `/boards`）を呼び、`curl http://127.0.0.1:3002/api/datasources/proxy/uid/tempo/api/traces/<trace id>` で studio と core のスパンが同じ trace id に並ぶことを見る                                                                   |
+| ログの重さ        | console の関数で決める（`console.error` → ERROR、`warn` → WARN、`log`・`info` → INFO、`debug` → DEBUG）。Loki の `detected_level`（error・warn 等）になり、core のダッシュボード「core の処理」の ERROR・WARN の欄に studio の分が出る |
+| ログとトレース    | リクエストの途中で出たログには、そのときのスパンの `trace_id`・`span_id` が付く（Grafana の Explore（Loki）でログを開くと、トレースへ移れる）。Next.js のリクエストのログ（`GET /login 200 in …`）は、リクエストのスパンが閉じた後に出るため付かない |
+| ログの確かめ方    | Grafana の Explore で Loki を選び、`{service_name="studio"}`（誤りだけなら `{service_name="studio"} \| detected_level=~"error\|warn"`）を引く。届いていなければ、送り先の環境変数が studio のコンテナに渡っているかを見る |
 
 ## DB マイグレーション
 

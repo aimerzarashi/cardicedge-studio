@@ -1,4 +1,51 @@
 """
+AT の増減
+"""
+type AttackModifierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	増減の値（負は下げる）
+	"""
+	value: Int!
+}
+"""
+AT の倍率
+"""
+type AttackMultiplierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	倍率（百分率。150 で 1.5 倍。1 以上）
+	"""
+	percent: Int!
+	"""
+	発動する制約（すべてを満たすときに発動する。無ければ空でいつも発動する）
+	"""
+	constraints: [EffectConstraint!]!
+}
+"""
+AT の上書き
+"""
+type AttackOverrideEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	上書きした後の AT の最小（0 以上）
+	"""
+	minimum: Int!
+	"""
+	上書きした後の AT の最大（最小以上）
+	"""
+	maximum: Int!
+}
+"""
 拠点がちょうど 1 つでない（公開するボードの拠点はちょうど 1 つ）
 """
 type BaseCountProblem implements BoardPublishProblem {
@@ -144,6 +191,14 @@ type BoardDefaultRules {
 	サイコロの目の最大（最小以上。登録した直後は 6）
 	"""
 	diceMax: Int!
+	"""
+	土地の基本の値（1 以上。レベルと連鎖の倍率を掛ける元。登録した直後は 100）
+	"""
+	baseLandValue: Int!
+	"""
+	周回のボーナスに足す、自分の領地 1 つあたりの魔力（0 以上。拠点に戻ったときの自分の領地の数だけ足す。登録した直後は 20）
+	"""
+	lapBonusPerTerritory: Int!
 }
 """
 ボードの一覧の絞り込み
@@ -283,36 +338,6 @@ interface BoardTile {
 	y: Int!
 }
 """
-土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
-効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
-"""
-enum BoardTileAttribute {
-	"""
-	火（火属性）
-	"""
-	FIRE
-	"""
-	地（地属性）
-	"""
-	EARTH
-	"""
-	水（水属性）
-	"""
-	WATER
-	"""
-	風（風属性）
-	"""
-	WIND
-	"""
-	無（無属性）
-	"""
-	NEUTRAL
-	"""
-	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
-	"""
-	MULTI
-}
-"""
 ボードのマスの数（read model の投影のときに数える）。土地だけが属性を持つので、属性ごとの数の和が土地の数になる
 """
 type BoardTileCounts {
@@ -376,6 +401,36 @@ type BoardTileCounts {
 	カード屋の数
 	"""
 	cardShop: Int!
+}
+"""
+土地の属性。土地は必ずどれか 1 つを持つ（火属性の土地・地属性の土地 等）。拠点・チェックポイントは持たない。
+効き方（地形効果・連鎖・属性の変更のコスト等）は対戦の決まりで、ここでは決めない
+"""
+enum BoardTileElement {
+	"""
+	火（火属性）
+	"""
+	FIRE
+	"""
+	地（地属性）
+	"""
+	EARTH
+	"""
+	水（水属性）
+	"""
+	WATER
+	"""
+	風（風属性）
+	"""
+	WIND
+	"""
+	無（無属性）
+	"""
+	NEUTRAL
+	"""
+	複（複属性）。火・地・水・風の 4 色のマークが描かれた特殊な土地。組み合わせは持たない（属性の値の 1 つ）
+	"""
+	MULTI
 }
 """
 置くマスの入力。land・base・checkpoint・warp・bridge・sanctuary・shrine・prophecyShop・cardShop のうち、ちょうど 1 つだけを書く（書いた項目が種類になる）
@@ -505,6 +560,14 @@ interface Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -570,6 +633,15 @@ type CardNameAlreadyInUseError {
 	message: String!
 }
 """
+準備中でないカードの性能を変えようとした（性能を変えられるのは準備中だけ。公開中・使用不可は、デッキに入れた・game に写した性能が途中で変わるため）
+"""
+type CardNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 カードが無い（公開用の ID に当たるカードが無い。カードでない ID を含む）
 """
 type CardNotFoundError {
@@ -578,6 +650,31 @@ type CardNotFoundError {
 	"""
 	message: String!
 }
+"""
+カードの希少度
+"""
+enum CardRarity {
+	"""
+	画面では N
+	"""
+	NORMAL
+	"""
+	画面では S
+	"""
+	STRANGE
+	"""
+	画面では R
+	"""
+	RARE
+	"""
+	画面では E
+	"""
+	EXTRA
+}
+"""
+カードの詳細の結果
+"""
+union CardResult = Creature | Item | Spell | CardNotFoundError | ForbiddenError
 """
 カード屋（止まると、用意されたカードから 1 枚買える）。属性は持たない
 """
@@ -622,7 +719,7 @@ enum CardType {
 """
 union CardsResult = CardConnection | ValidationErrors | ForbiddenError
 """
-ボードの既定のルールを変える入力（変えた後の 7 つの値の全体）
+ボードの既定のルールを変える入力（変えた後の 8 つの値の全体）
 """
 input ChangeBoardDefaultRulesInput {
 	"""
@@ -661,6 +758,14 @@ input ChangeBoardDefaultRulesInput {
 	サイコロの目の最大（最小以上でなければ入力の誤り）
 	"""
 	diceMax: Int!
+	"""
+	土地の基本の値（1 以上）
+	"""
+	baseLandValue: Int!
+	"""
+	周回のボーナスに足す、自分の領地 1 つあたりの魔力（0 以上。拠点に戻ったときの自分の領地の数だけ足す）
+	"""
+	lapBonusPerTerritory: Int!
 }
 """
 ボードの既定のルールの変更の結果（準備中のものだけ変えられる。どれか 1 つでも誤りがあれば、何も変えない）
@@ -726,6 +831,350 @@ type ChangeBoardLayoutSuccess {
 	id: UUID!
 	"""
 	変えたボードの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+カードのコストを変える入力
+"""
+input ChangeCardCostInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの revision
+	"""
+	revision: Int!
+	"""
+	変えた後のコスト（0 以上。上限は無い）
+	"""
+	cost: Int!
+}
+"""
+カードのコストを変える操作の結果
+"""
+union ChangeCardCostResult = ChangeCardCostSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+カードのコストを変えた（同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeCardCostSuccess {
+	"""
+	変えたカードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたカードの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+カードの希少度を変える入力
+"""
+input ChangeCardRarityInput {
+	"""
+	カード（Creature・Item・Spell）の公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の希少度
+	"""
+	rarity: CardRarity!
+}
+"""
+カードの希少度を変える操作の結果
+"""
+union ChangeCardRarityResult = ChangeCardRaritySuccess | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+カードの希少度を変えた（同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeCardRaritySuccess {
+	"""
+	変えたカードの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたカードの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーの効果の並びを変える入力
+"""
+input ChangeCreatureEffectsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の効果の並び（全体。並びの順に当てる。同じ種類を重ねてよい。クリーチャーが持てない種類は FieldInvalidFormat（effects.N）、先に攻撃すると後に攻撃するを一緒に持つのは FieldInvalidFormat（effects）。無しは空）
+	"""
+	effects: [EffectInput!]!
+}
+"""
+クリーチャーの効果の並びを変える操作の結果（入力の誤りの項目は changeItemEffects と同じ。カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureEffectsResult = ChangeCreatureEffectsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの効果の並びを変えた（同じ並びなら何も変えず、revision も進まない）
+"""
+type ChangeCreatureEffectsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーの属性を変える入力
+"""
+input ChangeCreatureElementsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の属性（1〜4 つ。重複は入力の誤り。無は単独。並びは問わず、保存は火・地・水・風の順にそろえる）
+	"""
+	elements: [CreatureElement!]!
+}
+"""
+クリーチャーの属性を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureElementsResult = ChangeCreatureElementsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの属性を変えた（同じ集合なら何も変えず、revision も進まない）
+"""
+type ChangeCreatureElementsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーのアイテム制限を変える入力
+"""
+input ChangeCreatureItemRestrictionsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後のアイテム制限（持てないアイテムの分類。重複なし。無しは空）
+	"""
+	itemRestrictions: [ItemCategory!]!
+}
+"""
+クリーチャーのアイテム制限を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureItemRestrictionsResult = ChangeCreatureItemRestrictionsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーのアイテム制限を変えた（同じ集合なら何も変えず、revision も進まない）
+"""
+type ChangeCreatureItemRestrictionsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーの配置制限を変える入力
+"""
+input ChangeCreaturePlacementRestrictionsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の配置制限（置けない土地の属性。火・地・水・風で重複なし。無しは空）
+	"""
+	placementRestrictions: [BoardTileElement!]!
+}
+"""
+クリーチャーの配置制限を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreaturePlacementRestrictionsResult = ChangeCreaturePlacementRestrictionsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの配置制限を変えた（同じ集合なら何も変えず、revision も進まない）
+"""
+type ChangeCreaturePlacementRestrictionsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+クリーチャーの攻撃力と体力を変える入力
+"""
+input ChangeCreatureStatsInput {
+	"""
+	クリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたクリーチャーの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の攻撃力（AT。0 以上。上限は無い）
+	"""
+	attack: Int!
+	"""
+	変えた後の体力（HP。1 以上。上限は無い）
+	"""
+	hitPoints: Int!
+}
+"""
+クリーチャーの攻撃力と体力を変える操作の結果（カードでない ID・クリーチャー以外のカードの ID は CardNotFoundError）
+"""
+union ChangeCreatureStatsResult = ChangeCreatureStatsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+クリーチャーの攻撃力と体力を変えた（どちらも同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeCreatureStatsSuccess {
+	"""
+	変えたクリーチャーの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたクリーチャーの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+アイテムの分類を変える入力
+"""
+input ChangeItemCategoryInput {
+	"""
+	変えるアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの更新の番号
+	"""
+	revision: Int!
+	"""
+	変えた後の分類
+	"""
+	category: ItemCategory!
+}
+"""
+アイテムの分類を変える操作の結果（カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
+"""
+union ChangeItemCategoryResult = ChangeItemCategorySuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ItemEffectNotAllowedError | ForbiddenError
+"""
+アイテムの分類を変えた（同じ値なら revision は進まない）
+"""
+type ChangeItemCategorySuccess {
+	"""
+	変えたアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	操作した後の更新の番号
+	"""
+	revision: Int!
+}
+"""
+アイテムの効果の並びを変える入力
+"""
+input ChangeItemEffectsInput {
+	"""
+	変えるアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたカードの更新の番号
+	"""
+	revision: Int!
+	"""
+	変えた後の効果の並び（全体。並びの順に当てる）
+	"""
+	effects: [EffectInput!]!
+}
+"""
+アイテムの効果の並びを変える操作の結果（入力の誤りの項目は effects.N・effects.N.value・effects.N.minimum・effects.N.maximum・effects.N.percent・effects.N.constraints.M・effects.N.constraints.M.elements。カードでない ID・アイテム以外のカードの ID は CardNotFoundError）
+"""
+union ChangeItemEffectsResult = ChangeItemEffectsSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ItemEffectNotAllowedError | ForbiddenError
+"""
+アイテムの効果の並びを変えた（同じ並びなら revision は進まない）
+"""
+type ChangeItemEffectsSuccess {
+	"""
+	変えたアイテムの公開用の ID
+	"""
+	id: UUID!
+	"""
+	操作した後の更新の番号
+	"""
+	revision: Int!
+}
+"""
+スペルの効果を変える入力
+"""
+input ChangeSpellEffectInput {
+	"""
+	スペルの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていたスペルの revision
+	"""
+	revision: Int!
+	"""
+	変えた後の効果（null なら効果なし）
+	"""
+	effect: SpellEffectInput
+}
+"""
+スペルの効果を変える操作の結果（カードでない ID・スペル以外のカードの ID は CardNotFoundError）
+"""
+union ChangeSpellEffectResult = ChangeSpellEffectSuccess | ValidationErrors | CardNotFoundError | RevisionConflictError | CardNotDraftError | ForbiddenError
+"""
+スペルの効果を変えた（同じ値なら何も変えず、revision も進まない）
+"""
+type ChangeSpellEffectSuccess {
+	"""
+	変えたスペルの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えたスペルの revision（内容は返さない。画面はカードを読み直し、その revision を持つ）
 	"""
 	revision: Int!
 }
@@ -797,6 +1246,42 @@ type Creature implements Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
+	属性（1〜4 つ。無は単独。火・地・水・風の順に並べる）
+	"""
+	elements: [CreatureElement!]!
+	"""
+	攻撃力（AT。0 以上）
+	"""
+	attack: Int!
+	"""
+	体力（HP。1 以上）
+	"""
+	hitPoints: Int!
+	"""
+	アイテム制限（持てないアイテムの分類。武器・防具・巻物の順。無ければ空）
+	"""
+	itemRestrictions: [ItemCategory!]!
+	"""
+	配置制限（置けない土地の属性。火・地・水・風の順。無ければ空）
+	"""
+	placementRestrictions: [BoardTileElement!]!
+	"""
+	効果の並び（入れた順。無ければ空）
+	"""
+	effects: [Effect!]!
+	"""
+	クリーチャーが持てる効果の種類（画面が選べるものだけを出すため。決まりは core が持つ）
+	"""
+	allowedEffectKinds: [EffectKind!]!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -808,6 +1293,49 @@ type Creature implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+クリーチャーの属性。火・地・水・風のうち 1〜4 つか、無の単独（無は火・地・水・風と組み合わせない）
+"""
+enum CreatureElement {
+	"""
+	火
+	"""
+	FIRE
+	"""
+	地
+	"""
+	EARTH
+	"""
+	水
+	"""
+	WATER
+	"""
+	風
+	"""
+	WIND
+	"""
+	無
+	"""
+	NEUTRAL
+}
+"""
+対象のクリーチャーにダメージ（今の HP から amount を引き、0 になれば破壊する）
+"""
+type DamageSpellEffect {
+	"""
+	ダメージ（1 以上）
+	"""
+	amount: Int!
+}
+"""
+対象のクリーチャーにダメージの入力
+"""
+input DamageSpellEffectInput {
+	"""
+	ダメージ（1 以上。上限は無い）
+	"""
+	amount: Int!
 }
 """
 日時（RFC 3339 の文字列。例: 2026-10-17T09:00:00Z）
@@ -996,6 +1524,187 @@ type DeleteStarterSetSuccess {
 	id: UUID!
 }
 """
+カードを引く効果（山札の先頭から引く）
+"""
+type DrawCardsSpellEffect {
+	"""
+	引く枚数（1 以上）
+	"""
+	count: Int!
+}
+"""
+カードを引く効果の入力
+"""
+input DrawCardsSpellEffectInput {
+	"""
+	引く枚数（1 以上。上限は無い）
+	"""
+	count: Int!
+}
+"""
+効果（種類ごとの型）
+"""
+interface Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
+効果の制約（種類ごとの型）
+"""
+interface EffectConstraint {
+	"""
+	制約の種類
+	"""
+	kind: EffectConstraintKind!
+}
+"""
+効果の制約の入力
+"""
+input EffectConstraintInput {
+	"""
+	制約の種類
+	"""
+	kind: EffectConstraintKind!
+	"""
+	相手のクリーチャーの属性（1 つ以上・重複なし）
+	"""
+	elements: [CreatureElement!]
+}
+"""
+効果の制約の種類
+"""
+enum EffectConstraintKind {
+	"""
+	相手のクリーチャーの属性（戦う相手のクリーチャーの属性のどれかが合うとき）
+	"""
+	OPPONENT_CREATURE_ELEMENT
+}
+"""
+破壊されたときの効果が発動する破壊（対戦の 3 つの破壊のイベントと対応する）
+"""
+enum EffectDestruction {
+	"""
+	戦闘で、侵略したクリーチャーとして破壊された
+	"""
+	INVADING
+	"""
+	戦闘で、領地を守るクリーチャーとして破壊された
+	"""
+	DEFENDING
+	"""
+	戦闘の外（スペルのダメージ等）で破壊された
+	"""
+	BOARD
+}
+"""
+効果の入力（種類に要る値だけを入れる。増減は value、上書きは minimum と maximum、AT の倍率は percent と constraints、通行料の倍率は percent、受けるダメージを 0 にするは constraints、破壊されたら手札に戻るは destructions、破壊されたら魔力を得るは destructions と amount、手札のクリーチャーをアイテムとして使えるは elements）
+"""
+input EffectInput {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	AT・HP の増減の値
+	"""
+	value: Int
+	"""
+	上書きした後の値の最小
+	"""
+	minimum: Int
+	"""
+	上書きした後の値の最大
+	"""
+	maximum: Int
+	"""
+	倍率（百分率）
+	"""
+	percent: Int
+	"""
+	制約（すべてを満たすときに発動する）
+	"""
+	constraints: [EffectConstraintInput!]
+	"""
+	発動する破壊（1 つ以上・重複なし）
+	"""
+	destructions: [EffectDestruction!]
+	"""
+	受け取る魔力の額
+	"""
+	amount: Int
+	"""
+	アイテムとして使えるクリーチャーの属性（1 つ以上・重複なし）
+	"""
+	elements: [CreatureElement!]
+}
+"""
+効果の種類
+"""
+enum EffectKind {
+	"""
+	AT の増減（戦闘中、AT が決まった値だけ増減する）
+	"""
+	ATTACK_MODIFIER
+	"""
+	HP の増減（戦闘中、HP が決まった値だけ増減する）
+	"""
+	HIT_POINTS_MODIFIER
+	"""
+	AT の上書き（戦闘中、AT が最小〜最大のランダムな値になる。固定は最小と最大が同じ）
+	"""
+	ATTACK_OVERRIDE
+	"""
+	HP の上書き（戦闘中、HP が最小〜最大のランダムな値になる。固定は最小と最大が同じ）
+	"""
+	HIT_POINTS_OVERRIDE
+	"""
+	AT の倍率（制約を満たすとき、増減・上書きの後に AT に倍率を掛ける。発動したうち一番高い倍率を 1 回だけ）
+	"""
+	ATTACK_MULTIPLIER
+	"""
+	地形効果を無視する（相手の地形効果を無視してダメージを与える）
+	"""
+	IGNORE_TERRAIN_EFFECT
+	"""
+	先に攻撃する（戦闘で、先に攻撃する効果の無い相手より先に攻撃する。後に攻撃すると一緒には持てない）
+	"""
+	STRIKE_FIRST
+	"""
+	後に攻撃する（戦闘で、後に攻撃する効果の無い相手より後に攻撃する。先に攻撃すると一緒には持てない）
+	"""
+	STRIKE_LAST
+	"""
+	受けるダメージを 0 にする（制約を満たす相手から攻撃を受けたとき、ダメージが 0 になる）
+	"""
+	NULLIFY_RECEIVED_DAMAGE
+	"""
+	通行料の倍率（いる領地の通行料を払うときに倍率を掛ける）
+	"""
+	TOLL_MULTIPLIER
+	"""
+	侵略できない（手札から侵略できず、移動で他人の領地にも入れない。守ることはできる）
+	"""
+	FORBID_INVASION
+	"""
+	移動できない（領地コマンドで動けない）
+	"""
+	FORBID_MOVEMENT
+	"""
+	破壊されたら手札に戻る（選んだ破壊のとき、捨て札に入ったカードが持ち主の手札に戻る。手札が上限なら戻れない）
+	"""
+	RETURN_TO_HAND_ON_DESTRUCTION
+	"""
+	破壊されたら魔力を得る（選んだ破壊のとき、持ち主が額の魔力を受け取る）
+	"""
+	GAIN_MAGIC_ON_DESTRUCTION
+	"""
+	手札のクリーチャーをアイテムとして使える（戦闘でアイテムの代わりに、属性が合う手札のクリーチャーを 1 枚出し、そのカードの AT・HP を足す。画面のラベルは援護）
+	"""
+	USE_CREATURE_AS_ITEM
+}
+"""
 一覧の中で、同じもの（同じカード等）がすでに出てきた（2 回目に付ける）
 """
 type FieldDuplicated implements FieldError {
@@ -1168,6 +1877,50 @@ type FieldUnavailable implements FieldError {
 	field: String!
 }
 """
+サイコロの目を固定する効果（対象のプレイヤーが振るとき、目は value になる。turns ターン効き続ける）
+"""
+type FixedDiceSpellEffect {
+	"""
+	固定する目（1 以上）
+	"""
+	value: Int!
+	"""
+	効き続けるターン数（1 以上。かかった人が自分のターンを終えるたびに 1 減り、0 で終わる）
+	"""
+	turns: Int!
+}
+"""
+サイコロの目を固定する効果の入力
+"""
+input FixedDiceSpellEffectInput {
+	"""
+	固定する目（1 以上）
+	"""
+	value: Int!
+	"""
+	効き続けるターン数（1 以上）
+	"""
+	turns: Int!
+}
+"""
+侵略できない
+"""
+type ForbidInvasionEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
+移動できない
+"""
+type ForbidMovementEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
 操作する権限が無い（JWT は正しいが、core のオペレーターとして登録されていない等）
 """
 type ForbiddenError {
@@ -1175,6 +1928,41 @@ type ForbiddenError {
 	開発者向けの説明（画面にそのまま出す文言ではない）
 	"""
 	message: String!
+}
+"""
+破壊されたら魔力を得る
+"""
+type GainMagicOnDestructionEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	発動する破壊（侵略・守る・ボードの順。1 つ以上）
+	"""
+	destructions: [EffectDestruction!]!
+	"""
+	受け取る魔力の額（1 以上）
+	"""
+	amount: Int!
+}
+"""
+魔力を得る効果（使った人が（周回数 + 1）× perLap の魔力を得る。周回数はその対戦で周回を終えた回数）
+"""
+type GainMagicSpellEffect {
+	"""
+	周回数 1 つあたりの魔力（1 以上）
+	"""
+	perLap: Int!
+}
+"""
+魔力を得る効果の入力
+"""
+input GainMagicSpellEffectInput {
+	"""
+	周回数 1 つあたりの魔力（1 以上。上限は無い）
+	"""
+	perLap: Int!
 }
 """
 ゲーム全体のルール
@@ -1319,6 +2107,45 @@ enum GrantDeckStatus {
 """
 union GrantDecksResult = GrantDeckConnection | ValidationErrors | ForbiddenError
 """
+HP の増減
+"""
+type HitPointsModifierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	増減の値（負は下げる）
+	"""
+	value: Int!
+}
+"""
+HP の上書き
+"""
+type HitPointsOverrideEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	上書きした後の HP の最小（1 以上）
+	"""
+	minimum: Int!
+	"""
+	上書きした後の HP の最大（最小以上）
+	"""
+	maximum: Int!
+}
+"""
+地形効果を無視する
+"""
+type IgnoreTerrainEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
 準備中のボードを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidBoardStatusTransitionError {
@@ -1389,6 +2216,26 @@ type Item implements Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
+	分類
+	"""
+	category: ItemCategory!
+	"""
+	効果の並び（入れた順。無ければ空）
+	"""
+	effects: [Effect!]!
+	"""
+	今の分類で持てる効果の種類（画面が選べるものだけを出すため。分類ごとの決まりは core が持つ）
+	"""
+	allowedEffectKinds: [EffectKind!]!
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -1400,6 +2247,32 @@ type Item implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+アイテムの分類
+"""
+enum ItemCategory {
+	"""
+	武器
+	"""
+	WEAPON
+	"""
+	防具
+	"""
+	ARMOR
+	"""
+	巻物
+	"""
+	SCROLL
+}
+"""
+アイテムの分類で持てない効果がある（効果を変えるとき・分類を変えるとき。持てる効果は分類ごとに決まっている）
+"""
+type ItemEffectNotAllowedError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
 }
 """
 土地（ふつうのマス。公開するボードの、拠点・チェックポイント以外のマス）
@@ -1416,7 +2289,7 @@ type LandTile implements BoardTile {
 	"""
 	属性
 	"""
-	attribute: BoardTileAttribute!
+	element: BoardTileElement!
 }
 """
 置く土地の入力
@@ -1433,7 +2306,7 @@ input LandTileInput {
 	"""
 	属性
 	"""
-	attribute: BoardTileAttribute!
+	element: BoardTileElement!
 }
 """
 対戦の決まり（盤面や部屋によらず、ゲーム全体で同じ値）
@@ -1455,6 +2328,32 @@ type MatchRules {
 	対戦の始めに配る手札の枚数
 	"""
 	startingHandCards: Int!
+}
+"""
+サイコロを複数振る効果（対象のプレイヤーが振るとき、count 個を同時に振り、合計の分だけ進む。turns ターン効き続ける）
+"""
+type MultipleDiceSpellEffect {
+	"""
+	振るサイコロの個数（2 以上）
+	"""
+	count: Int!
+	"""
+	効き続けるターン数（1 以上。かかった人が自分のターンを終えるたびに 1 減り、0 で終わる）
+	"""
+	turns: Int!
+}
+"""
+サイコロを複数振る効果の入力
+"""
+input MultipleDiceSpellEffectInput {
+	"""
+	振るサイコロの個数（2 以上。上限は無い）
+	"""
+	count: Int!
+	"""
+	効き続けるターン数（1 以上）
+	"""
+	turns: Int!
 }
 type Mutation {
 	"""
@@ -1521,6 +2420,24 @@ type Mutation {
 		input: RetireBoardInput!
 	): RetireBoardResult!
 	"""
+	カードのコストを変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCardCost(
+		"""
+		変えるカードとコスト
+		"""
+		input: ChangeCardCostInput!
+	): ChangeCardCostResult!
+	"""
+	カードの希少度を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCardRarity(
+		"""
+		変えるカードと希少度
+		"""
+		input: ChangeCardRarityInput!
+	): ChangeCardRarityResult!
+	"""
 	カードを公開中にする（紐づいたオペレーターだけ。準備中・使用不可から）
 	"""
 	publishCard(
@@ -1538,6 +2455,51 @@ type Mutation {
 		"""
 		input: RetireCardInput!
 	): RetireCardResult!
+	"""
+	クリーチャーの属性を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCreatureElements(
+		"""
+		変えるクリーチャーと属性
+		"""
+		input: ChangeCreatureElementsInput!
+	): ChangeCreatureElementsResult!
+	"""
+	クリーチャーの攻撃力と体力を変える（紐づいたオペレーターだけ。準備中だけ。2 つは一緒に変える）
+	"""
+	changeCreatureStats(
+		"""
+		変えるクリーチャーと攻撃力・体力
+		"""
+		input: ChangeCreatureStatsInput!
+	): ChangeCreatureStatsResult!
+	"""
+	クリーチャーの効果の並びを変える（紐づいたオペレーターだけ。準備中だけ。並びを全体で入れ替える）
+	"""
+	changeCreatureEffects(
+		"""
+		変えるクリーチャーと効果の並び
+		"""
+		input: ChangeCreatureEffectsInput!
+	): ChangeCreatureEffectsResult!
+	"""
+	クリーチャーのアイテム制限を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCreatureItemRestrictions(
+		"""
+		変えるクリーチャーとアイテム制限
+		"""
+		input: ChangeCreatureItemRestrictionsInput!
+	): ChangeCreatureItemRestrictionsResult!
+	"""
+	クリーチャーの配置制限を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeCreaturePlacementRestrictions(
+		"""
+		変えるクリーチャーと配置制限
+		"""
+		input: ChangeCreaturePlacementRestrictionsInput!
+	): ChangeCreaturePlacementRestrictionsResult!
 	"""
 	クリーチャーを登録する（紐づいたオペレーターだけ）
 	"""
@@ -1610,6 +2572,24 @@ type Mutation {
 		"""
 		input: RetireGrantDeckInput!
 	): RetireGrantDeckResult!
+	"""
+	アイテムの分類を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeItemCategory(
+		"""
+		変えるアイテムと分類
+		"""
+		input: ChangeItemCategoryInput!
+	): ChangeItemCategoryResult!
+	"""
+	アイテムの効果の並びを変える（紐づいたオペレーターだけ。準備中だけ。分類で持てる効果だけ）
+	"""
+	changeItemEffects(
+		"""
+		変えるアイテムと効果の並び
+		"""
+		input: ChangeItemEffectsInput!
+	): ChangeItemEffectsResult!
 	"""
 	アイテムを登録する（紐づいたオペレーターだけ）
 	"""
@@ -1772,6 +2752,15 @@ type Mutation {
 		"""
 		input: DeletePresetDeckInput!
 	): DeletePresetDeckResult!
+	"""
+	スペルの効果を変える（紐づいたオペレーターだけ。準備中だけ）
+	"""
+	changeSpellEffect(
+		"""
+		変えるスペルと効果
+		"""
+		input: ChangeSpellEffectInput!
+	): ChangeSpellEffectResult!
 	"""
 	スペルを登録する（紐づいたオペレーターだけ）
 	"""
@@ -2118,6 +3107,32 @@ NPC のデッキの一覧の結果
 """
 union NpcDecksResult = NpcDeckConnection | ValidationErrors | ForbiddenError
 """
+受けるダメージを 0 にする
+"""
+type NullifyReceivedDamageEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	発動する制約（すべてを満たすときに発動する。無ければ空でいつも発動する）
+	"""
+	constraints: [EffectConstraint!]!
+}
+"""
+相手のクリーチャーの属性の制約
+"""
+type OpponentCreatureElementConstraint implements EffectConstraint {
+	"""
+	制約の種類
+	"""
+	kind: EffectConstraintKind!
+	"""
+	合えば満たす相手のクリーチャーの属性（火・地・水・風・無の順。1 つ以上）
+	"""
+	elements: [CreatureElement!]!
+}
+"""
 ページの情報
 """
 type PageInfo {
@@ -2291,7 +3306,7 @@ input PublishCardInput {
 """
 カードを公開中にする操作の結果
 """
-union PublishCardResult = PublishCardSuccess | CardNotFoundError | RevisionConflictError | InvalidCardStatusTransitionError | ForbiddenError
+union PublishCardResult = PublishCardSuccess | CardNotFoundError | RevisionConflictError | InvalidCardStatusTransitionError | SpellEffectRequiredError | ForbiddenError
 """
 カードを公開中にした（すでに公開中なら何も変えず、revision も進まない）
 """
@@ -2468,6 +3483,15 @@ type Query {
 		"""
 		input: CheckBoardLayoutInput!
 	): CheckBoardLayoutResult!
+	"""
+	カードの詳細（紐づいたオペレーターだけ。性能を変える画面が使う）
+	"""
+	card(
+		"""
+		カード（Creature・Item・Spell）の公開用の ID
+		"""
+		id: UUID!
+	): CardResult!
 	"""
 	カードの一覧（紐づいたオペレーターだけ）
 	"""
@@ -3303,6 +4327,19 @@ type RetireStarterSetSuccess {
 	revision: Int!
 }
 """
+破壊されたら手札に戻る
+"""
+type ReturnToHandOnDestructionEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	発動する破壊（侵略・守る・ボードの順。1 つ以上）
+	"""
+	destructions: [EffectDestruction!]!
+}
+"""
 先に変えられた（画面を開いた後に、ほかの操作でこの対象が変わった。操作は行われていない）。読み直してから操作し直す
 """
 type RevisionConflictError {
@@ -3600,6 +4637,18 @@ type Spell implements Card {
 	"""
 	status: CardStatus!
 	"""
+	使うのに払う魔力（0 以上）
+	"""
+	cost: Int!
+	"""
+	希少度
+	"""
+	rarity: CardRarity!
+	"""
+	効果（効果が無ければ null。効果の無いスペルは、対戦で使えない）
+	"""
+	effect: SpellEffect
+	"""
 	更新の番号（画面が見ていた版。公開する・使用不可にする操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -3611,6 +4660,44 @@ type Spell implements Card {
 	最後に変更した日時（変更していなければ登録した日時）
 	"""
 	updatedAt: DateTime!
+}
+"""
+スペルの効果（種類は __typename で見分ける。スペルは使ったときに発動する）
+"""
+union SpellEffect = DrawCardsSpellEffect | GainMagicSpellEffect | MultipleDiceSpellEffect | FixedDiceSpellEffect | DamageSpellEffect
+"""
+スペルの効果の入力（種類のどれか 1 つだけ）
+"""
+input SpellEffectInput @oneOf {
+	"""
+	カードを引く
+	"""
+	drawCards: DrawCardsSpellEffectInput
+	"""
+	魔力を得る
+	"""
+	gainMagic: GainMagicSpellEffectInput
+	"""
+	サイコロを複数振る
+	"""
+	multipleDice: MultipleDiceSpellEffectInput
+	"""
+	サイコロの目を固定する
+	"""
+	fixedDice: FixedDiceSpellEffectInput
+	"""
+	対象のクリーチャーにダメージ
+	"""
+	damage: DamageSpellEffectInput
+}
+"""
+効果の無いスペルを公開しようとした（効果の無いスペルは対戦で使えないため、公開できない）
+"""
+type SpellEffectRequiredError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
 }
 """
 スターターセット
@@ -3759,6 +4846,24 @@ enum StarterSetStatus {
 """
 union StarterSetsResult = StarterSetConnection | ValidationErrors | ForbiddenError
 """
+先に攻撃する
+"""
+type StrikeFirstEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
+後に攻撃する
+"""
+type StrikeLastEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+}
+"""
 studio でマスタを作るときの決まり
 """
 type StudioRules {
@@ -3783,6 +4888,19 @@ input TilePositionInput {
 	行（0 以上、高さ − 1 以下）
 	"""
 	y: Int!
+}
+"""
+通行料の倍率
+"""
+type TollMultiplierEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	倍率（百分率。150 で 1.5 倍。1 以上）
+	"""
+	percent: Int!
 }
 """
 公開用の ID（UUID の文字列）。core の内部の ID は返さない
@@ -3813,6 +4931,19 @@ type UnreachableTilesProblem implements BoardPublishProblem {
 	行けないマスの座標（行 → 列の順）
 	"""
 	positions: [BoardPosition!]!
+}
+"""
+手札のクリーチャーをアイテムとして使える
+"""
+type UseCreatureAsItemEffect implements Effect {
+	"""
+	効果の種類
+	"""
+	kind: EffectKind!
+	"""
+	アイテムとして使えるクリーチャーの属性（属性のどれかが合えば使える。火・地・水・風・無の順。1 つ以上。指定の無い援護はすべての属性）
+	"""
+	elements: [CreatureElement!]!
 }
 """
 入力の誤り（操作は行われていない）

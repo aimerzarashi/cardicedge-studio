@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 import {
-  cardRevisionQuery,
+  cardsRevisionQuery,
   publishCardMutation,
   registerCreatureMutation,
 } from "@/app/cards/operations";
@@ -90,7 +90,7 @@ async function untilCardsReached(
   expected: { id: string; revision: number }[],
 ) {
   await untilReached(`カード ${nameContains} が一覧に届く`, async () => {
-    const data = await callCore(page, cardRevisionQuery, {
+    const data = await callCore(page, cardsRevisionQuery, {
       name: nameContains,
     });
     if (data.cards.__typename !== "CardConnection") return false;

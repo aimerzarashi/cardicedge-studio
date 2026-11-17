@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  boardShortcut,
   centerOn,
   clamp,
   fitView,
@@ -106,5 +107,67 @@ describe("zoomAt", () => {
     const view = { scale: MAX_SCALE, x: 100, y: 50 };
 
     assert.deepEqual(zoomAt(view, 2, 300, 200), view);
+  });
+});
+
+describe("boardShortcut", () => {
+  const key = (code: string, rest = {}) => ({
+    code,
+    shiftKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    repeat: false,
+    target: null,
+    ...rest,
+  });
+
+  it("Z・X・0・T のキーの位置を操作に対応させる", () => {
+    assert.equal(boardShortcut(key("KeyZ")), "zoomIn");
+    assert.equal(boardShortcut(key("KeyX")), "zoomOut");
+    assert.equal(boardShortcut(key("Digit0")), "fit");
+    assert.equal(boardShortcut(key("Numpad0")), "fit");
+    assert.equal(boardShortcut(key("KeyT")), "toggleStats");
+  });
+
+  it("ほかのキーは操作にしない", () => {
+    assert.equal(boardShortcut(key("KeyA")), undefined);
+  });
+
+  for (const modifier of [
+    "shiftKey",
+    "ctrlKey",
+    "metaKey",
+    "altKey",
+    "repeat",
+  ]) {
+    it(`${modifier} のときは効かせない`, () => {
+      assert.equal(boardShortcut(key("KeyZ", { [modifier]: true })), undefined);
+    });
+  }
+
+  for (const tagName of ["INPUT", "SELECT", "TEXTAREA"]) {
+    it(`${tagName} の中では効かせない`, () => {
+      assert.equal(
+        boardShortcut(key("KeyZ", { target: { tagName } })),
+        undefined,
+      );
+    });
+  }
+
+  it("編集できる要素の中では効かせない", () => {
+    assert.equal(
+      boardShortcut(
+        key("KeyZ", { target: { tagName: "DIV", isContentEditable: true } }),
+      ),
+      undefined,
+    );
+  });
+
+  it("ボタンにフォーカスがあっても効く", () => {
+    assert.equal(
+      boardShortcut(key("KeyZ", { target: { tagName: "BUTTON" } })),
+      "zoomIn",
+    );
   });
 });

@@ -100,8 +100,8 @@ const unreachableLayout: Parameters<typeof setBoardLayout>[1] = {
   tiles: [
     { base: { x: 0, y: 0 } },
     { checkpoint: { x: 1, y: 0 } },
-    { land: { x: 2, y: 3, attribute: "FIRE" } },
-    { land: { x: 4, y: 5, attribute: "FIRE" } },
+    { land: { x: 2, y: 3, element: "FIRE" } },
+    { land: { x: 4, y: 5, element: "FIRE" } },
   ],
   connections: [{ a: { x: 0, y: 0 }, b: { x: 1, y: 0 } }],
 };
@@ -250,9 +250,9 @@ test("属性ごとの土地・施設 4 つ・転送円と橋の対を置いて�
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("全部の種類"));
 
-  const attributes = ["火", "地", "水", "風", "無", "複"] as const;
-  for (const [x, attribute] of attributes.entries()) {
-    await putTiles(page, `${attribute}属性の土地`, [[x, 0]]);
+  const elements = ["火", "地", "水", "風", "無", "複"] as const;
+  for (const [x, element] of elements.entries()) {
+    await putTiles(page, `${element}属性の土地`, [[x, 0]]);
   }
   await putTiles(page, "拠点", [[0, 1]]);
   await putTiles(page, "チェックポイント", [[1, 1]]);
@@ -279,9 +279,9 @@ test("属性ごとの土地・施設 4 つ・転送円と橋の対を置いて�
   await saveLayout(page);
   await page.reload();
 
-  for (const [x, attribute] of attributes.entries()) {
+  for (const [x, element] of elements.entries()) {
     await expect(tileButton(page, x, 0)).toHaveAccessibleName(
-      `(${x}, 0) のマス ${attribute}属性の土地`,
+      `(${x}, 0) のマス ${element}属性の土地`,
     );
   }
   await expect(tileButton(page, 0, 1)).toHaveAccessibleName(
@@ -347,6 +347,10 @@ test("公開中は、格子も既定のルールも表示だけで出て、編�
   await expect(detail(page, "ラウンドの上限")).toHaveText("30");
   await expect(detail(page, "サイコロの目（最小）")).toHaveText("1");
   await expect(detail(page, "サイコロの目（最大）")).toHaveText("6");
+  await expect(detail(page, "土地の基本の値")).toHaveText("100");
+  await expect(detail(page, "周回のボーナス（領地 1 つあたり）")).toHaveText(
+    "20",
+  );
   await expect(rules.getByLabel("目標の魔力")).toHaveCount(0);
   await expect(rules.getByRole("button", { name: "ルールを保存" })).toHaveCount(
     0,
@@ -523,6 +527,29 @@ test("拡大・縮小・全体を表示のボタンで、表示の倍率が変�
   expect(await scaleOf(page)).toBeCloseTo(fitted, 3);
 });
 
+test("Z・X・0 のキーで拡大・縮小・全体を表示ができ、入力欄の中では効かない", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  await registerBoard(page, uniqueName("キー"));
+  const editor = section(page, "レイアウト");
+  await expect(viewport(page)).toHaveAttribute("data-scale", /.+/);
+  const fitted = await scaleOf(page);
+
+  await page.keyboard.press("z");
+  await expect.poll(() => scaleOf(page)).toBeGreaterThan(fitted);
+  await page.keyboard.press("0");
+  await expect.poll(() => scaleOf(page)).toBeCloseTo(fitted, 3);
+  await page.keyboard.press("x");
+  await expect.poll(() => scaleOf(page)).toBeLessThan(fitted);
+  await page.keyboard.press("0");
+  await expect.poll(() => scaleOf(page)).toBeCloseTo(fitted, 3);
+
+  await editor.getByLabel("幅").focus();
+  await page.keyboard.press("z");
+  await expect.poll(() => scaleOf(page)).toBeCloseTo(fitted, 3);
+});
+
 test("幅・高さが最大のボードでも、端のマスを押せる", async ({ page }) => {
   await loginAsOperator(page);
   await registerBoard(page, uniqueName("広い"));
@@ -549,24 +576,32 @@ test("準備中のボードの既定のルールを変えて保存すると、�
 
   await rules.getByLabel("目標の魔力").fill("12000");
   await rules.getByLabel("開始時の魔力").fill("0");
-  await rules.getByLabel("周回のボーナス").fill("500");
+  await rules.getByLabel("周回のボーナス", { exact: true }).fill("500");
   await rules.getByLabel("チェックポイントのボーナス").fill("100");
   await rules.getByLabel("ラウンドの上限").fill("20");
   await rules.getByLabel("サイコロの目（最小）").fill("2");
   await rules.getByLabel("サイコロの目（最大）").fill("12");
+  await rules.getByLabel("土地の基本の値").fill("150");
+  await rules.getByLabel("周回のボーナス（領地 1 つあたり）").fill("40");
   await rules.getByRole("button", { name: "ルールを保存" }).click();
 
   await expect(rules.getByText("ルールを保存しました")).toBeVisible();
   await page.reload();
   await expect(rules.getByLabel("目標の魔力")).toHaveValue("12000");
   await expect(rules.getByLabel("開始時の魔力")).toHaveValue("0");
-  await expect(rules.getByLabel("周回のボーナス")).toHaveValue("500");
+  await expect(rules.getByLabel("周回のボーナス", { exact: true })).toHaveValue(
+    "500",
+  );
   await expect(rules.getByLabel("チェックポイントのボーナス")).toHaveValue(
     "100",
   );
   await expect(rules.getByLabel("ラウンドの上限")).toHaveValue("20");
   await expect(rules.getByLabel("サイコロの目（最小）")).toHaveValue("2");
   await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("12");
+  await expect(rules.getByLabel("土地の基本の値")).toHaveValue("150");
+  await expect(
+    rules.getByLabel("周回のボーナス（領地 1 つあたり）"),
+  ).toHaveValue("40");
 });
 
 test("決まりに反する既定のルールを保存すると誤りが出て、入力した値が残り、保存した値は変わらない", async ({
@@ -591,7 +626,7 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
   ).toBeVisible();
 
   await rules.getByLabel("目標の魔力").fill("8000");
-  await rules.getByLabel("周回のボーナス").fill("-100");
+  await rules.getByLabel("周回のボーナス", { exact: true }).fill("-100");
   await rules.getByLabel("ラウンドの上限").fill("0");
   await rules.getByLabel("サイコロの目（最小）").fill("4");
   // 最大と最小が同じだとサイコロを振る意味が無いので、同じでも誤り
@@ -611,7 +646,9 @@ test("決まりに反する既定のルールを保存すると誤りが出て�
 
   await page.reload();
   await expect(rules.getByLabel("目標の魔力")).toHaveValue("8000");
-  await expect(rules.getByLabel("周回のボーナス")).toHaveValue("300");
+  await expect(rules.getByLabel("周回のボーナス", { exact: true })).toHaveValue(
+    "300",
+  );
   await expect(rules.getByLabel("サイコロの目（最大）")).toHaveValue("6");
 });
 
