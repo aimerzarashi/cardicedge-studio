@@ -51,6 +51,23 @@ export const setNpcAvatarDecksMutation = graphql(`
   }
 `);
 
+export const setNpcAvatarMindsetsMutation = graphql(`
+  mutation SetNpcAvatarMindsets($input: SetNpcAvatarMindsetsInput!) {
+    setNpcAvatarMindsets(input: $input) {
+      __typename
+      ... on SetNpcAvatarMindsetsSuccess {
+        id
+        revision
+      }
+      ... on ValidationErrors {
+        errors {
+          __typename
+        }
+      }
+    }
+  }
+`);
+
 export const publishNpcAvatarMutation = graphql(`
   mutation PublishNpcAvatar($input: PublishNpcAvatarInput!) {
     publishNpcAvatar(input: $input) {

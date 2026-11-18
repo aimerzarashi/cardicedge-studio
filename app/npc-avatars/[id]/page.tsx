@@ -4,6 +4,8 @@ import { graphql } from "@/graphql";
 import type {
   NpcAvatarCandidateDecksQuery,
   NpcAvatarCandidateDecksQueryVariables,
+  NpcAvatarCandidateMindsetsQuery,
+  NpcAvatarCandidateMindsetsQueryVariables,
 } from "@/graphql/graphql";
 import { type CoreResult, callCore } from "@/lib/core";
 import { dateTimeFormat } from "@/lib/format";
@@ -19,6 +21,7 @@ import {
   retireNpcAvatar,
 } from "./actions";
 import { SetDecksButton } from "./set-decks-button";
+import { SetMindsetsButton } from "./set-mindsets-button";
 
 const npcAvatarQuery = graphql(`
   query NpcAvatar($id: UUID!) {
@@ -32,6 +35,11 @@ const npcAvatarQuery = graphql(`
         registeredAt
         updatedAt
         decks {
+          id
+          name
+          status
+        }
+        mindsets {
           id
           name
           status
@@ -62,18 +70,52 @@ const npcAvatarCandidateDecksQuery = graphql(`
   }
 `);
 
+const npcAvatarCandidateMindsetsQuery = graphql(`
+  query NpcAvatarCandidateMindsets($filter: NpcMindsetFilter, $after: String) {
+    npcMindsets(filter: $filter, after: $after) {
+      __typename
+      ... on NpcMindsetConnection {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+`);
+
 // 形の違う ID を core に渡すと GraphQL の誤りになり、想定外として扱われるため、形だけを確かめる
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// デッキを探す条件は URL に持つ（再読み込み・共有で同じ画面に戻るため）
-function pageURL(id: string, name: string, after?: string): string {
+// デッキ・思考パターンを探す条件は URL に持つ（再読み込み・共有で同じ画面に戻るため）。2 つの探す欄は同じ画面にあるため、
+// 思考パターンの側の名前は mindsetName、次のページは mindsetAfter とし、片方を変えてももう片方の条件を残す
+type Search = {
+  name: string;
+  after?: string;
+  mindsetName: string;
+  mindsetAfter?: string;
+};
+
+function pageURL(id: string, search: Search): string {
   const params = new URLSearchParams();
-  if (name !== "") {
-    params.set("name", name);
+  if (search.name !== "") {
+    params.set("name", search.name);
   }
-  if (after !== undefined) {
-    params.set("after", after);
+  if (search.after !== undefined) {
+    params.set("after", search.after);
+  }
+  if (search.mindsetName !== "") {
+    params.set("mindsetName", search.mindsetName);
+  }
+  if (search.mindsetAfter !== undefined) {
+    params.set("mindsetAfter", search.mindsetAfter);
   }
   const query = params.toString();
   return query === "" ? `/npc-avatars/${id}` : `/npc-avatars/${id}?${query}`;
@@ -102,6 +144,9 @@ export default async function NpcAvatarPage({
   const search = await searchParams;
   const name = first(search.name) ?? "";
   const after = first(search.after);
+  const mindsetName = first(search.mindsetName) ?? "";
+  const mindsetAfter = first(search.mindsetAfter);
+  const current: Search = { name, after, mindsetName, mindsetAfter };
 
   const variables: NpcAvatarCandidateDecksQueryVariables = {
     filter: {
@@ -112,9 +157,18 @@ export default async function NpcAvatarPage({
     },
     after,
   };
-  const [result, candidates] = await Promise.all([
+  const mindsetVariables: NpcAvatarCandidateMindsetsQueryVariables = {
+    filter: {
+      ...(mindsetName !== "" && { nameContains: mindsetName }),
+      // 公開中でない思考パターンは割り当てられない（core が誤りにする）ため、選べるのは公開中だけ
+      statuses: ["PUBLISHED"],
+    },
+    after: mindsetAfter,
+  };
+  const [result, candidates, mindsetCandidates] = await Promise.all([
     callCore(npcAvatarQuery, { id }),
     callCore(npcAvatarCandidateDecksQuery, variables),
+    callCore(npcAvatarCandidateMindsetsQuery, mindsetVariables),
   ]);
   if (!result.ok) {
     return (
@@ -122,7 +176,7 @@ export default async function NpcAvatarPage({
         <h1>NPC のアバター</h1>
         <p role="alert">
           core に接続できません。時間をおいて再読み込みしてください。{" "}
-          <Link href={pageURL(id, name, after)}>再読み込み</Link>
+          <Link href={pageURL(id, current)}>再読み込み</Link>
         </p>
       </main>
     );
@@ -224,6 +278,53 @@ export default async function NpcAvatarPage({
         )}
       </section>
 
+      <section aria-labelledby="mindsets-heading">
+        <h2 id="mindsets-heading">使う思考パターン</h2>
+        {avatar.mindsets.length === 0 ? (
+          <p>
+            思考パターンを割り当てていません。
+            {avatar.status === "DRAFT" &&
+              "下の「思考パターンを探す」から、公開中の NPC の思考パターンを割り当ててください"}
+          </p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>名前</th>
+                <th>状態</th>
+                {avatar.status === "DRAFT" && <th>操作</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {avatar.mindsets.map((mindset) => (
+                <tr key={mindset.id}>
+                  <td>
+                    <Link href={`/npc-mindsets/${mindset.id}`}>
+                      {mindset.name}
+                    </Link>
+                  </td>
+                  <td>{STATUS_LABELS[mindset.status]}</td>
+                  {avatar.status === "DRAFT" && (
+                    <td>
+                      <SetMindsetsButton
+                        id={avatar.id}
+                        revision={avatar.revision}
+                        mindsetIds={avatar.mindsets
+                          .map(({ id }) => id)
+                          .filter((mindsetId) => mindsetId !== mindset.id)}
+                        kind="unassign"
+                        label="外す"
+                        accessibleName={`${mindset.name}を外す`}
+                      />
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       {avatar.status === "DRAFT" && (
         <>
           <section aria-labelledby="candidates-heading">
@@ -233,6 +334,9 @@ export default async function NpcAvatarPage({
                 名前
                 <input name="name" defaultValue={name} />
               </label>
+              {mindsetName !== "" && (
+                <input type="hidden" name="mindsetName" value={mindsetName} />
+              )}
               <button type="submit">絞り込む</button>
             </Form>
             <Candidates
@@ -240,7 +344,26 @@ export default async function NpcAvatarPage({
               avatarId={avatar.id}
               revision={avatar.revision}
               assigned={avatar.decks.map(({ id }) => id)}
-              name={name}
+              current={current}
+            />
+          </section>
+
+          <section aria-labelledby="mindset-candidates-heading">
+            <h2 id="mindset-candidates-heading">思考パターンを探す</h2>
+            <Form action={`/npc-avatars/${avatar.id}`}>
+              <label>
+                名前
+                <input name="mindsetName" defaultValue={mindsetName} />
+              </label>
+              {name !== "" && <input type="hidden" name="name" value={name} />}
+              <button type="submit">絞り込む</button>
+            </Form>
+            <MindsetCandidates
+              result={mindsetCandidates}
+              avatarId={avatar.id}
+              revision={avatar.revision}
+              assigned={avatar.mindsets.map(({ id }) => id)}
+              current={current}
             />
           </section>
 
@@ -274,19 +397,19 @@ function Candidates({
   avatarId,
   revision,
   assigned,
-  name,
+  current,
 }: {
   result: CoreResult<NpcAvatarCandidateDecksQuery>;
   avatarId: string;
   revision: number;
   assigned: string[];
-  name: string;
+  current: Search;
 }) {
   if (!result.ok) {
     return (
       <p role="alert">
         core に接続できません。時間をおいて再読み込みしてください。{" "}
-        <Link href={pageURL(avatarId, name)}>再読み込み</Link>
+        <Link href={pageURL(avatarId, current)}>再読み込み</Link>
       </p>
     );
   }
@@ -342,11 +465,121 @@ function Candidates({
             </table>
           )}
           <p>
-            <Link href={pageURL(avatarId, name)}>最初のページへ</Link>
+            <Link href={pageURL(avatarId, { ...current, after: undefined })}>
+              最初のページへ
+            </Link>
             {decks.pageInfo.hasNextPage && decks.pageInfo.endCursor && (
               <>
                 {" "}
-                <Link href={pageURL(avatarId, name, decks.pageInfo.endCursor)}>
+                <Link
+                  href={pageURL(avatarId, {
+                    ...current,
+                    after: decks.pageInfo.endCursor,
+                  })}
+                >
+                  次へ
+                </Link>
+              </>
+            )}
+          </p>
+        </>
+      );
+  }
+}
+
+function MindsetCandidates({
+  result,
+  avatarId,
+  revision,
+  assigned,
+  current,
+}: {
+  result: CoreResult<NpcAvatarCandidateMindsetsQuery>;
+  avatarId: string;
+  revision: number;
+  assigned: string[];
+  current: Search;
+}) {
+  if (!result.ok) {
+    return (
+      <p role="alert">
+        core に接続できません。時間をおいて再読み込みしてください。{" "}
+        <Link href={pageURL(avatarId, current)}>再読み込み</Link>
+      </p>
+    );
+  }
+  const mindsets = result.data.npcMindsets;
+  switch (mindsets.__typename) {
+    case "ForbiddenError":
+      return <p role="alert">この操作をする権限がありません</p>;
+    case "ValidationErrors":
+      return (
+        <p role="alert">
+          条件が正しくありません。{" "}
+          <Link
+            href={pageURL(avatarId, {
+              ...current,
+              mindsetName: "",
+              mindsetAfter: undefined,
+            })}
+          >
+            条件を外す
+          </Link>
+        </p>
+      );
+    case "NpcMindsetConnection":
+      return (
+        <>
+          {mindsets.edges.length === 0 ? (
+            <p>公開中の NPC の思考パターンがありません</p>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>名前</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mindsets.edges.map(({ node }) => (
+                  <tr key={node.id}>
+                    <td>
+                      <Link href={`/npc-mindsets/${node.id}`}>{node.name}</Link>
+                    </td>
+                    <td>
+                      {assigned.includes(node.id) ? (
+                        "割り当て済み"
+                      ) : (
+                        <SetMindsetsButton
+                          id={avatarId}
+                          revision={revision}
+                          mindsetIds={[...assigned, node.id]}
+                          kind="assign"
+                          label="割り当てる"
+                          accessibleName={`${node.name}を割り当てる`}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <p>
+            <Link
+              href={pageURL(avatarId, { ...current, mindsetAfter: undefined })}
+            >
+              最初のページへ
+            </Link>
+            {mindsets.pageInfo.hasNextPage && mindsets.pageInfo.endCursor && (
+              <>
+                {" "}
+                <Link
+                  href={pageURL(avatarId, {
+                    ...current,
+                    mindsetAfter: mindsets.pageInfo.endCursor,
+                  })}
+                >
                   次へ
                 </Link>
               </>
