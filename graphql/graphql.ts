@@ -345,6 +345,14 @@ export type DeleteNpcDeckInput = {
   revision: number;
 };
 
+/** NPC の思考パターンを削除する入力 */
+export type DeleteNpcMindsetInput = {
+  /** NPC の思考パターンの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC の思考パターンの revision */
+  revision: number;
+};
+
 /** プリセットデッキを削除する入力 */
 export type DeletePresetDeckInput = {
   /** プリセットデッキの公開用の ID */
@@ -497,6 +505,47 @@ export type LandTileInput = {
   y: number;
 };
 
+/** 行動の種類（対戦で選べる行動。game の MatchAction と同じ値）。対象（手札・領地・行き先）には重みを付けず、種類だけに付ける */
+export type MatchAction =
+  /** アイテムを出さずに攻める */
+  | 'ATTACK_WITHOUT_ITEM'
+  /** アイテムを出して攻める */
+  | 'ATTACK_WITH_ITEM'
+  /** 土地の属性を変える */
+  | 'CHANGE_LAND_ELEMENT'
+  /** 行き先を選ぶ */
+  | 'CHOOSE_PATH'
+  /** アイテムを出さずに守る */
+  | 'DEFEND_WITHOUT_ITEM'
+  /** アイテムを出して守る */
+  | 'DEFEND_WITH_ITEM'
+  /** 手札を捨てる */
+  | 'DISCARD_CARD'
+  /** カードを引く */
+  | 'DRAW_CARD'
+  /** ターンを終える（配置の段階では配置しない、領地コマンドの段階では何もしない） */
+  | 'END_TURN'
+  /** クリーチャーを交換する */
+  | 'EXCHANGE_CREATURE'
+  /** 侵略する */
+  | 'INVADE_TERRITORY'
+  /** 土地のレベルを上げる */
+  | 'LEVEL_UP_LAND'
+  /** クリーチャーを移動する */
+  | 'MOVE_CREATURE'
+  /** 通行料を払う */
+  | 'PAY_TOLL'
+  /** クリーチャーを配置する */
+  | 'PLACE_CREATURE'
+  /** 領地を手放す */
+  | 'RELINQUISH_TERRITORY'
+  /** サイコロを振る */
+  | 'ROLL_DICE'
+  /** アイテムの代わりに手札のクリーチャーを出す（援護） */
+  | 'USE_CREATURE_AS_ITEM'
+  /** スペルを使う */
+  | 'USE_SPELL';
+
 /** サイコロを複数振る効果の入力 */
 export type MultipleDiceSpellEffectInput = {
   /** 振るサイコロの個数（2 以上。上限は無い） */
@@ -538,6 +587,53 @@ export type NpcDeckFilter = {
  * 公開中の数に上限は無い。使用不可は新しい対戦に使わない
  */
 export type NpcDeckStatus =
+  /** 準備中（登録したときの状態） */
+  | 'DRAFT'
+  /** 公開中 */
+  | 'PUBLISHED'
+  /** 使用不可 */
+  | 'RETIRED';
+
+/** 行動の種類とその重みの入力 */
+export type NpcMindsetActionWeightInput = {
+  /** 行動の種類 */
+  action: MatchAction;
+  /** 重み（0〜100 の整数） */
+  weight: number;
+};
+
+/** 採点基準。候補ごとに値を出し、場面の候補の中で 0〜1 にそろえて重みを掛けて足す */
+export type NpcMindsetCriterion =
+  /** 勝ち見込み（戦闘の候補だけ、戦闘の後にその領地を自分が持っている割合。戦闘にならない候補は 0） */
+  | 'BATTLE_HOLD'
+  /** 魔力を残す（手持ちの魔力。当面は盤面の通行料の一番高い額で頭打ち） */
+  | 'MAGIC_RESERVE'
+  /** 領地の数（自分の領地の数） */
+  | 'TERRITORY_COUNT'
+  /** 総魔力の差（自分の総魔力 − 相手のうち一番高い総魔力） */
+  | 'TOTAL_MAGIC_LEAD';
+
+/** 採点基準とその重みの入力 */
+export type NpcMindsetCriterionWeightInput = {
+  /** 採点基準 */
+  criterion: NpcMindsetCriterion;
+  /** 重み（0〜100 の整数） */
+  weight: number;
+};
+
+/** NPC の思考パターンの一覧の絞り込み */
+export type NpcMindsetFilter = {
+  /** 名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで） */
+  nameContains?: string | null | undefined;
+  /** 状態（指定が無ければすべて。空のリストは入力の誤り） */
+  statuses?: Array<NpcMindsetStatus> | null | undefined;
+};
+
+/**
+ * NPC の思考パターンの状態。準備中は名前と重みを自由に変えられる。公開中の数に上限は無い。公開中にするのに満たす条件は無い。
+ * 使用不可は新しい対戦に使わない（すでに割り当てたアバターからは外すまで見える）
+ */
+export type NpcMindsetStatus =
   /** 準備中（登録したときの状態） */
   | 'DRAFT'
   /** 公開中 */
@@ -588,6 +684,14 @@ export type PublishNpcDeckInput = {
   /** NPC のデッキの公開用の ID */
   id: string;
   /** 画面が見ていた NPC のデッキの revision */
+  revision: number;
+};
+
+/** NPC の思考パターンを公開する入力 */
+export type PublishNpcMindsetInput = {
+  /** NPC の思考パターンの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC の思考パターンの revision */
   revision: number;
 };
 
@@ -651,6 +755,12 @@ export type RegisterNpcDeckInput = {
   name: string;
 };
 
+/** NPC の思考パターンを登録する入力 */
+export type RegisterNpcMindsetInput = {
+  /** 名前（1〜20 文字。前後の空白は除いて保存する） */
+  name: string;
+};
+
 /** プリセットデッキを登録する入力 */
 export type RegisterPresetDeckInput = {
   /** 名前（1〜50 文字。前後の空白は除いて保存する） */
@@ -706,6 +816,16 @@ export type RenameNpcDeckInput = {
   /** 新しい名前（1〜50 文字。前後の空白は除いて保存する） */
   name: string;
   /** 画面が見ていた NPC のデッキの revision */
+  revision: number;
+};
+
+/** NPC の思考パターンの名前を変える入力 */
+export type RenameNpcMindsetInput = {
+  /** NPC の思考パターンの公開用の ID */
+  id: string;
+  /** 新しい名前（1〜20 文字。前後の空白は除いて保存する） */
+  name: string;
+  /** 画面が見ていた NPC の思考パターンの revision */
   revision: number;
 };
 
@@ -769,6 +889,14 @@ export type RetireNpcDeckInput = {
   revision: number;
 };
 
+/** NPC の思考パターンを使用不可にする入力 */
+export type RetireNpcMindsetInput = {
+  /** NPC の思考パターンの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC の思考パターンの revision */
+  revision: number;
+};
+
 /** スターターセットを使用不可にする入力 */
 export type RetireStarterSetInput = {
   /** スターターセットの公開用の ID */
@@ -797,6 +925,16 @@ export type SetNpcAvatarDecksInput = {
   revision: number;
 };
 
+/** NPC のアバターに使う思考パターンを割り当てる入力 */
+export type SetNpcAvatarMindsetsInput = {
+  /** NPC のアバターの公開用の ID */
+  id: string;
+  /** 使う NPC の思考パターンの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じ思考パターンは 2 回入れられない。新しく入れる思考パターンは公開中のものだけ） */
+  mindsetIds: Array<string>;
+  /** 画面が見ていた NPC のアバターの revision */
+  revision: number;
+};
+
 /** NPC のデッキのカードの枚数を変える入力 */
 export type SetNpcDeckCardCountsInput = {
   /** 変えるカードだけの一覧（40 件まで。変えないカードは含めなくてよい。同じカードを 2 回入れると入力の誤り。空なら何も変えない。変えた後の枚数の合計が 40 を超えると入力の誤り。新しく入れる・増やすカードは公開中だけ） */
@@ -805,6 +943,26 @@ export type SetNpcDeckCardCountsInput = {
   id: string;
   /** 画面が見ていた NPC のデッキの revision */
   revision: number;
+};
+
+/** 行動の種類ごとの重みを変える入力 */
+export type SetNpcMindsetActionWeightsInput = {
+  /** NPC の思考パターンの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC の思考パターンの revision */
+  revision: number;
+  /** 行動の種類ごとの重み（今の重みをこの一覧に置き換える。種類のすべてを 1 回ずつ入れる） */
+  weights: Array<NpcMindsetActionWeightInput>;
+};
+
+/** 採点基準ごとの重みを変える入力 */
+export type SetNpcMindsetCriterionWeightsInput = {
+  /** NPC の思考パターンの公開用の ID */
+  id: string;
+  /** 画面が見ていた NPC の思考パターンの revision */
+  revision: number;
+  /** 採点基準ごとの重み（今の重みをこの一覧に置き換える。基準のすべてを 1 回ずつ入れる） */
+  weights: Array<NpcMindsetCriterionWeightInput>;
 };
 
 /** プリセットデッキのカードの枚数を変える入力 */
@@ -1896,7 +2054,7 @@ export type NpcAvatarQueryVariables = Exact<{
 
 export type NpcAvatarQuery = { npcAvatar:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'NpcAvatar', id: string, name: string, status: NpcAvatarStatus, revision: number, registeredAt: string, updatedAt: string, decks: Array<{ id: string, name: string, status: NpcDeckStatus }> }
+    | { __typename: 'NpcAvatar', id: string, name: string, status: NpcAvatarStatus, revision: number, registeredAt: string, updatedAt: string, decks: Array<{ id: string, name: string, status: NpcDeckStatus }>, mindsets: Array<{ id: string, name: string, status: NpcMindsetStatus }> }
     | { __typename: 'NpcAvatarNotFoundError' }
    };
 
@@ -1909,6 +2067,18 @@ export type NpcAvatarCandidateDecksQueryVariables = Exact<{
 export type NpcAvatarCandidateDecksQuery = { npcDecks:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'NpcDeckConnection', edges: Array<{ node: { id: string, name: string, totalCount: number } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type NpcAvatarCandidateMindsetsQueryVariables = Exact<{
+  filter?: NpcMindsetFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type NpcAvatarCandidateMindsetsQuery = { npcMindsets:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetConnection', edges: Array<{ node: { id: string, name: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ValidationErrors' }
    };
 
@@ -1981,6 +2151,36 @@ export type SetNpcAvatarDecksMutation = { setNpcAvatarDecks:
       > }
    };
 
+export type SetNpcAvatarMindsetsMutationVariables = Exact<{
+  input: SetNpcAvatarMindsetsInput;
+}>;
+
+
+export type SetNpcAvatarMindsetsMutation = { setNpcAvatarMindsets:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcAvatarNotDraftError' }
+    | { __typename: 'NpcAvatarNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'SetNpcAvatarMindsetsSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong' }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
 export type PublishNpcAvatarMutationVariables = Exact<{
   input: PublishNpcAvatarInput;
 }>;
@@ -2018,7 +2218,7 @@ export type NpcAvatarsQueryVariables = Exact<{
 
 export type NpcAvatarsQuery = { npcAvatars:
     | { __typename: 'ForbiddenError' }
-    | { __typename: 'NpcAvatarConnection', edges: Array<{ node: { id: string, name: string, status: NpcAvatarStatus, registeredAt: string, updatedAt: string, decks: Array<{ id: string, name: string }> } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'NpcAvatarConnection', edges: Array<{ node: { id: string, name: string, status: NpcAvatarStatus, registeredAt: string, updatedAt: string, decks: Array<{ id: string, name: string }>, mindsets: Array<{ id: string, name: string }> } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ValidationErrors' }
    };
 
@@ -2258,6 +2458,197 @@ export type NpcDecksQueryVariables = Exact<{
 export type NpcDecksQuery = { npcDecks:
     | { __typename: 'ForbiddenError' }
     | { __typename: 'NpcDeckConnection', edges: Array<{ node: { id: string, name: string, status: NpcDeckStatus, totalCount: number, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
+    | { __typename: 'ValidationErrors' }
+   };
+
+export type RenameNpcMindsetMutationVariables = Exact<{
+  input: RenameNpcMindsetInput;
+}>;
+
+
+export type RenameNpcMindsetMutation = { renameNpcMindset:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetNameAlreadyInUseError' }
+    | { __typename: 'NpcMindsetNotDraftError' }
+    | { __typename: 'NpcMindsetNotFoundError' }
+    | { __typename: 'RenameNpcMindsetSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type DeleteNpcMindsetMutationVariables = Exact<{
+  input: DeleteNpcMindsetInput;
+}>;
+
+
+export type DeleteNpcMindsetMutation = { deleteNpcMindset:
+    | { __typename: 'DeleteNpcMindsetSuccess' }
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetNotDraftError' }
+    | { __typename: 'NpcMindsetNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type RetireNpcMindsetMutationVariables = Exact<{
+  input: RetireNpcMindsetInput;
+}>;
+
+
+export type RetireNpcMindsetMutation = { retireNpcMindset:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'InvalidNpcMindsetStatusTransitionError' }
+    | { __typename: 'NpcMindsetNotFoundError' }
+    | { __typename: 'RetireNpcMindsetSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type NpcMindsetQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type NpcMindsetQuery = { npcMindset:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindset', id: string, name: string, status: NpcMindsetStatus, revision: number, registeredAt: string, updatedAt: string, actionWeights: Array<{ action: MatchAction, weight: number }>, criterionWeights: Array<{ criterion: NpcMindsetCriterion, weight: number }> }
+    | { __typename: 'NpcMindsetNotFoundError' }
+   };
+
+export type NpcMindsetRevisionQueryVariables = Exact<{
+  id: string;
+}>;
+
+
+export type NpcMindsetRevisionQuery = { npcMindset:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindset', revision: number }
+    | { __typename: 'NpcMindsetNotFoundError' }
+   };
+
+export type RegisterNpcMindsetMutationVariables = Exact<{
+  input: RegisterNpcMindsetInput;
+}>;
+
+
+export type RegisterNpcMindsetMutation = { registerNpcMindset:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetNameAlreadyInUseError' }
+    | { __typename: 'RegisterNpcMindsetSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated' }
+        | { __typename: 'FieldInvalidFormat' }
+        | { __typename: 'FieldNotAdjacent' }
+        | { __typename: 'FieldNotFound' }
+        | { __typename: 'FieldNotGreaterThan' }
+        | { __typename: 'FieldNotPairable' }
+        | { __typename: 'FieldOutOfRange' }
+        | { __typename: 'FieldPairKindMismatch' }
+        | { __typename: 'FieldPairedWithSelf' }
+        | { __typename: 'FieldRequired' }
+        | { __typename: 'FieldTooLong', max: number }
+        | { __typename: 'FieldTooSmall' }
+        | { __typename: 'FieldTotalMismatch' }
+        | { __typename: 'FieldTotalTooLarge' }
+        | { __typename: 'FieldUnavailable' }
+      > }
+   };
+
+export type SetNpcMindsetActionWeightsMutationVariables = Exact<{
+  input: SetNpcMindsetActionWeightsInput;
+}>;
+
+
+export type SetNpcMindsetActionWeightsMutation = { setNpcMindsetActionWeights:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetNotDraftError' }
+    | { __typename: 'NpcMindsetNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'SetNpcMindsetActionWeightsSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type SetNpcMindsetCriterionWeightsMutationVariables = Exact<{
+  input: SetNpcMindsetCriterionWeightsInput;
+}>;
+
+
+export type SetNpcMindsetCriterionWeightsMutation = { setNpcMindsetCriterionWeights:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetNotDraftError' }
+    | { __typename: 'NpcMindsetNotFoundError' }
+    | { __typename: 'RevisionConflictError' }
+    | { __typename: 'SetNpcMindsetCriterionWeightsSuccess', id: string, revision: number }
+    | { __typename: 'ValidationErrors', errors: Array<
+        | { __typename: 'FieldDuplicated', field: string }
+        | { __typename: 'FieldInvalidFormat', field: string }
+        | { __typename: 'FieldNotAdjacent', field: string }
+        | { __typename: 'FieldNotFound', field: string }
+        | { __typename: 'FieldNotGreaterThan', field: string }
+        | { __typename: 'FieldNotPairable', field: string }
+        | { __typename: 'FieldOutOfRange', min: number, max: number, field: string }
+        | { __typename: 'FieldPairKindMismatch', field: string }
+        | { __typename: 'FieldPairedWithSelf', field: string }
+        | { __typename: 'FieldRequired', field: string }
+        | { __typename: 'FieldTooLong', field: string }
+        | { __typename: 'FieldTooSmall', field: string }
+        | { __typename: 'FieldTotalMismatch', field: string }
+        | { __typename: 'FieldTotalTooLarge', field: string }
+        | { __typename: 'FieldUnavailable', field: string }
+      > }
+   };
+
+export type PublishNpcMindsetMutationVariables = Exact<{
+  input: PublishNpcMindsetInput;
+}>;
+
+
+export type PublishNpcMindsetMutation = { publishNpcMindset:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetNotFoundError' }
+    | { __typename: 'PublishNpcMindsetSuccess', id: string, revision: number }
+    | { __typename: 'RevisionConflictError' }
+   };
+
+export type NpcMindsetsQueryVariables = Exact<{
+  filter?: NpcMindsetFilter | null | undefined;
+  after?: string | null | undefined;
+}>;
+
+
+export type NpcMindsetsQuery = { npcMindsets:
+    | { __typename: 'ForbiddenError' }
+    | { __typename: 'NpcMindsetConnection', edges: Array<{ node: { id: string, name: string, status: NpcMindsetStatus, registeredAt: string, updatedAt: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } }
     | { __typename: 'ValidationErrors' }
    };
 
@@ -3880,6 +4271,11 @@ export const NpcAvatarDocument = new TypedDocumentString(`
         name
         status
       }
+      mindsets {
+        id
+        name
+        status
+      }
     }
   }
 }
@@ -3904,6 +4300,25 @@ export const NpcAvatarCandidateDecksDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<NpcAvatarCandidateDecksQuery, NpcAvatarCandidateDecksQueryVariables>;
+export const NpcAvatarCandidateMindsetsDocument = new TypedDocumentString(`
+    query NpcAvatarCandidateMindsets($filter: NpcMindsetFilter, $after: String) {
+  npcMindsets(filter: $filter, after: $after) {
+    __typename
+    ... on NpcMindsetConnection {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcAvatarCandidateMindsetsQuery, NpcAvatarCandidateMindsetsQueryVariables>;
 export const NpcAvatarRevisionDocument = new TypedDocumentString(`
     query NpcAvatarRevision($id: UUID!) {
   npcAvatar(id: $id) {
@@ -3949,6 +4364,22 @@ export const SetNpcAvatarDecksDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<SetNpcAvatarDecksMutation, SetNpcAvatarDecksMutationVariables>;
+export const SetNpcAvatarMindsetsDocument = new TypedDocumentString(`
+    mutation SetNpcAvatarMindsets($input: SetNpcAvatarMindsetsInput!) {
+  setNpcAvatarMindsets(input: $input) {
+    __typename
+    ... on SetNpcAvatarMindsetsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SetNpcAvatarMindsetsMutation, SetNpcAvatarMindsetsMutationVariables>;
 export const PublishNpcAvatarDocument = new TypedDocumentString(`
     mutation PublishNpcAvatar($input: PublishNpcAvatarInput!) {
   publishNpcAvatar(input: $input) {
@@ -3976,6 +4407,10 @@ export const NpcAvatarsDocument = new TypedDocumentString(`
           name
           status
           decks {
+            id
+            name
+          }
+          mindsets {
             id
             name
           }
@@ -4206,6 +4641,170 @@ export const NpcDecksDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<NpcDecksQuery, NpcDecksQueryVariables>;
+export const RenameNpcMindsetDocument = new TypedDocumentString(`
+    mutation RenameNpcMindset($input: RenameNpcMindsetInput!) {
+  renameNpcMindset(input: $input) {
+    __typename
+    ... on RenameNpcMindsetSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RenameNpcMindsetMutation, RenameNpcMindsetMutationVariables>;
+export const DeleteNpcMindsetDocument = new TypedDocumentString(`
+    mutation DeleteNpcMindset($input: DeleteNpcMindsetInput!) {
+  deleteNpcMindset(input: $input) {
+    __typename
+  }
+}
+    `) as unknown as TypedDocumentString<DeleteNpcMindsetMutation, DeleteNpcMindsetMutationVariables>;
+export const RetireNpcMindsetDocument = new TypedDocumentString(`
+    mutation RetireNpcMindset($input: RetireNpcMindsetInput!) {
+  retireNpcMindset(input: $input) {
+    __typename
+    ... on RetireNpcMindsetSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RetireNpcMindsetMutation, RetireNpcMindsetMutationVariables>;
+export const NpcMindsetDocument = new TypedDocumentString(`
+    query NpcMindset($id: UUID!) {
+  npcMindset(id: $id) {
+    __typename
+    ... on NpcMindset {
+      id
+      name
+      status
+      actionWeights {
+        action
+        weight
+      }
+      criterionWeights {
+        criterion
+        weight
+      }
+      revision
+      registeredAt
+      updatedAt
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcMindsetQuery, NpcMindsetQueryVariables>;
+export const NpcMindsetRevisionDocument = new TypedDocumentString(`
+    query NpcMindsetRevision($id: UUID!) {
+  npcMindset(id: $id) {
+    __typename
+    ... on NpcMindset {
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcMindsetRevisionQuery, NpcMindsetRevisionQueryVariables>;
+export const RegisterNpcMindsetDocument = new TypedDocumentString(`
+    mutation RegisterNpcMindset($input: RegisterNpcMindsetInput!) {
+  registerNpcMindset(input: $input) {
+    __typename
+    ... on RegisterNpcMindsetSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        ... on FieldTooLong {
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RegisterNpcMindsetMutation, RegisterNpcMindsetMutationVariables>;
+export const SetNpcMindsetActionWeightsDocument = new TypedDocumentString(`
+    mutation SetNpcMindsetActionWeights($input: SetNpcMindsetActionWeightsInput!) {
+  setNpcMindsetActionWeights(input: $input) {
+    __typename
+    ... on SetNpcMindsetActionWeightsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldOutOfRange {
+          min
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SetNpcMindsetActionWeightsMutation, SetNpcMindsetActionWeightsMutationVariables>;
+export const SetNpcMindsetCriterionWeightsDocument = new TypedDocumentString(`
+    mutation SetNpcMindsetCriterionWeights($input: SetNpcMindsetCriterionWeightsInput!) {
+  setNpcMindsetCriterionWeights(input: $input) {
+    __typename
+    ... on SetNpcMindsetCriterionWeightsSuccess {
+      id
+      revision
+    }
+    ... on ValidationErrors {
+      errors {
+        __typename
+        field
+        ... on FieldOutOfRange {
+          min
+          max
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SetNpcMindsetCriterionWeightsMutation, SetNpcMindsetCriterionWeightsMutationVariables>;
+export const PublishNpcMindsetDocument = new TypedDocumentString(`
+    mutation PublishNpcMindset($input: PublishNpcMindsetInput!) {
+  publishNpcMindset(input: $input) {
+    __typename
+    ... on PublishNpcMindsetSuccess {
+      id
+      revision
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PublishNpcMindsetMutation, PublishNpcMindsetMutationVariables>;
+export const NpcMindsetsDocument = new TypedDocumentString(`
+    query NpcMindsets($filter: NpcMindsetFilter, $after: String) {
+  npcMindsets(filter: $filter, after: $after) {
+    __typename
+    ... on NpcMindsetConnection {
+      edges {
+        node {
+          id
+          name
+          status
+          registeredAt
+          updatedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<NpcMindsetsQuery, NpcMindsetsQueryVariables>;
 export const RenamePresetDeckDocument = new TypedDocumentString(`
     mutation RenamePresetDeck($input: RenamePresetDeckInput!) {
   renamePresetDeck(input: $input) {

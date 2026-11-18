@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   publishNpcAvatarMutation,
   setNpcAvatarDecksMutation,
+  setNpcAvatarMindsetsMutation,
 } from "@/app/npc-avatars/operations";
 import { graphql } from "@/graphql";
 import { callCore } from "@/lib/core";
@@ -19,6 +20,7 @@ import {
   NPC_AVATAR_NOT_DRAFT,
   nameErrorMessage,
   npcAvatarDeckErrorMessage,
+  npcAvatarMindsetErrorMessage,
   npcAvatarPublishErrorMessage,
   REVISION_CONFLICT,
 } from "../../messages";
@@ -255,6 +257,56 @@ export async function setNpcAvatarDecks(
     case "ValidationErrors":
       refresh();
       return { error: npcAvatarDeckErrorMessage(changed.errors) };
+    case "NpcAvatarNotDraftError":
+      refresh();
+      return { error: NPC_AVATAR_NOT_DRAFT };
+    case "RevisionConflictError":
+      refresh();
+      return { error: REVISION_CONFLICT };
+    case "NpcAvatarNotFoundError":
+      refresh();
+      return {};
+    case "ForbiddenError":
+      return { error: FORBIDDEN };
+  }
+}
+
+// 割り当てる・外すのどちらも、変えた後の一覧（mindsetId を並べた隠し項目）をまるごと送る（デッキと同じ。core の
+// setNpcAvatarMindsets が一覧にそろえる操作のため）
+export async function setNpcAvatarMindsets(
+  _previous: Notice,
+  form: FormData,
+): Promise<Notice> {
+  const avatar = target(form);
+  const mindsetIds = form.getAll("mindsetId");
+  // 知らせの文言は、押したボタンの種類（割り当てる・外す）から作る
+  const kind = form.get("kind");
+  if (
+    avatar === undefined ||
+    !mindsetIds.every((mindsetId) => typeof mindsetId === "string") ||
+    (kind !== "assign" && kind !== "unassign")
+  ) {
+    return { error: INVALID_TARGET };
+  }
+
+  const result = await callCore(setNpcAvatarMindsetsMutation, {
+    input: { ...avatar, mindsetIds },
+  });
+  if (!result.ok) {
+    return { error: CORE_UNAVAILABLE };
+  }
+
+  const changed = result.data.setNpcAvatarMindsets;
+  switch (changed.__typename) {
+    case "SetNpcAvatarMindsetsSuccess":
+      return showChanged(
+        changed.id,
+        changed.revision,
+        kind === "assign" ? "割り当てました" : "外しました",
+      );
+    case "ValidationErrors":
+      refresh();
+      return { error: npcAvatarMindsetErrorMessage(changed.errors) };
     case "NpcAvatarNotDraftError":
       refresh();
       return { error: NPC_AVATAR_NOT_DRAFT };

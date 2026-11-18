@@ -3,6 +3,7 @@ import { loginAsOperator, uniqueName } from "./card";
 import { expect, test } from "./fixtures";
 import { createNpcAvatar, createPublishableNpcAvatar } from "./npc-avatar";
 import { createPublishedNpcDeck } from "./npc-deck";
+import { createPublishedNpcMindset } from "./npc-mindset";
 import { section } from "./preset-deck";
 
 // 前準備の NPC のアバターは GraphQL で入れ（tests/npc-avatar.ts）、確かめる画面の操作だけを画面でする。
@@ -129,6 +130,47 @@ test("公開中の NPC のデッキを探して割り当てると使うデッキ
   await expect(decks.getByText("デッキを割り当てていません")).toBeVisible();
   await expect(
     candidates.getByRole("button", { name: `${deckName}を割り当てる` }),
+  ).toBeVisible();
+});
+
+test("公開中の NPC の思考パターンを探して割り当てると使う思考パターンと一覧に出て、外すと消える", async ({
+  page,
+}) => {
+  await loginAsOperator(page);
+  const mindsetName = uniqueName("攻めがち");
+  await createPublishedNpcMindset(page, mindsetName);
+  const avatarName = uniqueName("森の番人");
+  const avatarURL = await createNpcAvatar(page, avatarName);
+  const mindsets = section(page, "使う思考パターン");
+  const candidates = section(page, "思考パターンを探す");
+  await expect(async () => {
+    await page.goto(
+      `${avatarURL}?mindsetName=${encodeURIComponent(mindsetName)}`,
+    );
+    await expect(
+      candidates.getByRole("button", { name: `${mindsetName}を割り当てる` }),
+    ).toBeVisible({ timeout: 1_000 });
+  }).toPass();
+  await expect(
+    mindsets.getByText("思考パターンを割り当てていません"),
+  ).toBeVisible();
+
+  await candidates
+    .getByRole("button", { name: `${mindsetName}を割り当てる` })
+    .click();
+
+  // 押したボタンの行は「割り当て済み」に置き換わり、ボタンの知らせも消えるため、使う思考パターンの表に出たことで確かめる
+  await expect(mindsets.locator("tbody tr")).toHaveCount(1);
+  await expect(mindsets.locator("tbody tr").first()).toContainText(mindsetName);
+  await expect(candidates.getByText("割り当て済み")).toBeVisible();
+  await page.goto(`/npc-avatars?name=${encodeURIComponent(avatarName)}`);
+  await expect(avatarRows(page).first()).toContainText(mindsetName);
+  await page.goto(avatarURL);
+
+  await mindsets.getByRole("button", { name: `${mindsetName}を外す` }).click();
+
+  await expect(
+    mindsets.getByText("思考パターンを割り当てていません"),
   ).toBeVisible();
 });
 

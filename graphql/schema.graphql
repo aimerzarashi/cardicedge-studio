@@ -1472,6 +1472,32 @@ type DeleteNpcDeckSuccess {
 	id: UUID!
 }
 """
+NPC の思考パターンを削除する入力
+"""
+input DeleteNpcMindsetInput {
+	"""
+	NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC の思考パターンの revision
+	"""
+	revision: Int!
+}
+"""
+NPC の思考パターンの削除の結果（準備中のものだけ消せる）
+"""
+union DeleteNpcMindsetResult = DeleteNpcMindsetSuccess | NpcMindsetNotFoundError | NpcMindsetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC の思考パターンを削除した（名前はほかの NPC の思考パターンが使えるようになる）
+"""
+type DeleteNpcMindsetSuccess {
+	"""
+	削除した NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+}
+"""
 プリセットデッキを削除する入力
 """
 input DeletePresetDeckInput {
@@ -2191,6 +2217,15 @@ type InvalidNpcDeckStatusTransitionError {
 	message: String!
 }
 """
+準備中の NPC の思考パターンを使用不可にしようとした（準備中から移れるのは公開中だけ）
+"""
+type InvalidNpcMindsetStatusTransitionError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
 準備中のスターターセットを使用不可にしようとした（準備中から移れるのは公開中だけ）
 """
 type InvalidStarterSetStatusTransitionError {
@@ -2307,6 +2342,87 @@ input LandTileInput {
 	属性
 	"""
 	element: BoardTileElement!
+}
+"""
+行動の種類（対戦で選べる行動。game の MatchAction と同じ値）。対象（手札・領地・行き先）には重みを付けず、種類だけに付ける
+"""
+enum MatchAction {
+	"""
+	カードを引く
+	"""
+	DRAW_CARD
+	"""
+	手札を捨てる
+	"""
+	DISCARD_CARD
+	"""
+	スペルを使う
+	"""
+	USE_SPELL
+	"""
+	サイコロを振る
+	"""
+	ROLL_DICE
+	"""
+	行き先を選ぶ
+	"""
+	CHOOSE_PATH
+	"""
+	クリーチャーを配置する
+	"""
+	PLACE_CREATURE
+	"""
+	侵略する
+	"""
+	INVADE_TERRITORY
+	"""
+	通行料を払う
+	"""
+	PAY_TOLL
+	"""
+	土地のレベルを上げる
+	"""
+	LEVEL_UP_LAND
+	"""
+	クリーチャーを交換する
+	"""
+	EXCHANGE_CREATURE
+	"""
+	土地の属性を変える
+	"""
+	CHANGE_LAND_ELEMENT
+	"""
+	クリーチャーを移動する
+	"""
+	MOVE_CREATURE
+	"""
+	アイテムを出して攻める
+	"""
+	ATTACK_WITH_ITEM
+	"""
+	アイテムを出さずに攻める
+	"""
+	ATTACK_WITHOUT_ITEM
+	"""
+	アイテムを出して守る
+	"""
+	DEFEND_WITH_ITEM
+	"""
+	アイテムを出さずに守る
+	"""
+	DEFEND_WITHOUT_ITEM
+	"""
+	アイテムの代わりに手札のクリーチャーを出す（援護）
+	"""
+	USE_CREATURE_AS_ITEM
+	"""
+	領地を手放す
+	"""
+	RELINQUISH_TERRITORY
+	"""
+	ターンを終える（配置の段階では配置しない、領地コマンドの段階では何もしない）
+	"""
+	END_TURN
 }
 """
 対戦の決まり（盤面や部屋によらず、ゲーム全体で同じ値）
@@ -2627,6 +2743,15 @@ type Mutation {
 		input: SetNpcAvatarDecksInput!
 	): SetNpcAvatarDecksResult!
 	"""
+	NPC のアバターに使う思考パターンを割り当てる（今の割り当てを、渡した一覧に置き換える。外すのも同じ操作。準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setNpcAvatarMindsets(
+		"""
+		変える内容
+		"""
+		input: SetNpcAvatarMindsetsInput!
+	): SetNpcAvatarMindsetsResult!
+	"""
 	NPC のアバターを削除する（準備中のものだけ。紐づいたオペレーターだけ）
 	"""
 	deleteNpcAvatar(
@@ -2716,6 +2841,69 @@ type Mutation {
 		"""
 		input: RetireNpcDeckInput!
 	): RetireNpcDeckResult!
+	"""
+	NPC の思考パターンを登録する（準備中。紐づいたオペレーターだけ）
+	"""
+	registerNpcMindset(
+		"""
+		登録する NPC の思考パターン
+		"""
+		input: RegisterNpcMindsetInput!
+	): RegisterNpcMindsetResult!
+	"""
+	NPC の思考パターンの名前を変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	renameNpcMindset(
+		"""
+		変える内容
+		"""
+		input: RenameNpcMindsetInput!
+	): RenameNpcMindsetResult!
+	"""
+	NPC の思考パターンの行動の種類ごとの重みを変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setNpcMindsetActionWeights(
+		"""
+		変える内容
+		"""
+		input: SetNpcMindsetActionWeightsInput!
+	): SetNpcMindsetActionWeightsResult!
+	"""
+	NPC の思考パターンの採点基準ごとの重みを変える（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	setNpcMindsetCriterionWeights(
+		"""
+		変える内容
+		"""
+		input: SetNpcMindsetCriterionWeightsInput!
+	): SetNpcMindsetCriterionWeightsResult!
+	"""
+	NPC の思考パターンを削除する（準備中のものだけ。紐づいたオペレーターだけ）
+	"""
+	deleteNpcMindset(
+		"""
+		削除する NPC の思考パターン
+		"""
+		input: DeleteNpcMindsetInput!
+	): DeleteNpcMindsetResult!
+	"""
+	NPC の思考パターンを公開中にする（紐づいたオペレーターだけ）
+	"""
+	publishNpcMindset(
+		"""
+		公開する NPC の思考パターン
+		"""
+		input: PublishNpcMindsetInput!
+	): PublishNpcMindsetResult!
+	"""
+	NPC の思考パターンを使用不可にする（紐づいたオペレーターだけ）
+	"""
+	retireNpcMindset(
+		"""
+		使用不可にする NPC の思考パターン
+		"""
+		input: RetireNpcMindsetInput!
+	): RetireNpcMindsetResult!
 	"""
 	プリセットデッキを登録する（紐づいたオペレーターだけ）
 	"""
@@ -2873,6 +3061,10 @@ type NpcAvatar {
 	"""
 	decks: [NpcDeck!]!
 	"""
+	使う NPC の思考パターン（割り当てた順。0 件でもよく、アバターの公開に条件は無い。使用不可にした思考パターンも、外すまで含まれる）。部屋の NPC の席で、デッキと一緒にこの中から 1 つ選ぶ
+	"""
+	mindsets: [NpcMindset!]!
+	"""
 	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
 	"""
 	revision: Int!
@@ -2934,7 +3126,7 @@ type NpcAvatarNameAlreadyInUseError {
 	message: String!
 }
 """
-準備中でない NPC のアバターの名前・使うデッキを変える、または削除しようとした（準備中のものだけ変えられる）
+準備中でない NPC のアバターの名前・使うデッキ・使う思考パターンを変える、または削除しようとした（準備中のものだけ変えられる）
 """
 type NpcAvatarNotDraftError {
 	"""
@@ -3106,6 +3298,208 @@ enum NpcDeckStatus {
 NPC のデッキの一覧の結果
 """
 union NpcDecksResult = NpcDeckConnection | ValidationErrors | ForbiddenError
+"""
+NPC の思考パターン
+"""
+type NpcMindset {
+	"""
+	公開用の ID
+	"""
+	id: UUID!
+	"""
+	名前（登録・変更したときの表記。前後の空白は除く。状態によらず、すべての NPC の思考パターンの中で一意）
+	"""
+	name: String!
+	"""
+	状態（準備中・公開中・使用不可）
+	"""
+	status: NpcMindsetStatus!
+	"""
+	行動の種類ごとの重み（種類のすべてを持つ。並びは行動の種類の定義の順）。重みは 0〜100 の整数で、0 はその種類を選ばない。点の付かない段階（引く・捨てる・振る前・行き先を選ぶ）で効く
+	"""
+	actionWeights: [NpcMindsetActionWeight!]!
+	"""
+	採点基準ごとの重み（基準のすべてを持つ）。重みは 0〜100 の整数で、0 はその基準を見ない。点の付く段階（配置・侵略・攻める・守る・手放す・領地コマンド・ターンを終える）で効く
+	"""
+	criterionWeights: [NpcMindsetCriterionWeight!]!
+	"""
+	更新の番号（画面が見ていた版。変える・消す操作の入力にそのまま渡す。利用者には見せない）
+	"""
+	revision: Int!
+	"""
+	登録した日時
+	"""
+	registeredAt: DateTime!
+	"""
+	最後に変更した日時（変更していなければ登録した日時）
+	"""
+	updatedAt: DateTime!
+}
+"""
+行動の種類とその重み
+"""
+type NpcMindsetActionWeight {
+	"""
+	行動の種類
+	"""
+	action: MatchAction!
+	"""
+	重み（0〜100）
+	"""
+	weight: Int!
+}
+"""
+行動の種類とその重みの入力
+"""
+input NpcMindsetActionWeightInput {
+	"""
+	行動の種類
+	"""
+	action: MatchAction!
+	"""
+	重み（0〜100 の整数）
+	"""
+	weight: Int!
+}
+"""
+NPC の思考パターンの一覧の 1 ページ（名前の順）
+"""
+type NpcMindsetConnection {
+	"""
+	このページの NPC の思考パターン
+	"""
+	edges: [NpcMindsetEdge!]!
+	"""
+	ページの情報
+	"""
+	pageInfo: PageInfo!
+}
+"""
+採点基準。候補ごとに値を出し、場面の候補の中で 0〜1 にそろえて重みを掛けて足す
+"""
+enum NpcMindsetCriterion {
+	"""
+	総魔力の差（自分の総魔力 − 相手のうち一番高い総魔力）
+	"""
+	TOTAL_MAGIC_LEAD
+	"""
+	領地の数（自分の領地の数）
+	"""
+	TERRITORY_COUNT
+	"""
+	勝ち見込み（戦闘の候補だけ、戦闘の後にその領地を自分が持っている割合。戦闘にならない候補は 0）
+	"""
+	BATTLE_HOLD
+	"""
+	魔力を残す（手持ちの魔力。当面は盤面の通行料の一番高い額で頭打ち）
+	"""
+	MAGIC_RESERVE
+}
+"""
+採点基準とその重み
+"""
+type NpcMindsetCriterionWeight {
+	"""
+	採点基準
+	"""
+	criterion: NpcMindsetCriterion!
+	"""
+	重み（0〜100）
+	"""
+	weight: Int!
+}
+"""
+採点基準とその重みの入力
+"""
+input NpcMindsetCriterionWeightInput {
+	"""
+	採点基準
+	"""
+	criterion: NpcMindsetCriterion!
+	"""
+	重み（0〜100 の整数）
+	"""
+	weight: Int!
+}
+"""
+NPC の思考パターンの一覧の 1 件と、その位置
+"""
+type NpcMindsetEdge {
+	"""
+	この 1 件の位置（次のページを取るときに after に渡す）
+	"""
+	cursor: String!
+	"""
+	NPC の思考パターン
+	"""
+	node: NpcMindset!
+}
+"""
+NPC の思考パターンの一覧の絞り込み
+"""
+input NpcMindsetFilter {
+	"""
+	名前に含まれる文字（前後の空白を除き、全角・半角、大文字・小文字の違いは無視する。空・空白だけは入力の誤り。50 文字まで）
+	"""
+	nameContains: String
+	"""
+	状態（指定が無ければすべて。空のリストは入力の誤り）
+	"""
+	statuses: [NpcMindsetStatus!]
+}
+"""
+名前が、ほかの NPC の思考パターンですでに使われている（状態によらない）。カード名と同じ比べ方（前後の空白を除き、全角・半角、大文字・小文字の違いを同じとみなす）
+"""
+type NpcMindsetNameAlreadyInUseError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+準備中でない NPC の思考パターンの名前・重みを変える、または削除しようとした（準備中のものだけ変えられる）
+"""
+type NpcMindsetNotDraftError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC の思考パターンが無い（削除したものを含む）
+"""
+type NpcMindsetNotFoundError {
+	"""
+	開発者向けの説明（画面にそのまま出す文言ではない）
+	"""
+	message: String!
+}
+"""
+NPC の思考パターンの詳細の結果
+"""
+union NpcMindsetResult = NpcMindset | NpcMindsetNotFoundError | ForbiddenError
+"""
+NPC の思考パターンの状態。準備中は名前と重みを自由に変えられる。公開中の数に上限は無い。公開中にするのに満たす条件は無い。
+使用不可は新しい対戦に使わない（すでに割り当てたアバターからは外すまで見える）
+"""
+enum NpcMindsetStatus {
+	"""
+	準備中（登録したときの状態）
+	"""
+	DRAFT
+	"""
+	公開中
+	"""
+	PUBLISHED
+	"""
+	使用不可
+	"""
+	RETIRED
+}
+"""
+NPC の思考パターンの一覧の結果
+"""
+union NpcMindsetsResult = NpcMindsetConnection | ValidationErrors | ForbiddenError
 """
 受けるダメージを 0 にする
 """
@@ -3413,6 +3807,36 @@ type PublishNpcDeckSuccess {
 	revision: Int!
 }
 """
+NPC の思考パターンを公開する入力
+"""
+input PublishNpcMindsetInput {
+	"""
+	NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC の思考パターンの revision
+	"""
+	revision: Int!
+}
+"""
+NPC の思考パターンの公開の結果（準備中・使用不可から公開中にできる。満たす条件は無い）
+"""
+union PublishNpcMindsetResult = PublishNpcMindsetSuccess | NpcMindsetNotFoundError | RevisionConflictError | ForbiddenError
+"""
+NPC の思考パターンを公開中にした（すでに公開中なら何も変えず、revision も進まない）
+"""
+type PublishNpcMindsetSuccess {
+	"""
+	公開した NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	公開した NPC の思考パターンの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 スターターセットを公開する入力
 """
 input PublishStarterSetInput {
@@ -3599,6 +4023,34 @@ type Query {
 		"""
 		id: UUID!
 	): NpcDeckResult!
+	"""
+	NPC の思考パターンの一覧（紐づいたオペレーターだけ）
+	"""
+	npcMindsets(
+		"""
+		絞り込み
+		"""
+		filter: NpcMindsetFilter
+
+		"""
+		1 ページの件数（1〜100。指定が無ければ 50）
+		"""
+		first: Int
+
+		"""
+		前のページの pageInfo.endCursor（指定が無ければ最初のページ）
+		"""
+		after: String
+	): NpcMindsetsResult!
+	"""
+	NPC の思考パターンの詳細（紐づいたオペレーターだけ）
+	"""
+	npcMindset(
+		"""
+		NPC の思考パターンの公開用の ID
+		"""
+		id: UUID!
+	): NpcMindsetResult!
 	"""
 	プリセットデッキの一覧（紐づいたオペレーターだけ）
 	"""
@@ -3869,6 +4321,32 @@ type RegisterNpcDeckSuccess {
 	revision: Int!
 }
 """
+NPC の思考パターンを登録する入力
+"""
+input RegisterNpcMindsetInput {
+	"""
+	名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC の思考パターンの登録の結果
+"""
+union RegisterNpcMindsetResult = RegisterNpcMindsetSuccess | ValidationErrors | NpcMindsetNameAlreadyInUseError | ForbiddenError
+"""
+NPC の思考パターンを登録した（準備中）
+"""
+type RegisterNpcMindsetSuccess {
+	"""
+	登録した NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	登録した NPC の思考パターンの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 プリセットデッキを登録する入力
 """
 input RegisterPresetDeckInput {
@@ -4075,6 +4553,40 @@ type RenameNpcDeckSuccess {
 	id: UUID!
 	"""
 	変えた NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+NPC の思考パターンの名前を変える入力
+"""
+input RenameNpcMindsetInput {
+	"""
+	NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC の思考パターンの revision
+	"""
+	revision: Int!
+	"""
+	新しい名前（1〜20 文字。前後の空白は除いて保存する）
+	"""
+	name: String!
+}
+"""
+NPC の思考パターンの名前の変更の結果（準備中のものだけ変えられる）
+"""
+union RenameNpcMindsetResult = RenameNpcMindsetSuccess | ValidationErrors | NpcMindsetNotFoundError | NpcMindsetNameAlreadyInUseError | NpcMindsetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC の思考パターンの名前を変えた（同じ名前なら何も変えず、revision も進まない）
+"""
+type RenameNpcMindsetSuccess {
+	"""
+	変えた NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC の思考パターンの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
@@ -4297,6 +4809,36 @@ type RetireNpcDeckSuccess {
 	revision: Int!
 }
 """
+NPC の思考パターンを使用不可にする入力
+"""
+input RetireNpcMindsetInput {
+	"""
+	NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC の思考パターンの revision
+	"""
+	revision: Int!
+}
+"""
+NPC の思考パターンの使用不可の結果
+"""
+union RetireNpcMindsetResult = RetireNpcMindsetSuccess | NpcMindsetNotFoundError | InvalidNpcMindsetStatusTransitionError | RevisionConflictError | ForbiddenError
+"""
+NPC の思考パターンを使用不可にした（すでに使用不可なら何も変えず、revision も進まない）
+"""
+type RetireNpcMindsetSuccess {
+	"""
+	使用不可にした NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	使用不可にした NPC の思考パターンの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 スターターセットを使用不可にする入力
 """
 input RetireStarterSetInput {
@@ -4432,6 +4974,42 @@ type SetNpcAvatarDecksSuccess {
 	revision: Int!
 }
 """
+NPC のアバターに使う思考パターンを割り当てる入力
+"""
+input SetNpcAvatarMindsetsInput {
+	"""
+	NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC のアバターの revision
+	"""
+	revision: Int!
+	"""
+	使う NPC の思考パターンの公開用の ID（今の一覧をこの一覧に置き換える。今の一覧に無いものは後ろに足し、この一覧に無いものは外す。並べ替えだけでは変わらない。0 件でもよい。同じ思考パターンは 2 回入れられない。新しく入れる思考パターンは公開中のものだけ）
+	"""
+	mindsetIds: [UUID!]!
+}
+"""
+NPC のアバターへの使う思考パターンの割り当ての結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は mindsetIds.<番号>。同じ思考パターンの 2 つ目以降は重複、無い・削除した思考パターンは存在しない、
+新しく入れる公開中でない思考パターンは使えない）
+"""
+union SetNpcAvatarMindsetsResult = SetNpcAvatarMindsetsSuccess | ValidationErrors | NpcAvatarNotFoundError | NpcAvatarNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC のアバターに使う思考パターンを割り当てた（同じ思考パターンの集まりなら何も変えず、revision も進まない）
+"""
+type SetNpcAvatarMindsetsSuccess {
+	"""
+	変えた NPC のアバターの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC のアバターの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
 NPC のデッキのカードの枚数を変える入力
 """
 input SetNpcDeckCardCountsInput {
@@ -4462,6 +5040,76 @@ type SetNpcDeckCardCountsSuccess {
 	id: UUID!
 	"""
 	変えた NPC のデッキの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+行動の種類ごとの重みを変える入力
+"""
+input SetNpcMindsetActionWeightsInput {
+	"""
+	NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC の思考パターンの revision
+	"""
+	revision: Int!
+	"""
+	行動の種類ごとの重み（今の重みをこの一覧に置き換える。種類のすべてを 1 回ずつ入れる）
+	"""
+	weights: [NpcMindsetActionWeightInput!]!
+}
+"""
+NPC の思考パターンの行動の種類ごとの重みの変更の結果（準備中のものだけ変えられる）。
+入力の誤りは ValidationErrors（項目名は weights.<番号>。同じ種類の 2 つ目以降は重複、範囲外の重みは weights.<番号>.weight の範囲外、
+種類が足りないときは weights が必須）
+"""
+union SetNpcMindsetActionWeightsResult = SetNpcMindsetActionWeightsSuccess | ValidationErrors | NpcMindsetNotFoundError | NpcMindsetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC の思考パターンの行動の種類ごとの重みを変えた（同じ重みなら何も変えず、revision も進まない）
+"""
+type SetNpcMindsetActionWeightsSuccess {
+	"""
+	変えた NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC の思考パターンの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
+	"""
+	revision: Int!
+}
+"""
+採点基準ごとの重みを変える入力
+"""
+input SetNpcMindsetCriterionWeightsInput {
+	"""
+	NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	画面が見ていた NPC の思考パターンの revision
+	"""
+	revision: Int!
+	"""
+	採点基準ごとの重み（今の重みをこの一覧に置き換える。基準のすべてを 1 回ずつ入れる）
+	"""
+	weights: [NpcMindsetCriterionWeightInput!]!
+}
+"""
+NPC の思考パターンの採点基準ごとの重みの変更の結果（準備中のものだけ変えられる）。入力の誤りの項目名は行動の種類の重みと同じ
+"""
+union SetNpcMindsetCriterionWeightsResult = SetNpcMindsetCriterionWeightsSuccess | ValidationErrors | NpcMindsetNotFoundError | NpcMindsetNotDraftError | RevisionConflictError | ForbiddenError
+"""
+NPC の思考パターンの採点基準ごとの重みを変えた（同じ重みなら何も変えず、revision も進まない）
+"""
+type SetNpcMindsetCriterionWeightsSuccess {
+	"""
+	変えた NPC の思考パターンの公開用の ID
+	"""
+	id: UUID!
+	"""
+	変えた NPC の思考パターンの revision（内容は返さない。画面は詳細を読み直し、詳細の revision を持つ）
 	"""
 	revision: Int!
 }
