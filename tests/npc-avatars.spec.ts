@@ -137,7 +137,7 @@ test("公開中の NPC の思考パターンを探して割り当てると使う
   page,
 }) => {
   await loginAsOperator(page);
-  const mindsetName = uniqueName("攻めがち");
+  const mindsetName = uniqueName("侵略型");
   await createPublishedNpcMindset(page, mindsetName);
   const avatarName = uniqueName("森の番人");
   const avatarURL = await createNpcAvatar(page, avatarName);
