@@ -25,17 +25,15 @@ export const MATCH_ACTION_LABELS: Record<MatchAction, string> = {
 };
 
 export const CRITERION_LABELS: Record<NpcMindsetCriterion, string> = {
-  TOTAL_MAGIC_LEAD: "総魔力の差",
+  OWN_TOTAL_MAGIC: "自分の総魔力",
+  RIVAL_TOTAL_MAGIC: "相手の総魔力",
   TERRITORY_COUNT: "領地の数",
-  BATTLE_HOLD: "戦闘の勝ち見込み",
-  MAGIC_RESERVE: "魔力を残す",
 };
 
 export const CRITERION_DESCRIPTIONS: Record<NpcMindsetCriterion, string> = {
-  TOTAL_MAGIC_LEAD: "自分の総魔力と相手のうち一番高い人の差",
+  OWN_TOTAL_MAGIC: "自分の総魔力を増やす（育てる）",
+  RIVAL_TOTAL_MAGIC: "相手の総魔力（平均）を減らす（奪う）",
   TERRITORY_COUNT: "自分の領地の数",
-  BATTLE_HOLD: "戦闘の後に領地を持っている見込み",
-  MAGIC_RESERVE: "手持ちの魔力（盤面の一番高い通行料まで）",
 };
 
 // フォームから来た文字列を、core に渡せる値かどうか確かめる（知らない値を渡すと GraphQL の誤りになり、想定外として扱われるため）

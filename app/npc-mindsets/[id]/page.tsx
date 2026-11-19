@@ -160,7 +160,7 @@ export default async function NpcMindsetPage({
 
       <section aria-labelledby="action-weights-heading">
         <h2 id="action-weights-heading">行動の種類ごとの重み</h2>
-        <p>点を付けない段階（引く・捨てる・振る前・行き先）で使います。</p>
+        <p>点を付けない段階（引く・捨てる・振る前）で使います。</p>
         {isDraft ? (
           <WeightsForm
             action={setNpcMindsetActionWeights}

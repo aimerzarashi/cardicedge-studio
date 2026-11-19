@@ -602,16 +602,14 @@ export type NpcMindsetActionWeightInput = {
   weight: number;
 };
 
-/** 採点基準。候補ごとに値を出し、場面の候補の中で 0〜1 にそろえて重みを掛けて足す */
+/** 採点基準。候補ごとに、当てた後の状態の値（額）に重みを掛けて足す */
 export type NpcMindsetCriterion =
-  /** 勝ち見込み（戦闘の候補だけ、戦闘の後にその領地を自分が持っている割合。戦闘にならない候補は 0） */
-  | 'BATTLE_HOLD'
-  /** 魔力を残す（手持ちの魔力。当面は盤面の通行料の一番高い額で頭打ち） */
-  | 'MAGIC_RESERVE'
-  /** 領地の数（自分の領地の数） */
-  | 'TERRITORY_COUNT'
-  /** 総魔力の差（自分の総魔力 − 相手のうち一番高い総魔力） */
-  | 'TOTAL_MAGIC_LEAD';
+  /** 自分の総魔力（大きいほどよい） */
+  | 'OWN_TOTAL_MAGIC'
+  /** 相手の総魔力（相手の平均。小さいほどよい） */
+  | 'RIVAL_TOTAL_MAGIC'
+  /** 領地の数（自分の領地の数 × 土地の基本の値） */
+  | 'TERRITORY_COUNT';
 
 /** 採点基準とその重みの入力 */
 export type NpcMindsetCriterionWeightInput = {

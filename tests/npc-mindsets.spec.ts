@@ -20,7 +20,7 @@ function detail(page: Page, term: string) {
 
 test("登録すると詳細の画面に移り、一覧に準備中で出る", async ({ page }) => {
   await loginAsOperator(page);
-  const name = uniqueName("攻めがち");
+  const name = uniqueName("侵略型");
 
   await page.goto("/npc-mindsets/new");
   await page.getByLabel("名前").fill(name);
@@ -41,7 +41,7 @@ test("使われている名前で登録すると名前の重複が表示され�
   page,
 }) => {
   await loginAsOperator(page);
-  const name = uniqueName("慎重");
+  const name = uniqueName("育成型");
   await createNpcMindset(page, name);
 
   await page.goto("/npc-mindsets/new");
@@ -56,7 +56,7 @@ test("名前を変えると詳細の見出しと入力欄が新しい名前に�
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createNpcMindset(page, uniqueName("ふつう")));
+  await page.goto(await createNpcMindset(page, uniqueName("バランス")));
   const renamed = uniqueName("のんびり");
 
   const rename = section(page, "名前の変更");
@@ -72,16 +72,14 @@ test("行動の種類ごとの重みと採点基準ごとの重みを保存す�
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createNpcMindset(page, uniqueName("攻めがち")));
+  await page.goto(await createNpcMindset(page, uniqueName("侵略型")));
   const actions = section(page, "行動の種類ごとの重み");
   const criteria = section(page, "採点基準ごとの重み");
   await expect(
-    actions.getByText(
-      "点を付けない段階（引く・捨てる・振る前・行き先）で使います",
-    ),
+    actions.getByText("点を付けない段階（引く・捨てる・振る前）で使います"),
   ).toBeVisible();
   await expect(
-    criteria.getByText("自分の総魔力と相手のうち一番高い人の差"),
+    criteria.getByText("相手の総魔力（平均）を減らす（奪う）"),
   ).toBeVisible();
 
   await actions.getByLabel("カードを引く", { exact: true }).fill("20");
@@ -112,10 +110,10 @@ test("範囲外の重みを保存しようとすると、その行に範囲が�
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createNpcMindset(page, uniqueName("慎重")));
+  await page.goto(await createNpcMindset(page, uniqueName("育成型")));
   const criteria = section(page, "採点基準ごとの重み");
 
-  await criteria.getByLabel("魔力を残す", { exact: true }).fill("101");
+  await criteria.getByLabel("領地の数", { exact: true }).fill("101");
   await criteria
     .getByRole("button", { name: "採点基準の重みを保存する" })
     .click();
@@ -123,11 +121,11 @@ test("範囲外の重みを保存しようとすると、その行に範囲が�
   await expect(
     criteria.getByText("重みは 0〜100 の整数にしてください"),
   ).toBeVisible();
-  await expect(criteria.getByLabel("魔力を残す", { exact: true })).toHaveValue(
+  await expect(criteria.getByLabel("領地の数", { exact: true })).toHaveValue(
     "101",
   );
   await expect(
-    criteria.getByLabel("魔力を残す", { exact: true }),
+    criteria.getByLabel("領地の数", { exact: true }),
   ).toHaveAttribute("aria-invalid", "true");
 });
 
@@ -135,7 +133,7 @@ test("公開すると変更と削除ができなくなり、使用不可にす�
   page,
 }) => {
   await loginAsOperator(page);
-  await page.goto(await createNpcMindset(page, uniqueName("ふつう")));
+  await page.goto(await createNpcMindset(page, uniqueName("バランス")));
 
   const publish = section(page, "公開");
   await publish.getByRole("button", { name: "公開する" }).click();
@@ -162,7 +160,7 @@ test("状態で絞り込むと、その状態の NPC の思考パターンだけ
   page,
 }) => {
   await loginAsOperator(page);
-  const name = uniqueName("慎重");
+  const name = uniqueName("育成型");
   await createNpcMindset(page, name);
   await expect(async () => {
     await page.goto(`/npc-mindsets?name=${encodeURIComponent(name)}`);
@@ -186,7 +184,7 @@ test("削除を確かめてから削除すると一覧の画面に移り、詳�
   page,
 }) => {
   await loginAsOperator(page);
-  const name = uniqueName("ふつう");
+  const name = uniqueName("バランス");
   const mindsetURL = await createNpcMindset(page, name);
   await page.goto(mindsetURL);
 
