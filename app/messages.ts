@@ -264,6 +264,41 @@ export function starterSetLimitReachedMessage(max: number): string {
   return `公開中のスターターセットは ${max} 個までです。今のものを使用不可にすると公開できます`;
 }
 
+// NPC の思考パターンの重みの入力の行ごとの誤り（範囲は core が返した値を使う）
+export function weightErrorMessage(error: FieldError): string {
+  switch (error.__typename) {
+    case "FieldOutOfRange":
+      return `重みは ${error.min}〜${error.max} の整数にしてください`;
+    case "FieldDuplicated":
+      return "同じものが 2 回入っています";
+    default:
+      return "入力が正しくありません";
+  }
+}
+
+export const NPC_MINDSET_NOT_DRAFT =
+  "準備中でないため、変えられません。最新の状態を表示しています";
+
+// NPC のアバターに使う思考パターンを割り当てられないときの誤り（項目は mindsetIds.<番号>。画面は 1 つずつ足し引きするため、番号は出さない）
+export function npcAvatarMindsetErrorMessage(
+  errors: { __typename: string }[],
+): string {
+  return errors
+    .map((error) => {
+      switch (error.__typename) {
+        case "FieldDuplicated":
+          return "同じ思考パターンが 2 回入っています";
+        case "FieldNotFound":
+          return "この思考パターンは見つかりません";
+        case "FieldUnavailable":
+          return "公開中でない思考パターンは割り当てられません";
+        default:
+          return "入力が正しくありません";
+      }
+    })
+    .join("。");
+}
+
 export const NPC_DECK_NOT_DRAFT =
   "準備中でないため、変えられません。最新の状態を表示しています";
 

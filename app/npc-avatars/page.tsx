@@ -26,6 +26,10 @@ const npcAvatarsQuery = graphql(`
               id
               name
             }
+            mindsets {
+              id
+              name
+            }
             registeredAt
             updatedAt
           }
@@ -147,6 +151,7 @@ function NpcAvatarsResult({
                   <th>名前</th>
                   <th>状態</th>
                   <th>使うデッキ</th>
+                  <th>使う思考パターン</th>
                   <th>登録日時</th>
                   <th>更新日時</th>
                 </tr>
@@ -166,6 +171,18 @@ function NpcAvatarsResult({
                               {index > 0 && "、"}
                               <Link href={`/npc-decks/${deck.id}`}>
                                 {deck.name}
+                              </Link>
+                            </Fragment>
+                          ))}
+                    </td>
+                    <td>
+                      {node.mindsets.length === 0
+                        ? "なし"
+                        : node.mindsets.map((mindset, index) => (
+                            <Fragment key={mindset.id}>
+                              {index > 0 && "、"}
+                              <Link href={`/npc-mindsets/${mindset.id}`}>
+                                {mindset.name}
                               </Link>
                             </Fragment>
                           ))}

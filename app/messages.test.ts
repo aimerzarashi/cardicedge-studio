@@ -6,6 +6,7 @@ import {
   elementsErrorMessage,
   NAME_ALREADY_IN_USE,
   nameErrorMessage,
+  npcAvatarMindsetErrorMessage,
   RULE_LABELS,
   ruleStep,
   spellEffectLabel,
@@ -14,6 +15,7 @@ import {
   starterSetLimitReachedMessage,
   starterSetPublishErrorMessage,
   statsErrorMessage,
+  weightErrorMessage,
 } from "./messages.ts";
 
 describe("nameErrorMessage", () => {
@@ -320,6 +322,24 @@ describe("スペルの効果の文言", () => {
         min: 1,
       }),
       "引く枚数は 1 以上にしてください",
+    );
+  });
+});
+
+describe("weightErrorMessage", () => {
+  it("範囲外のときは、core が返した範囲を文言に入れる", () => {
+    assert.equal(
+      weightErrorMessage({ __typename: "FieldOutOfRange", min: 0, max: 100 }),
+      "重みは 0〜100 の整数にしてください",
+    );
+  });
+});
+
+describe("npcAvatarMindsetErrorMessage", () => {
+  it("公開中でない思考パターンは、割り当てられないと知らせる", () => {
+    assert.equal(
+      npcAvatarMindsetErrorMessage([{ __typename: "FieldUnavailable" }]),
+      "公開中でない思考パターンは割り当てられません",
     );
   });
 });
